@@ -7,7 +7,7 @@ import { useBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { formatCurrency, getStatusColor } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Loader2, Check, X, Car, Coffee } from 'lucide-react';
+import { Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BookingStatus } from '@/lib/types';
 
@@ -32,7 +32,7 @@ export default function StaffBookings() {
   const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
     try {
       await updateStatus.mutateAsync({ id: bookingId, status: newStatus });
-      toast.success(`Booking ${newStatus.toLowerCase()}`);
+      toast.success(`Booking ${newStatus}`);
     } catch (error) {
       toast.error('Failed to update booking status');
     }
@@ -45,16 +45,16 @@ export default function StaffBookings() {
           <h1 className="font-display text-3xl font-bold">Bookings</h1>
           <p className="text-muted-foreground">Manage and confirm guest bookings</p>
         </div>
-        
+
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Bookings</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="Confirmed">Confirmed</SelectItem>
-            <SelectItem value="Cancelled">Cancelled</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="confirmed">Confirmed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -74,7 +74,7 @@ export default function StaffBookings() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold">{booking.customers?.full_name}</h3>
+                        <h3 className="font-semibold">{booking.guests?.name}</h3>
                         <Badge className={cn(getStatusColor(booking.status))}>
                           {booking.status}
                         </Badge>
@@ -94,31 +94,21 @@ export default function StaffBookings() {
                         </div>
                         <div>
                           <p className="text-muted-foreground">Total</p>
-                          <p className="font-medium">{formatCurrency(Number(booking.total_amount))}</p>
+                          <p className="font-medium">{formatCurrency(Number(booking.rate))}</p>
                         </div>
                       </div>
                       <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-                        <span>{booking.guests_count} guest(s)</span>
-                        {booking.vehicle && (
-                          <span className="flex items-center gap-1">
-                            <Car className="h-4 w-4" /> Vehicle
-                          </span>
-                        )}
-                        {booking.breakfast && (
-                          <span className="flex items-center gap-1">
-                            <Coffee className="h-4 w-4" /> Breakfast
-                          </span>
-                        )}
+                        <span>{booking.num_adults + booking.num_children} guest(s)</span>
                       </div>
                     </div>
-                    
-                    {booking.status === 'Pending' && (
+
+                    {booking.status === 'pending' && (
                       <div className="flex gap-2">
                         <Button
                           size="sm"
                           variant="outline"
                           className="text-emerald-600 border-emerald-600 hover:bg-emerald-50"
-                          onClick={() => handleStatusChange(booking.id, 'Confirmed')}
+                          onClick={() => handleStatusChange(booking.id, 'confirmed')}
                           disabled={updateStatus.isPending}
                         >
                           <Check className="h-4 w-4 mr-1" />
@@ -128,7 +118,7 @@ export default function StaffBookings() {
                           size="sm"
                           variant="outline"
                           className="text-red-600 border-red-600 hover:bg-red-50"
-                          onClick={() => handleStatusChange(booking.id, 'Cancelled')}
+                          onClick={() => handleStatusChange(booking.id, 'cancelled')}
                           disabled={updateStatus.isPending}
                         >
                           <X className="h-4 w-4 mr-1" />

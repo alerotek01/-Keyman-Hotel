@@ -3,11 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, addDays } from 'date-fns';
-import { CalendarIcon, Users, Utensils, Car, Loader2, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, Users, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn, formatCurrency, calculateBookingPrice, getRoomTypeLabel } from '@/lib/utils';
 import { useCreateBooking } from '@/hooks/useBookings';
 import type { RoomWithAvailability } from '@/lib/types';
@@ -23,32 +22,30 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
   const { toast } = useToast();
   const createBooking = useCreateBooking();
   const [success, setSuccess] = useState(false);
-  
+
   const [checkIn, setCheckIn] = useState<Date | undefined>(addDays(new Date(), 1));
   const [checkOut, setCheckOut] = useState<Date | undefined>(addDays(new Date(), 3));
-  const [guestsCount, setGuestsCount] = useState(2);
-  const [breakfast, setBreakfast] = useState(false);
-  const [vehicle, setVehicle] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
+  const [numAdults, setNumAdults] = useState(2);
+  const [numChildren, setNumChildren] = useState(0);
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [specialRequests, setSpecialRequests] = useState('');
 
   if (!room) return null;
 
+  const typeName = room.room_types?.name || 'Single';
+  const basePrice = Number(room.room_types?.base_rate || room.base_price);
+  const breakfastPrice = Number(room.room_types?.breakfast_price || 0);
+
   const pricing = checkIn && checkOut
-    ? calculateBookingPrice(
-        Number(room.base_price),
-        Number(room.breakfast_price),
-        checkIn,
-        checkOut,
-        guestsCount,
-        breakfast
-      )
+    ? calculateBookingPrice(basePrice, breakfastPrice, checkIn, checkOut, numAdults, false)
     : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!checkIn || !checkOut || !customerName || !customerEmail) {
+
+    if (!checkIn || !checkOut || !guestName || !guestEmail) {
       toast({
         title: 'Missing Information',
         description: 'Please fill in all required fields.',
@@ -59,24 +56,25 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
 
     try {
       await createBooking.mutateAsync({
-        room_id: room.id,
+        room_type_id: room.room_type_id,
         check_in: checkIn,
         check_out: checkOut,
-        guests_count: guestsCount,
-        breakfast,
-        vehicle,
-        customer_name: customerName,
-        customer_email: customerEmail,
+        num_adults: numAdults,
+        num_children: numChildren,
+        guest_name: guestName,
+        guest_email: guestEmail,
+        guest_phone: guestPhone,
+        special_requests: specialRequests || undefined,
       });
-      
+
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
         onOpenChange(false);
-        setCustomerName('');
-        setCustomerEmail('');
-        setBreakfast(false);
-        setVehicle(false);
+        setGuestName('');
+        setGuestEmail('');
+        setGuestPhone('');
+        setSpecialRequests('');
       }, 3000);
     } catch (error) {
       toast({
@@ -97,7 +95,7 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
             </div>
             <DialogTitle className="font-display text-2xl text-charcoal mb-2">Booking Confirmed</DialogTitle>
             <DialogDescription className="text-charcoal/50">
-              Your reservation has been submitted. We'll send a confirmation to <strong className="text-charcoal">{customerEmail}</strong>.
+              Your reservation has been submitted. We'll send a confirmation to <strong className="text-charcoal">{guestEmail}</strong>.
             </DialogDescription>
           </div>
         </DialogContent>
@@ -113,7 +111,7 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
             Book Room {room.room_number}
           </DialogTitle>
           <DialogDescription className="text-charcoal/50">
-            {getRoomTypeLabel(room.room_type)} · {formatCurrency(Number(room.base_price))}/night
+            {getRoomTypeLabel(typeName)} · {formatCurrency(basePrice)}/night
           </DialogDescription>
         </DialogHeader>
 
@@ -177,68 +175,63 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
           </div>
 
           {/* Guests */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60 flex items-center gap-2">
-              <Users className="h-3.5 w-3.5 text-brass/60" />
-              Number of Guests
-            </Label>
-            <Input
-              type="number"
-              min={1}
-              max={4}
-              value={guestsCount}
-              onChange={(e) => setGuestsCount(parseInt(e.target.value) || 1)}
-              className="rounded-full border-charcoal/10"
-            />
-          </div>
-
-          {/* Extras */}
-          <div className="space-y-3">
-            <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60">Extras</Label>
-            <div className="flex items-center justify-between rounded-xl border border-charcoal/[0.06] p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-brass/10 flex items-center justify-center">
-                  <Utensils className="h-4 w-4 text-brass" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-charcoal">Breakfast</p>
-                  <p className="text-xs text-charcoal/40">
-                    {formatCurrency(Number(room.breakfast_price))} per person/night
-                  </p>
-                </div>
-              </div>
-              <Switch checked={breakfast} onCheckedChange={setBreakfast} />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60 flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-brass/60" />
+                Adults
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={6}
+                value={numAdults}
+                onChange={(e) => setNumAdults(parseInt(e.target.value) || 1)}
+                className="rounded-full border-charcoal/10"
+              />
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-charcoal/[0.06] p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-brass/10 flex items-center justify-center">
-                  <Car className="h-4 w-4 text-brass" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-charcoal">Parking</p>
-                  <p className="text-xs text-charcoal/40">Free parking included</p>
-                </div>
-              </div>
-              <Switch checked={vehicle} onCheckedChange={setVehicle} />
+            <div className="space-y-2">
+              <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60">Children</Label>
+              <Input
+                type="number"
+                min={0}
+                max={4}
+                value={numChildren}
+                onChange={(e) => setNumChildren(parseInt(e.target.value) || 0)}
+                className="rounded-full border-charcoal/10"
+              />
             </div>
           </div>
 
-          {/* Customer Info */}
+          {/* Guest Info */}
           <div className="space-y-3">
             <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60">Guest Information</Label>
             <Input
               placeholder="Full Name"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
               required
               className="rounded-full border-charcoal/10"
             />
             <Input
               type="email"
               placeholder="Email Address"
-              value={customerEmail}
-              onChange={(e) => setCustomerEmail(e.target.value)}
+              value={guestEmail}
+              onChange={(e) => setGuestEmail(e.target.value)}
               required
+              className="rounded-full border-charcoal/10"
+            />
+            <Input
+              type="tel"
+              placeholder="Phone Number"
+              value={guestPhone}
+              onChange={(e) => setGuestPhone(e.target.value)}
+              className="rounded-full border-charcoal/10"
+            />
+            <Input
+              placeholder="Special Requests (optional)"
+              value={specialRequests}
+              onChange={(e) => setSpecialRequests(e.target.value)}
               className="rounded-full border-charcoal/10"
             />
           </div>
@@ -247,15 +240,9 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
           {pricing && (
             <div className="rounded-xl bg-cream/60 p-4 space-y-2">
               <div className="flex justify-between text-sm text-charcoal/60">
-                <span>Base rate ({pricing.nights} nights)</span>
+                <span>Room ({pricing.nights} nights)</span>
                 <span>{formatCurrency(pricing.base_cost)}</span>
               </div>
-              {breakfast && (
-                <div className="flex justify-between text-sm text-charcoal/60">
-                  <span>Breakfast ({guestsCount} × {pricing.nights})</span>
-                  <span>{formatCurrency(pricing.breakfast_cost)}</span>
-                </div>
-              )}
               <div className="flex justify-between text-sm text-charcoal/60">
                 <span>Parking</span>
                 <span className="text-brass">Free</span>

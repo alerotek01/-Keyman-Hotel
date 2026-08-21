@@ -12,6 +12,8 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { RoomWithAvailability } from '@/lib/types';
 
+const GUEST_ROOM_TYPES = ['Single', 'Twin', 'Studio'];
+
 export default function RoomsPage() {
   const [checkIn, setCheckIn] = useState<Date | undefined>(addDays(new Date(), 1));
   const [checkOut, setCheckOut] = useState<Date | undefined>(addDays(new Date(), 3));
@@ -21,14 +23,14 @@ export default function RoomsPage() {
 
   const { data: rooms, isLoading } = useRoomAvailability(checkIn ?? null, checkOut ?? null);
 
-  // Only show guest rooms (Single, Twin, Studio) - not Conference/Cafeteria
-  const guestRooms = rooms?.filter(r => 
-    r.room_type === 'SINGLE' || r.room_type === 'TWIN' || r.room_type === 'STUDIO'
+  // Only show guest rooms (Single, Twin, Studio) — not Conference/Cafeteria
+  const guestRooms = rooms?.filter(r =>
+    GUEST_ROOM_TYPES.includes(r.room_types?.name || r.room_type || '')
   );
 
   const filteredRooms = guestRooms?.filter((room) => {
     if (roomTypeFilter === 'all') return true;
-    return room.room_type === roomTypeFilter;
+    return (room.room_types?.name || room.room_type) === roomTypeFilter;
   });
 
   const handleBookRoom = (room: RoomWithAvailability) => {
@@ -59,7 +61,7 @@ export default function RoomsPage() {
             <p className="text-xs text-charcoal/40 font-medium">
               {filteredRooms?.length ?? 0} rooms found
             </p>
-            
+
             <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
               <Popover>
                 <PopoverTrigger asChild>
@@ -122,9 +124,9 @@ export default function RoomsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="SINGLE">Single</SelectItem>
-                  <SelectItem value="TWIN">Twin</SelectItem>
-                  <SelectItem value="STUDIO">Studio</SelectItem>
+                  <SelectItem value="Single">Single</SelectItem>
+                  <SelectItem value="Twin">Twin</SelectItem>
+                  <SelectItem value="Studio">Studio</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -154,10 +156,10 @@ export default function RoomsPage() {
         </div>
       </section>
 
-      <BookingModal 
-        room={selectedRoom} 
-        open={bookingOpen} 
-        onOpenChange={setBookingOpen} 
+      <BookingModal
+        room={selectedRoom}
+        open={bookingOpen}
+        onOpenChange={setBookingOpen}
       />
     </Layout>
   );

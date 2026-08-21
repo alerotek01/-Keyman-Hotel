@@ -17,15 +17,15 @@ export default function AdminBookings() {
   const handleStatusChange = async (bookingId: string, status: BookingStatus) => {
     try {
       await updateStatus.mutateAsync({ id: bookingId, status });
-      toast({ 
-        title: 'Status Updated', 
+      toast({
+        title: 'Status Updated',
         description: `Booking has been marked as ${status}.`
       });
     } catch (error: any) {
-      toast({ 
-        title: 'Error', 
+      toast({
+        title: 'Error',
         description: error.message || 'Failed to update status.',
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     }
   };
@@ -53,7 +53,7 @@ export default function AdminBookings() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pending</p>
                 <p className="text-2xl font-bold text-amber-600">
-                  {bookings?.filter(b => b.status === 'Pending').length || 0}
+                  {bookings?.filter(b => b.status === 'pending').length || 0}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-amber-500/30" />
@@ -66,7 +66,7 @@ export default function AdminBookings() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Confirmed</p>
                 <p className="text-2xl font-bold text-emerald-600">
-                  {bookings?.filter(b => b.status === 'Confirmed').length || 0}
+                  {bookings?.filter(b => b.status === 'confirmed').length || 0}
                 </p>
               </div>
               <Check className="h-8 w-8 text-emerald-500/30" />
@@ -79,7 +79,7 @@ export default function AdminBookings() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Cancelled</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {bookings?.filter(b => b.status === 'Cancelled').length || 0}
+                  {bookings?.filter(b => b.status === 'cancelled').length || 0}
                 </p>
               </div>
               <X className="h-8 w-8 text-red-500/30" />
@@ -107,7 +107,6 @@ export default function AdminBookings() {
                   <TableHead>Check-in</TableHead>
                   <TableHead>Check-out</TableHead>
                   <TableHead>Guests</TableHead>
-                  <TableHead>Extras</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -118,28 +117,21 @@ export default function AdminBookings() {
                   <TableRow key={booking.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{booking.customers?.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{booking.customers?.email}</p>
+                        <p className="font-medium">{booking.guests?.name}</p>
+                        <p className="text-sm text-muted-foreground">{booking.guests?.email}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">Room {booking.rooms?.room_number}</p>
-                        <p className="text-sm text-muted-foreground">{getRoomTypeLabel(booking.rooms?.room_type || '')}</p>
+                        <p className="text-sm text-muted-foreground">{getRoomTypeLabel(booking.room_types?.name || '')}</p>
                       </div>
                     </TableCell>
                     <TableCell>{formatDate(booking.check_in)}</TableCell>
                     <TableCell>{formatDate(booking.check_out)}</TableCell>
-                    <TableCell>{booking.guests_count}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {booking.breakfast && <Badge variant="outline" className="text-xs">Breakfast</Badge>}
-                        {booking.vehicle && <Badge variant="outline" className="text-xs">Parking</Badge>}
-                        {!booking.breakfast && !booking.vehicle && <span className="text-muted-foreground text-xs">None</span>}
-                      </div>
-                    </TableCell>
+                    <TableCell>{booking.num_adults + booking.num_children}</TableCell>
                     <TableCell className="font-semibold">
-                      {formatCurrency(Number(booking.total_amount))}
+                      {formatCurrency(Number(booking.rate))}
                     </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
@@ -154,9 +146,9 @@ export default function AdminBookings() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="Confirmed">Confirmed</SelectItem>
-                          <SelectItem value="Cancelled">Cancelled</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>

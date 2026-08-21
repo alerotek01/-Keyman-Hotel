@@ -6,13 +6,11 @@ import { formatCurrency, getRoomTypeLabel } from '@/lib/utils';
 import { calculateOccupancy, calculateRevenue, calculateGuestInsights } from '@/lib/reportUtils';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { 
-  BedDouble, 
-  CalendarCheck, 
-  TrendingUp, 
-  Users, 
-  Car, 
-  Coffee,
+import {
+  BedDouble,
+  CalendarCheck,
+  TrendingUp,
+  Users,
   Loader2,
   ArrowRight,
   BarChart3
@@ -45,8 +43,8 @@ export default function ManagerDashboard() {
   const totalRevenue = revenueData.reduce((acc, d) => acc + d.totalRevenue, 0);
   const thisMonthRevenue = revenueData.find(r => r.period === format(new Date(), 'yyyy-MM'))?.totalRevenue || 0;
 
-  const pendingBookings = bookings?.filter(b => b.status === 'Pending') || [];
-  const confirmedBookings = bookings?.filter(b => b.status === 'Confirmed') || [];
+  const pendingBookings = bookings?.filter(b => b.status === 'pending') || [];
+  const confirmedBookings = bookings?.filter(b => b.status === 'confirmed') || [];
 
   return (
     <div className="p-8 space-y-8">
@@ -55,7 +53,7 @@ export default function ManagerDashboard() {
           <h1 className="font-display text-3xl font-bold">Manager Dashboard</h1>
           <p className="text-muted-foreground">Welcome back! Here's your hotel overview.</p>
         </div>
-        
+
         <Link to="/manager/reports">
           <Button variant="brass">
             <BarChart3 className="mr-2 h-4 w-4" />
@@ -120,30 +118,6 @@ export default function ManagerDashboard() {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center p-4 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
-                <Car className="h-5 w-5 text-brass" />
-                <span>Guests with Vehicles</span>
-              </div>
-              <div className="text-right">
-                <span className="font-bold">{guestInsights.guestsWithVehicle}</span>
-                <span className="text-sm text-muted-foreground ml-2">
-                  ({((guestInsights.guestsWithVehicle / (guestInsights.totalGuests || 1)) * 100).toFixed(0)}%)
-                </span>
-              </div>
-            </div>
-            <div className="flex justify-between items-center p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-3">
-                <Coffee className="h-5 w-5 text-brass" />
-                <span>Breakfast Add-ons</span>
-              </div>
-              <div className="text-right">
-                <span className="font-bold">{guestInsights.guestsWithBreakfast}</span>
-                <span className="text-sm text-muted-foreground ml-2">
-                  ({((guestInsights.guestsWithBreakfast / (guestInsights.totalGuests || 1)) * 100).toFixed(0)}%)
-                </span>
-              </div>
-            </div>
-            <div className="flex justify-between items-center p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-3">
                 <BedDouble className="h-5 w-5 text-brass" />
                 <span>Average Stay</span>
               </div>
@@ -169,12 +143,12 @@ export default function ManagerDashboard() {
                 {pendingBookings.slice(0, 4).map((booking) => (
                   <div key={booking.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-medium">{booking.customers?.full_name}</p>
+                      <p className="font-medium">{booking.guests?.name}</p>
                       <p className="text-sm text-muted-foreground">
                         Room {booking.rooms?.room_number} • {format(new Date(booking.check_in), 'MMM d')}
                       </p>
                     </div>
-                    <span className="font-semibold">{formatCurrency(Number(booking.total_amount))}</span>
+                    <span className="font-semibold">{formatCurrency(Number(booking.rate))}</span>
                   </div>
                 ))}
               </div>

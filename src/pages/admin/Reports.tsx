@@ -380,17 +380,17 @@ export default function Reports() {
                   {bookings?.map((booking) => (
                     <div key={booking.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                       <div>
-                        <p className="font-medium">{booking.customers?.full_name}</p>
+                        <p className="font-medium">{booking.guests?.name}</p>
                         <p className="text-sm text-muted-foreground">
                           Room {booking.rooms?.room_number} • {format(new Date(booking.check_in), 'MMM d')} - {format(new Date(booking.check_out), 'MMM d')}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(Number(booking.total_amount))}</p>
+                        <p className="font-semibold">{formatCurrency(Number(booking.rate))}</p>
                         <span className={cn(
                           'text-xs px-2 py-1 rounded-full',
-                          booking.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                          booking.status === 'Pending' ? 'bg-amber-100 text-amber-800' :
+                          booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
+                          booking.status === 'pending' ? 'bg-amber-100 text-amber-800' :
                           'bg-red-100 text-red-800'
                         )}>
                           {booking.status}

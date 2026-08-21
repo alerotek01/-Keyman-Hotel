@@ -32,7 +32,7 @@ export default function Receipts() {
     );
   }
 
-  const confirmedBookings = bookings?.filter(b => b.status === 'Confirmed') || [];
+  const confirmedBookings = bookings?.filter(b => b.status === 'confirmed') || [];
 
   const handleUpload = async () => {
     if (!selectedBookingId || !selectedFile) {
@@ -85,7 +85,7 @@ export default function Receipts() {
                   <SelectContent>
                     {confirmedBookings.map((booking) => (
                       <SelectItem key={booking.id} value={booking.id}>
-                        {booking.customers?.full_name} - Room {booking.rooms?.room_number} ({formatCurrency(Number(booking.total_amount))})
+                        {booking.guests?.name} - Room {booking.rooms?.room_number} ({formatCurrency(Number(booking.rate))})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -146,9 +146,9 @@ export default function Receipts() {
                         <Receipt className="h-6 w-6 text-brass" />
                       </div>
                       <div>
-                        <h3 className="font-semibold">{receipt.bookings?.customers?.full_name}</h3>
+                        <h3 className="font-semibold">{receipt.bookings?.guests?.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Room {receipt.bookings?.rooms?.room_number} • {formatCurrency(Number(receipt.bookings?.total_amount || 0))}
+                          Room {receipt.bookings?.rooms?.room_number} • {formatCurrency(Number(receipt.bookings?.rate || 0))}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Uploaded {format(new Date(receipt.created_at), 'MMM d, yyyy h:mm a')}

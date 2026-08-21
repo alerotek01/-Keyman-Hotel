@@ -105,7 +105,7 @@ export default function GuestRequests() {
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">Guest</p>
-                          <p className="font-medium">{request.bookings?.customers?.full_name}</p>
+                          <p className="font-medium">{request.bookings?.guests?.name}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Room</p>

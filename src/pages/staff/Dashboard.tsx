@@ -29,7 +29,7 @@ export default function StaffDashboard() {
     );
   }
 
-  const pendingBookings = bookings?.filter(b => b.status === 'Pending') || [];
+  const pendingBookings = bookings?.filter(b => b.status === 'pending') || [];
   const todayCheckIns = bookings?.filter(b => b.check_in === format(new Date(), 'yyyy-MM-dd')) || [];
   const todayCheckOuts = bookings?.filter(b => b.check_out === format(new Date(), 'yyyy-MM-dd')) || [];
   
@@ -110,12 +110,12 @@ export default function StaffDashboard() {
                 {pendingBookings.slice(0, 5).map((booking) => (
                   <div key={booking.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-medium">{booking.customers?.full_name}</p>
+                      <p className="font-medium">{booking.guests?.name}</p>
                       <p className="text-sm text-muted-foreground">
                         Room {booking.rooms?.room_number} • {format(new Date(booking.check_in), 'MMM d')} - {format(new Date(booking.check_out), 'MMM d')}
                       </p>
                     </div>
-                    <span className="font-semibold">{formatCurrency(Number(booking.total_amount))}</span>
+                    <span className="font-semibold">{formatCurrency(Number(booking.rate))}</span>
                   </div>
                 ))}
               </div>
@@ -143,7 +143,7 @@ export default function StaffDashboard() {
                     <div>
                       <p className="font-medium capitalize">{request.request_type.replace('_', ' ')}</p>
                       <p className="text-sm text-muted-foreground">
-                        {request.bookings?.customers?.full_name} • Room {request.bookings?.rooms?.room_number}
+                        {request.bookings?.guests?.name} • Room {request.bookings?.rooms?.room_number}
                       </p>
                     </div>
                     <span className={cn(
@@ -179,8 +179,8 @@ export default function StaffDashboard() {
                 <div className="space-y-2">
                   {todayCheckIns.map((booking) => (
                     <div key={booking.id} className="p-3 rounded-lg bg-emerald-50 text-emerald-900">
-                      <p className="font-medium">{booking.customers?.full_name}</p>
-                      <p className="text-sm">Room {booking.rooms?.room_number} • {booking.guests_count} guest(s)</p>
+                      <p className="font-medium">{booking.guests?.name}</p>
+                      <p className="text-sm">Room {booking.rooms?.room_number} • {booking.num_adults + booking.num_children} guest(s)</p>
                     </div>
                   ))}
                 </div>
@@ -197,7 +197,7 @@ export default function StaffDashboard() {
                 <div className="space-y-2">
                   {todayCheckOuts.map((booking) => (
                     <div key={booking.id} className="p-3 rounded-lg bg-amber-50 text-amber-900">
-                      <p className="font-medium">{booking.customers?.full_name}</p>
+                      <p className="font-medium">{booking.guests?.name}</p>
                       <p className="text-sm">Room {booking.rooms?.room_number}</p>
                     </div>
                   ))}

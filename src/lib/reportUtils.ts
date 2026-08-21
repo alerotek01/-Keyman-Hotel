@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, differenceInDays, parseISO, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import type { Booking, Room, OccupancyReport, RevenueReport, GuestInsight } from './types';
 import { formatCurrency, getRoomTypeLabel } from './utils';
 
@@ -12,12 +12,12 @@ export function calculateOccupancy(
   endDate: Date
 ): OccupancyReport[] {
   const days = eachDayOfInterval({ start: startDate, end: endDate });
-  const totalRoomCount = rooms.reduce((acc, r) => acc + r.total_rooms, 0);
+  const totalRoomCount = rooms.filter(r => r.is_active).length;
 
   return days.map(day => {
     const dayStr = format(day, 'yyyy-MM-dd');
     const occupiedRooms = bookings.filter(b => {
-      if (b.status === 'Cancelled') return false;
+      if (b.status === 'cancelled') return false;
       return b.check_in <= dayStr && b.check_out > dayStr;
     }).length;
 
@@ -32,17 +32,17 @@ export function calculateOccupancy(
 
 // Calculate revenue reports
 export function calculateRevenue(bookings: Booking[], period: 'daily' | 'monthly'): RevenueReport[] {
-  const confirmedBookings = bookings.filter(b => b.status === 'Confirmed');
-  
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+
   const grouped = confirmedBookings.reduce((acc, booking) => {
-    const key = period === 'daily' 
-      ? booking.check_in 
+    const key = period === 'daily'
+      ? booking.check_in
       : format(parseISO(booking.check_in), 'yyyy-MM');
-    
+
     if (!acc[key]) {
       acc[key] = { revenue: 0, count: 0 };
     }
-    acc[key].revenue += Number(booking.total_amount);
+    acc[key].revenue += Number(booking.rate);
     acc[key].count += 1;
     return acc;
   }, {} as Record<string, { revenue: number; count: number }>);
@@ -59,35 +59,36 @@ export function calculateRevenue(bookings: Booking[], period: 'daily' | 'monthly
 
 // Calculate guest insights
 export function calculateGuestInsights(bookings: Booking[]): GuestInsight {
-  const confirmedBookings = bookings.filter(b => b.status !== 'Cancelled');
-  
-  const totalGuests = confirmedBookings.reduce((acc, b) => acc + b.guests_count, 0);
-  const guestsWithVehicle = confirmedBookings.filter(b => b.vehicle).reduce((acc, b) => acc + b.guests_count, 0);
-  const guestsWithBreakfast = confirmedBookings.filter(b => b.breakfast).reduce((acc, b) => acc + b.guests_count, 0);
-  
+  const confirmedBookings = bookings.filter(b => b.status !== 'cancelled');
+
+  const totalGuests = confirmedBookings.reduce((acc, b) => acc + b.num_adults + b.num_children, 0);
+
   const totalNights = confirmedBookings.reduce((acc, b) => {
     return acc + differenceInDays(parseISO(b.check_out), parseISO(b.check_in));
   }, 0);
-  
+
   const roomTypeDistribution = confirmedBookings.reduce((acc, b) => {
-    const roomType = b.rooms?.room_type || 'Unknown';
+    const roomType = b.room_types?.name || 'Unknown';
     acc[roomType] = (acc[roomType] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   return {
     totalGuests,
-    guestsWithVehicle,
-    guestsWithBreakfast,
+    guestsWithVehicle: 0,
+    guestsWithBreakfast: 0,
     averageStayLength: confirmedBookings.length > 0 ? totalNights / confirmedBookings.length : 0,
     roomTypeDistribution,
   };
 }
 
+// Import eachDayOfInterval for occupancy calculation
+import { eachDayOfInterval } from 'date-fns';
+
 // Generate PDF reports
 export function generateOccupancyPDF(data: OccupancyReport[], title: string): void {
   const doc = new jsPDF();
-  
+
   doc.setFontSize(20);
   doc.text('Keyman Hotel', 14, 20);
   doc.setFontSize(16);
@@ -117,7 +118,7 @@ export function generateOccupancyPDF(data: OccupancyReport[], title: string): vo
 
 export function generateRevenuePDF(data: RevenueReport[], title: string): void {
   const doc = new jsPDF();
-  
+
   doc.setFontSize(20);
   doc.text('Keyman Hotel', 14, 20);
   doc.setFontSize(16);
@@ -149,7 +150,7 @@ export function generateRevenuePDF(data: RevenueReport[], title: string): void {
 
 export function generateGuestInsightsPDF(data: GuestInsight, bookings: Booking[], title: string): void {
   const doc = new jsPDF();
-  
+
   doc.setFontSize(20);
   doc.text('Keyman Hotel', 14, 20);
   doc.setFontSize(16);
@@ -160,10 +161,6 @@ export function generateGuestInsightsPDF(data: GuestInsight, bookings: Booking[]
   doc.setFontSize(12);
   let yPos = 50;
   doc.text(`Total Guests: ${data.totalGuests}`, 14, yPos);
-  yPos += 8;
-  doc.text(`Guests with Vehicle: ${data.guestsWithVehicle} (${((data.guestsWithVehicle / (data.totalGuests || 1)) * 100).toFixed(1)}%)`, 14, yPos);
-  yPos += 8;
-  doc.text(`Guests with Breakfast: ${data.guestsWithBreakfast} (${((data.guestsWithBreakfast / (data.totalGuests || 1)) * 100).toFixed(1)}%)`, 14, yPos);
   yPos += 8;
   doc.text(`Average Stay Length: ${data.averageStayLength.toFixed(1)} nights`, 14, yPos);
   yPos += 12;
@@ -180,7 +177,7 @@ export function generateGuestInsightsPDF(data: GuestInsight, bookings: Booking[]
 
 export function generateBookingsPDF(bookings: Booking[], title: string): void {
   const doc = new jsPDF();
-  
+
   doc.setFontSize(20);
   doc.text('Keyman Hotel', 14, 20);
   doc.setFontSize(16);
@@ -192,12 +189,12 @@ export function generateBookingsPDF(bookings: Booking[], title: string): void {
     startY: 45,
     head: [['Guest', 'Room', 'Check-in', 'Check-out', 'Guests', 'Amount', 'Status']],
     body: bookings.map(b => [
-      b.customers?.full_name || 'N/A',
+      b.guests?.name || 'N/A',
       `Room ${b.rooms?.room_number}`,
       format(parseISO(b.check_in), 'MMM d'),
       format(parseISO(b.check_out), 'MMM d'),
-      b.guests_count.toString(),
-      formatCurrency(Number(b.total_amount)),
+      (b.num_adults + b.num_children).toString(),
+      formatCurrency(Number(b.rate)),
       b.status,
     ]),
     styles: { fontSize: 8 },
@@ -224,7 +221,7 @@ export function generateBusinessDeckPDF(
   guestInsights: GuestInsight
 ): void {
   const doc = new jsPDF();
-  
+
   // Title Page
   doc.setFontSize(32);
   doc.text('Keyman Hotel', 105, 80, { align: 'center' });
@@ -237,11 +234,11 @@ export function generateBusinessDeckPDF(
   doc.addPage();
   doc.setFontSize(20);
   doc.text('Executive Summary', 14, 20);
-  
+
   const totalRevenue = revenueData.reduce((acc, d) => acc + d.totalRevenue, 0);
-  const totalBookings = bookings.filter(b => b.status === 'Confirmed').length;
+  const totalBookings = bookings.filter(b => b.status === 'confirmed').length;
   const avgOccupancy = occupancyData.reduce((acc, d) => acc + d.occupancyRate, 0) / (occupancyData.length || 1);
-  
+
   doc.setFontSize(12);
   let y = 35;
   doc.text(`Total Revenue: ${formatCurrency(totalRevenue)}`, 14, y); y += 10;
@@ -249,18 +246,6 @@ export function generateBusinessDeckPDF(
   doc.text(`Average Occupancy Rate: ${avgOccupancy.toFixed(1)}%`, 14, y); y += 10;
   doc.text(`Total Guests Served: ${guestInsights.totalGuests}`, 14, y); y += 10;
   doc.text(`Average Stay Length: ${guestInsights.averageStayLength.toFixed(1)} nights`, 14, y); y += 15;
-
-  // Key Metrics
-  doc.setFontSize(16);
-  doc.text('Key Performance Indicators', 14, y); y += 10;
-  doc.setFontSize(11);
-  
-  const vehiclePercentage = ((guestInsights.guestsWithVehicle / (guestInsights.totalGuests || 1)) * 100).toFixed(1);
-  const breakfastPercentage = ((guestInsights.guestsWithBreakfast / (guestInsights.totalGuests || 1)) * 100).toFixed(1);
-  
-  doc.text(`• Parking Utilization: ${vehiclePercentage}% of guests arrived with vehicles`, 14, y); y += 8;
-  doc.text(`• Breakfast Add-on Rate: ${breakfastPercentage}% of guests opted for breakfast`, 14, y); y += 8;
-  doc.text(`• Active Room Types: ${rooms.filter(r => r.is_active).length}`, 14, y); y += 15;
 
   // Room Distribution
   doc.setFontSize(16);

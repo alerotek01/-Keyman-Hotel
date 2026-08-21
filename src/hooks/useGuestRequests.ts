@@ -2,47 +2,60 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { GuestRequest, RequestStatus, RequestType } from '@/lib/types';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sb = supabase as any;
+
 export function useGuestRequests() {
   return useQuery({
     queryKey: ['guest-requests'],
     queryFn: async (): Promise<GuestRequest[]> => {
-      const { data, error } = await supabase
-        .from('guest_requests' as any)
+      const { data, error } = await sb
+        .from('housekeeping_tasks')
         .select(`
           *,
-          bookings (
+          reservations (
             *,
-            rooms (*),
-            customers (*)
+            guests (*),
+            rooms (*)
           )
         `)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      return (data || []) as unknown as GuestRequest[];
+      // Map to GuestRequest shape with bookings alias
+      return (data || []).map((item: any) => ({
+        ...item,
+        reservation_id: item.reservation_id,
+        bookings: item.reservations ? {
+          ...item.reservations,
+          guests: item.reservations.guests,
+          rooms: item.reservations.rooms,
+        } : null,
+      }));
     },
   });
 }
 
 export function useCreateGuestRequest() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (requestData: {
-      booking_id: string;
+      reservation_id: string;
       request_type: RequestType;
       description?: string;
     }) => {
-      const { data: result, error } = await supabase
-        .from('guest_requests' as any)
+      const { data: result, error } = await sb
+        .from('housekeeping_tasks')
         .insert({
-          booking_id: requestData.booking_id,
+          reservation_id: requestData.reservation_id,
           request_type: requestData.request_type,
           description: requestData.description || null,
-        } as any)
+          status: 'pending',
+        })
         .select()
         .single();
-      
+
       if (error) throw error;
       return result;
     },
@@ -54,21 +67,21 @@ export function useCreateGuestRequest() {
 
 export function useUpdateGuestRequestStatus() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: RequestStatus }) => {
       const updates: Record<string, unknown> = { status };
       if (status === 'completed') {
         updates.completed_at = new Date().toISOString();
       }
-      
-      const { data, error } = await supabase
-        .from('guest_requests' as any)
-        .update(updates as any)
+
+      const { data, error } = await sb
+        .from('housekeeping_tasks')
+        .update(updates)
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },

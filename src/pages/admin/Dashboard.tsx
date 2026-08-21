@@ -13,11 +13,11 @@ export default function AdminDashboard() {
   const stats = {
     totalRooms: rooms?.filter(r => r.is_active).length || 0,
     totalBookings: bookings?.length || 0,
-    confirmedBookings: bookings?.filter(b => b.status === 'Confirmed').length || 0,
-    pendingBookings: bookings?.filter(b => b.status === 'Pending').length || 0,
+    confirmedBookings: bookings?.filter(b => b.status === 'confirmed').length || 0,
+    pendingBookings: bookings?.filter(b => b.status === 'pending').length || 0,
     totalRevenue: bookings
-      ?.filter(b => b.status === 'Confirmed')
-      .reduce((acc, b) => acc + Number(b.total_amount), 0) || 0,
+      ?.filter(b => b.status === 'confirmed')
+      .reduce((acc, b) => acc + Number(b.rate), 0) || 0,
   };
 
   if (isLoading) {
@@ -98,16 +98,16 @@ export default function AdminDashboard() {
               {bookings?.slice(0, 5).map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div>
-                    <p className="font-medium">{booking.customers?.full_name}</p>
+                    <p className="font-medium">{booking.guests?.name}</p>
                     <p className="text-sm text-muted-foreground">
                       Room {booking.rooms?.room_number} • {booking.check_in} to {booking.check_out}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(Number(booking.total_amount))}</p>
+                    <p className="font-semibold">{formatCurrency(Number(booking.rate))}</p>
                     <span className={`text-xs px-2 py-1 rounded-full ${
-                      booking.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                      booking.status === 'Pending' ? 'bg-amber-100 text-amber-800' :
+                      booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
+                      booking.status === 'pending' ? 'bg-amber-100 text-amber-800' :
                       'bg-red-100 text-red-800'
                     }`}>
                       {booking.status}
