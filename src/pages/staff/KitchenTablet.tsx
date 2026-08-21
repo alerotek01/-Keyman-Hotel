@@ -1,0 +1,233 @@
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useKitchenOrders, useUpdateOrderStatus } from '@/hooks/useRestaurantOrders';
+import { formatCurrency } from '@/lib/utils';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { Loader2, ChefHat, ArrowRight, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type QueueFilter = 'new' | 'preparing' | 'ready' | 'all';
+
+export default function KitchenTablet() {
+  const { data: orders, isLoading } = useKitchenOrders();
+  const updateStatus = useUpdateOrderStatus();
+
+  const handleAccept = async (orderId: string) => {
+    try {
+      await updateStatus.mutateAsync({ orderId, status: 'kitchen_accepted' });
+      toast.success('Order accepted');
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleStartPreparing = async (orderId: string) => {
+    try {
+      await updateStatus.mutateAsync({ orderId, status: 'preparing' });
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleMarkReady = async (orderId: string) => {
+    try {
+      await updateStatus.mutateAsync({ orderId, status: 'ready' });
+      toast.success('Order ready for pickup!');
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const newOrders = orders?.filter(o => o.status === 'new' || o.status === 'accepted') || [];
+  const preparingOrders = orders?.filter(o => o.status === 'kitchen_accepted' || o.status === 'preparing') || [];
+  const readyOrders = orders?.filter(o => o.status === 'ready') || [];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-brass" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <ChefHat className="h-8 w-8 text-brass" />
+          <div>
+            <h1 className="font-display text-2xl font-bold">Kitchen Display</h1>
+            <p className="text-gray-400 text-sm">{format(new Date(), 'EEEE, MMMM d • h:mm a')}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-amber-400">{newOrders.length} new</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <span className="text-blue-400">{preparingOrders.length} cooking</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-emerald-500" />
+            <span className="text-emerald-400">{readyOrders.length} ready</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Three-Column Layout */}
+      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-140px)]">
+        {/* NEW ORDERS */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="h-5 w-5 text-amber-400" />
+            <h2 className="font-display text-lg font-bold text-amber-400">New Orders</h2>
+            <Badge className="bg-amber-500/20 text-amber-400">{newOrders.length}</Badge>
+          </div>
+          <div className="space-y-3 overflow-auto max-h-[calc(100vh-220px)]">
+            {newOrders.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No new orders</p>
+              </div>
+            ) : (
+              newOrders.map(order => (
+                <Card key={order.id} className="bg-gray-900 border-amber-500/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-lg font-bold text-amber-400">#{order.order_number}</span>
+                        {order.source === 'web' && <Badge className="bg-blue-500/20 text-blue-400 text-xs">WEB</Badge>}
+                        {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
+                      </div>
+                      <span className="text-xs text-gray-500">{format(new Date(order.created_at), 'h:mm')}</span>
+                    </div>
+
+                    {order.guest_name && (
+                      <p className="text-sm text-gray-300 mb-2">{order.guest_name}</p>
+                    )}
+
+                    <div className="space-y-1 mb-3">
+                      {order.restaurant_order_items?.map((item: any) => (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span className="text-gray-300">{item.menu_items?.name}</span>
+                          <span className="text-white font-medium">×{item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {order.notes && (
+                      <p className="text-xs text-amber-400/70 mb-3 italic">📝 {order.notes}</p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                        onClick={() => handleAccept(order.id)}
+                      >
+                        Accept
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* PREPARING */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-3">
+            <ChefHat className="h-5 w-5 text-blue-400" />
+            <h2 className="font-display text-lg font-bold text-blue-400">Preparing</h2>
+            <Badge className="bg-blue-500/20 text-blue-400">{preparingOrders.length}</Badge>
+          </div>
+          <div className="space-y-3 overflow-auto max-h-[calc(100vh-220px)]">
+            {preparingOrders.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <ChefHat className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Nothing cooking</p>
+              </div>
+            ) : (
+              preparingOrders.map(order => (
+                <Card key={order.id} className="bg-gray-900 border-blue-500/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-lg font-bold text-blue-400">#{order.order_number}</span>
+                      {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
+                    </div>
+
+                    <div className="space-y-1 mb-3">
+                      {order.restaurant_order_items?.map((item: any) => (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span className="text-gray-300">{item.menu_items?.name}</span>
+                          <span className="text-white font-medium">×{item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {order.notes && (
+                      <p className="text-xs text-blue-400/70 mb-3 italic">📝 {order.notes}</p>
+                    )}
+
+                    <Button
+                      size="sm"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => handleMarkReady(order.id)}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> Mark Ready
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* READY FOR PICKUP */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            <h2 className="font-display text-lg font-bold text-emerald-400">Ready</h2>
+            <Badge className="bg-emerald-500/20 text-emerald-400">{readyOrders.length}</Badge>
+          </div>
+          <div className="space-y-3 overflow-auto max-h-[calc(100vh-220px)]">
+            {readyOrders.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No orders ready</p>
+              </div>
+            ) : (
+              readyOrders.map(order => (
+                <Card key={order.id} className="bg-gray-900 border-emerald-500/30 animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-lg font-bold text-emerald-400">#{order.order_number}</span>
+                      {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
+                    </div>
+
+                    <div className="space-y-1">
+                      {order.restaurant_order_items?.map((item: any) => (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span className="text-gray-300">{item.menu_items?.name}</span>
+                          <span className="text-white font-medium">×{item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-emerald-400/70 mt-3 text-center">🔔 Waiting for pickup</p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,13 +1,15 @@
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Loader2, LayoutDashboard, CalendarCheck, ClipboardList, Receipt, LogOut, Home, Sparkles, ClipboardCheck, LogIn } from 'lucide-react';
+import { Loader2, LayoutDashboard, CalendarCheck, ClipboardList, Receipt, LogOut, Home, Sparkles, ClipboardCheck, LogIn, UtensilsCrossed, ChefHat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/staff', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { path: '/staff/reception', label: 'Reception', icon: LogIn },
   { path: '/staff/bookings', label: 'Bookings', icon: CalendarCheck },
+  { path: '/staff/waiter', label: 'Waiter', icon: UtensilsCrossed },
+  { path: '/staff/kitchen', label: 'Kitchen', icon: ChefHat },
   { path: '/staff/housekeeping', label: 'My Rooms', icon: Sparkles },
   { path: '/staff/inspection', label: 'Inspection', icon: ClipboardCheck },
   { path: '/staff/requests', label: 'Guest Requests', icon: ClipboardList },
