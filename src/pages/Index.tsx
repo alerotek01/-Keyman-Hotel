@@ -77,9 +77,9 @@ const amenityBlocks = [
     link: '/rooms',
     linkText: 'Book a room',
     images: [
-      { src: `${BASE}/parking.jpg`, alt: 'Secure parking area' },
-      { src: `${BASE}/hero-arrival.webp`, alt: 'Arrival and parking area' },
-      { src: `${BASE}/parking.jpg`, alt: 'Hotel parking lot' },
+      { src: `${BASE}/hero-arrival.webp`, alt: 'Free parking — arrival area' },
+      { src: `${BASE}/parking.jpg`, alt: 'Secure parking lot' },
+      { src: `${BASE}/hero-arrival.webp`, alt: 'Hotel arrival and parking' },
     ],
   },
 ];
