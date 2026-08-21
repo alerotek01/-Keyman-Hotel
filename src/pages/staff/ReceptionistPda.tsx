@@ -1,0 +1,493 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTodayArrivals, useTodayDepartures, useAvailableRooms, useCheckIn, useCheckOut, useWalkIn, useRoomStatusOverview } from '@/hooks/useReceptionist';
+import { useRoomTypes } from '@/hooks/useRooms';
+import { useBookings } from '@/hooks/useBookings';
+import { formatCurrency } from '@/lib/utils';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { Loader2, LogIn, LogOut, UserPlus, BedDouble, CalendarCheck, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type Tab = 'arrivals' | 'departures' | 'walkin' | 'rooms';
+
+export default function ReceptionistPda() {
+  const { data: arrivals, isLoading: arrivalsLoading } = useTodayArrivals();
+  const { data: departures, isLoading: departuresLoading } = useTodayDepartures();
+  const { data: rooms } = useRoomStatusOverview();
+  const { data: roomTypes } = useRoomTypes();
+  const checkIn = useCheckIn();
+  const checkOut = useCheckOut();
+  const walkIn = useWalkIn();
+
+  const [activeTab, setActiveTab] = useState<Tab>('arrivals');
+  const [selectedReservation, setSelectedReservation] = useState<any>(null);
+  const [assignRoomDialog, setAssignRoomDialog] = useState(false);
+  const [walkInDialog, setWalkInDialog] = useState(false);
+  const [checkoutDialog, setCheckoutDialog] = useState(false);
+
+  // Walk-in form
+  const [walkInForm, setWalkInForm] = useState({
+    guest_name: '',
+    guest_phone: '',
+    guest_email: '',
+    room_type_id: '',
+    room_id: '',
+    num_adults: '2',
+    num_children: '0',
+    check_out: '',
+    special_requests: '',
+  });
+
+  // Available rooms for assignment
+  const { data: availableRooms } = useAvailableRooms(selectedReservation?.room_type_id || walkInForm.room_type_id || undefined);
+
+  // Recent bookings for checkout folio
+  const { data: allBookings } = useBookings();
+
+  const isLoading = arrivalsLoading || departuresLoading;
+
+  // ===== Check-In Flow =====
+  const handleCheckInSelect = (reservation: any) => {
+    setSelectedReservation(reservation);
+    setAssignRoomDialog(true);
+  };
+
+  const handleAssignRoom = async (roomId: string) => {
+    if (!selectedReservation) return;
+    try {
+      await checkIn.mutateAsync({ reservationId: selectedReservation.id, roomId });
+      setAssignRoomDialog(false);
+      setSelectedReservation(null);
+      toast.success(`Guest checked in! Room assigned.`);
+    } catch (error: any) {
+      toast.error(error.message || 'Check-in failed');
+    }
+  };
+
+  // ===== Check-Out Flow =====
+  const handleCheckOutSelect = (reservation: any) => {
+    setSelectedReservation(reservation);
+    setCheckoutDialog(true);
+  };
+
+  const handleCheckOut = async () => {
+    if (!selectedReservation) return;
+    try {
+      await checkOut.mutateAsync({
+        reservationId: selectedReservation.id,
+        roomId: selectedReservation.room_id,
+      });
+      setCheckoutDialog(false);
+      setSelectedReservation(null);
+      toast.success('Guest checked out! Room sent to housekeeping.');
+    } catch (error: any) {
+      toast.error(error.message || 'Check-out failed');
+    }
+  };
+
+  // ===== Walk-In Flow =====
+  const handleWalkIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const rt = roomTypes?.find(r => r.id === walkInForm.room_type_id);
+    const room = availableRooms?.find(r => r.id === walkInForm.room_id);
+    if (!rt || !room) {
+      toast.error('Please select a room type and room');
+      return;
+    }
+
+    const nights = walkInForm.check_out
+      ? Math.ceil((new Date(walkInForm.check_out).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+      : 1;
+    const rate = Number(rt.base_rate) * Math.max(nights, 1);
+
+    try {
+      await walkIn.mutateAsync({
+        guest_name: walkInForm.guest_name,
+        guest_phone: walkInForm.guest_phone,
+        guest_email: walkInForm.guest_email || undefined,
+        room_type_id: walkInForm.room_type_id,
+        room_id: walkInForm.room_id,
+        num_adults: parseInt(walkInForm.num_adults) || 2,
+        num_children: parseInt(walkInForm.num_children) || 0,
+        check_out: walkInForm.check_out,
+        rate,
+        special_requests: walkInForm.special_requests || undefined,
+      });
+      setWalkInDialog(false);
+      setWalkInForm({ guest_name: '', guest_phone: '', guest_email: '', room_type_id: '', room_id: '', num_adults: '2', num_children: '0', check_out: '', special_requests: '' });
+      toast.success('Walk-in guest checked in!');
+    } catch (error: any) {
+      toast.error(error.message || 'Walk-in failed');
+    }
+  };
+
+  // Room status counts
+  const roomCounts = {
+    available: rooms?.filter(r => r.status === 'available' || r.status === 'inspected').length || 0,
+    occupied: rooms?.filter(r => r.status === 'occupied').length || 0,
+    dirty: rooms?.filter(r => r.status === 'dirty').length || 0,
+    cleaning: rooms?.filter(r => r.status === 'cleaning').length || 0,
+    total: rooms?.length || 0,
+  };
+
+  const statusColors: Record<string, string> = {
+    available: 'bg-emerald-100 text-emerald-800',
+    occupied: 'bg-blue-100 text-blue-800',
+    dirty: 'bg-amber-100 text-amber-800',
+    cleaning: 'bg-orange-100 text-orange-800',
+    inspected: 'bg-brass/10 text-brass',
+    out_of_order: 'bg-red-100 text-red-800',
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-brass" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8">
+      <div className="mb-6">
+        <h1 className="font-display text-3xl font-bold">Reception</h1>
+        <p className="text-muted-foreground">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <button onClick={() => setActiveTab('arrivals')} className={cn("p-3 rounded-xl text-left transition-all", activeTab === 'arrivals' ? "bg-blue-100 ring-2 ring-blue-400" : "bg-white border")}>
+          <div className="flex items-center gap-2">
+            <LogIn className="h-4 w-4 text-blue-500" />
+            <span className="text-xs text-muted-foreground">Arrivals</span>
+          </div>
+          <p className="text-2xl font-bold text-blue-600 mt-1">{arrivals?.length || 0}</p>
+        </button>
+        <button onClick={() => setActiveTab('departures')} className={cn("p-3 rounded-xl text-left transition-all", activeTab === 'departures' ? "bg-amber-100 ring-2 ring-amber-400" : "bg-white border")}>
+          <div className="flex items-center gap-2">
+            <LogOut className="h-4 w-4 text-amber-500" />
+            <span className="text-xs text-muted-foreground">Departures</span>
+          </div>
+          <p className="text-2xl font-bold text-amber-600 mt-1">{departures?.length || 0}</p>
+        </button>
+        <button onClick={() => setActiveTab('rooms')} className={cn("p-3 rounded-xl text-left transition-all", activeTab === 'rooms' ? "bg-emerald-100 ring-2 ring-emerald-400" : "bg-white border")}>
+          <div className="flex items-center gap-2">
+            <BedDouble className="h-4 w-4 text-emerald-500" />
+            <span className="text-xs text-muted-foreground">Available</span>
+          </div>
+          <p className="text-2xl font-bold text-emerald-600 mt-1">{roomCounts.available}/{roomCounts.total}</p>
+        </button>
+        <button onClick={() => { setActiveTab('walkin'); setWalkInDialog(true); }} className="p-3 rounded-xl text-left bg-brass/10 border border-brass/20 hover:bg-brass/20 transition-all">
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-brass" />
+            <span className="text-xs text-muted-foreground">Walk-In</span>
+          </div>
+          <p className="text-sm font-semibold text-brass mt-1">+ New Guest</p>
+        </button>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="arrivals">Arrivals</TabsTrigger>
+          <TabsTrigger value="departures">Departures</TabsTrigger>
+          <TabsTrigger value="rooms">Room Status</TabsTrigger>
+        </TabsList>
+
+        {/* ===== ARRIVALS ===== */}
+        <TabsContent value="arrivals" className="space-y-3">
+          {!arrivals || arrivals.length === 0 ? (
+            <div className="text-center py-12">
+              <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-300 mb-4" />
+              <p className="text-muted-foreground font-medium">All caught up!</p>
+              <p className="text-sm text-muted-foreground">No arrivals pending check-in</p>
+            </div>
+          ) : (
+            arrivals.map((res: any) => (
+              <Card key={res.id} className="border-l-4 border-l-blue-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-lg">{res.guests?.name || 'Guest'}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {res.room_types?.name || 'Room'} • {res.num_adults + res.num_children} guest(s)
+                      </p>
+                      {res.special_requests && (
+                        <p className="text-xs text-amber-600 mt-1">📝 {res.special_requests}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatCurrency(Number(res.rate))}</p>
+                      <p className="text-xs text-muted-foreground">{res.source}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="default"
+                    className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => handleCheckInSelect(res)}
+                    disabled={checkIn.isPending}
+                  >
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Check In
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        {/* ===== DEPARTURES ===== */}
+        <TabsContent value="departures" className="space-y-3">
+          {!departures || departures.length === 0 ? (
+            <div className="text-center py-12">
+              <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-300 mb-4" />
+              <p className="text-muted-foreground font-medium">No departures today</p>
+            </div>
+          ) : (
+            departures.map((res: any) => (
+              <Card key={res.id} className="border-l-4 border-l-amber-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-lg">{res.guests?.name || 'Guest'}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Room {res.rooms?.room_number} • {res.room_types?.name || 'Room'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatCurrency(Number(res.rate))}</p>
+                      <Badge className="bg-amber-100 text-amber-800">Checking Out</Badge>
+                    </div>
+                  </div>
+                  <Button
+                    variant="default"
+                    className="w-full mt-3 bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={() => handleCheckOutSelect(res)}
+                    disabled={checkOut.isPending}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Check Out
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        {/* ===== ROOM STATUS ===== */}
+        <TabsContent value="rooms" className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="p-3 rounded-lg bg-emerald-50 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{roomCounts.available}</p>
+              <p className="text-xs text-muted-foreground">Available</p>
+            </div>
+            <div className="p-3 rounded-lg bg-blue-50 text-center">
+              <p className="text-2xl font-bold text-blue-600">{roomCounts.occupied}</p>
+              <p className="text-xs text-muted-foreground">Occupied</p>
+            </div>
+            <div className="p-3 rounded-lg bg-amber-50 text-center">
+              <p className="text-2xl font-bold text-amber-600">{roomCounts.dirty}</p>
+              <p className="text-xs text-muted-foreground">Dirty</p>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-50 text-center">
+              <p className="text-2xl font-bold text-orange-600">{roomCounts.cleaning}</p>
+              <p className="text-xs text-muted-foreground">Cleaning</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {rooms?.map((room: any) => (
+              <div key={room.id} className="p-3 rounded-lg border bg-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">Room {room.room_number}</p>
+                    <p className="text-xs text-muted-foreground">Floor {room.floor} • {room.room_types?.name}</p>
+                  </div>
+                  <Badge className={cn("text-xs", statusColors[room.status] || 'bg-gray-100 text-gray-800')}>
+                    {room.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* ===== ASSIGN ROOM DIALOG ===== */}
+      <Dialog open={assignRoomDialog} onOpenChange={setAssignRoomDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Room</DialogTitle>
+          </DialogHeader>
+          {selectedReservation && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">{selectedReservation.guests?.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedReservation.room_types?.name} • {selectedReservation.num_adults + selectedReservation.num_children} guests
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Select Available Room</Label>
+                {availableRooms && availableRooms.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 max-h-60 overflow-auto">
+                    {availableRooms.map((room: any) => (
+                      <button
+                        key={room.id}
+                        onClick={() => handleAssignRoom(room.id)}
+                        disabled={checkIn.isPending}
+                        className="p-3 rounded-lg border hover:bg-brass/10 hover:border-brass text-left transition-all"
+                      >
+                        <p className="font-semibold">Room {room.room_number}</p>
+                        <p className="text-xs text-muted-foreground">Floor {room.floor}</p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No available rooms of this type
+                  </p>
+                )}
+              </div>
+              {checkIn.isPending && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing check-in...
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== CHECKOUT CONFIRMATION DIALOG ===== */}
+      <Dialog open={checkoutDialog} onOpenChange={setCheckoutDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Check-Out</DialogTitle>
+          </DialogHeader>
+          {selectedReservation && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">{selectedReservation.guests?.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Room {selectedReservation.rooms?.room_number} • {selectedReservation.room_types?.name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedReservation.check_in} → {selectedReservation.check_out}
+                </p>
+              </div>
+              <div className="p-3 bg-amber-50 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5" />
+                <p className="text-sm text-amber-800">
+                  Room will be marked as dirty and sent to housekeeping for cleaning.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setCheckoutDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="default"
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={handleCheckOut}
+                  disabled={checkOut.isPending}
+                >
+                  {checkOut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirm Check-Out
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== WALK-IN DIALOG ===== */}
+      <Dialog open={walkInDialog} onOpenChange={setWalkInDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Walk-In Guest</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleWalkIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Guest Name *</Label>
+              <Input
+                value={walkInForm.guest_name}
+                onChange={(e) => setWalkInForm({ ...walkInForm, guest_name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Phone *</Label>
+                <Input
+                  type="tel"
+                  value={walkInForm.guest_phone}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, guest_phone: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={walkInForm.guest_email}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, guest_email: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Room Type *</Label>
+              <Select value={walkInForm.room_type_id} onValueChange={(v) => setWalkInForm({ ...walkInForm, room_type_id: v, room_id: '' })}>
+                <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                <SelectContent>
+                  {roomTypes?.filter(rt => rt.is_active).map(rt => (
+                    <SelectItem key={rt.id} value={rt.id}>{rt.name} — {formatCurrency(rt.base_rate)}/night</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {walkInForm.room_type_id && (
+              <div className="space-y-2">
+                <Label>Assign Room *</Label>
+                <Select value={walkInForm.room_id} onValueChange={(v) => setWalkInForm({ ...walkInForm, room_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select room" /></SelectTrigger>
+                  <SelectContent>
+                    {availableRooms?.filter((r: any) => r.room_type_id === walkInForm.room_type_id).map((room: any) => (
+                      <SelectItem key={room.id} value={room.id}>Room {room.room_number} (Floor {room.floor})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Adults</Label>
+                <Input type="number" min={1} value={walkInForm.num_adults} onChange={(e) => setWalkInForm({ ...walkInForm, num_adults: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Children</Label>
+                <Input type="number" min={0} value={walkInForm.num_children} onChange={(e) => setWalkInForm({ ...walkInForm, num_children: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Check-Out *</Label>
+                <Input type="date" value={walkInForm.check_out} onChange={(e) => setWalkInForm({ ...walkInForm, check_out: e.target.value })} required />
+              </div>
+            </div>
+            <Button type="submit" variant="brass" className="w-full" disabled={walkIn.isPending}>
+              {walkIn.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Check In Walk-In Guest
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
