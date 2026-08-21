@@ -1,0 +1,290 @@
+import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { Layout } from '@/components/Layout';
+import { RoomCard } from '@/components/RoomCard';
+import { BookingModal } from '@/components/BookingModal';
+import { Button } from '@/components/ui/button';
+import { useRoomAvailability } from '@/hooks/useRooms';
+import { ArrowRight, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { RoomWithAvailability } from '@/lib/types';
+
+const BASE = 'https://uuojiyehhnhjcakgpsjd.supabase.co/storage/v1/object/public/rooms';
+
+// Hero carousel — real hotel photos from images-to-use folder
+const heroSlides = [
+  { src: `${BASE}/hotel-night.jpg`, alt: 'Keyman Hotel at night with colorful lights', caption: 'Evening ambiance' },
+  { src: `${BASE}/entrance.png`, alt: 'Hotel entrance with parking', caption: 'Welcome' },
+  { src: `${BASE}/lounge.jpg`, alt: 'Guest lounge with comfortable seating', caption: 'Guest lounge' },
+  { src: `${BASE}/room-single.jpg`, alt: 'Comfortable single room interior', caption: 'Our rooms' },
+  { src: `${BASE}/hero-parking.jpg`, alt: 'Parking area', caption: 'Free parking' },
+];
+
+// Room images by type — each room gets a carousel of min 3 images
+const roomCarouselImages: Record<string, { src: string; alt: string }[]> = {
+  SINGLE: [
+    { src: `${BASE}/room-single.jpg`, alt: 'Single room — clean linens and dark headboard' },
+    { src: `${BASE}/single-1.jpg`, alt: 'Single room — white sheets, side table' },
+    { src: `${BASE}/hotel-front.png`, alt: 'Hotel building exterior' },
+  ],
+  TWIN: [
+    { src: `${BASE}/room-twin.jpg`, alt: 'Twin room — two beds with fresh linens' },
+    { src: `${BASE}/twin-1.jpg`, alt: 'Twin room — lounge area' },
+    { src: `${BASE}/twin-2.jpg`, alt: 'Twin room — hotel entrance view' },
+  ],
+  STUDIO: [
+    { src: `${BASE}/hotel-front.png`, alt: 'Studio suite — hotel exterior' },
+    { src: `${BASE}/studio-1.jpg`, alt: 'Studio — two-bed setup' },
+    { src: `${BASE}/studio-2.jpg`, alt: 'Studio — room interior' },
+  ],
+};
+
+// Inline mini-carousel for room cards
+function RoomImageCarousel({ images, className }: { images: { src: string; alt: string }[]; className?: string }) {
+  const [idx, setIdx] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval>>();
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      setIdx((p) => (p + 1) % images.length);
+    }, 3500);
+    return () => clearInterval(timerRef.current);
+  }, [images.length]);
+
+  const go = (n: number) => {
+    setIdx(n);
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setIdx((p) => (p + 1) % images.length), 3500);
+  };
+
+  return (
+    <div className={cn("relative overflow-hidden group", className)}>
+      {images.map((img, i) => (
+        <div key={i} className="absolute inset-0 transition-opacity duration-700" style={{ opacity: i === idx ? 1 : 0 }}>
+          <img src={img.src} alt={img.alt} className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      ))}
+      {/* Dots */}
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+        {images.map((_, i) => (
+          <button
+            key={i}
+            onClick={(e) => { e.stopPropagation(); go(i); }}
+            className={cn("w-1.5 h-1.5 rounded-full transition-all duration-300", i === idx ? "bg-white w-4" : "bg-white/50")}
+          />
+        ))}
+      </div>
+      {/* Arrows */}
+      <button
+        onClick={(e) => { e.stopPropagation(); go((idx - 1 + images.length) % images.length); }}
+        className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <ChevronLeft className="h-3 w-3" />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); go((idx + 1) % images.length); }}
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <ChevronRight className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+
+export default function Index() {
+  const [selectedRoom, setSelectedRoom] = useState<RoomWithAvailability | null>(null);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const roomsRef = useRef<HTMLDivElement>(null);
+  const slideInterval = useRef<ReturnType<typeof setInterval>>();
+
+  const { data: rooms, isLoading } = useRoomAvailability(null, null);
+
+  // Auto-advance hero carousel
+  useEffect(() => {
+    slideInterval.current = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+    return () => clearInterval(slideInterval.current);
+  }, []);
+
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+    clearInterval(slideInterval.current);
+    slideInterval.current = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+  };
+
+  const handleBookRoom = (room: RoomWithAvailability) => {
+    setSelectedRoom(room);
+    setBookingOpen(true);
+  };
+
+  // One room of each guest type (Single, Twin, Studio)
+  const representativeRooms = rooms?.filter(r =>
+    r.room_type === 'SINGLE' || r.room_type === 'TWIN' || r.room_type === 'STUDIO'
+  ).reduce((acc, room) => {
+    if (!acc.find(r => r.room_type === room.room_type)) acc.push(room);
+    return acc;
+  }, [] as RoomWithAvailability[]) || [];
+
+  return (
+    <Layout>
+      {/* Hero Carousel */}
+      <section className="relative h-[85dvh] min-h-[500px] flex items-center overflow-hidden">
+        {heroSlides.map((slide, i) => (
+          <div
+            key={i}
+            className="absolute inset-0 transition-opacity duration-1000"
+            style={{ opacity: i === currentSlide ? 1 : 0 }}
+          >
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+              style={{ backgroundImage: `url(${slide.src})` }}
+            />
+            <div className="absolute inset-0 bg-charcoal/50" />
+          </div>
+        ))}
+
+        <div className="relative z-10 container text-center text-cream animate-fade-in px-4">
+          <span className="eyebrow text-brass-light/70">Est. 2024 — Downtown</span>
+          <h1 className="font-display text-4xl sm:text-5xl md:text-7xl text-cream mt-3 leading-[1.05]">
+            A room that
+            <br />
+            <span className="text-brass-light italic">lets you</span>
+            <br />
+            actually rest
+          </h1>
+          <p className="text-cream/50 text-base sm:text-lg md:text-xl mt-4 sm:mt-6 max-w-md mx-auto leading-relaxed">
+            Not another generic hotel. Quiet rooms, good beds, honest prices.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-4 mt-6 sm:mt-10">
+            <Link to="/rooms">
+              <Button variant="brass" size="lg">
+                See Our Rooms
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <button
+              onClick={() => roomsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-sm font-medium text-cream/40 hover:text-cream transition-colors"
+            >
+              or browse below ↓
+            </button>
+          </div>
+        </div>
+
+        {/* Carousel controls */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3">
+          <button
+            onClick={() => goToSlide((currentSlide - 1 + heroSlides.length) % heroSlides.length)}
+            className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-cream/70 hover:bg-white/30 transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex gap-2">
+            {heroSlides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToSlide(i)}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-all duration-300",
+                  i === currentSlide ? "bg-brass w-6" : "bg-cream/30"
+                )}
+              />
+            ))}
+          </div>
+          <button
+            onClick={() => goToSlide((currentSlide + 1) % heroSlides.length)}
+            className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-cream/70 hover:bg-white/30 transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="absolute bottom-6 right-6 z-10 hidden sm:block">
+          <span className="text-[10px] tracking-[0.15em] uppercase text-cream/40">
+            {heroSlides[currentSlide].caption}
+          </span>
+        </div>
+      </section>
+
+      {/* Rooms Preview — one of each type with image carousels */}
+      <section ref={roomsRef} className="py-16 sm:py-24 md:py-32 bg-cream/40">
+        <div className="container px-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 sm:mb-12 gap-4">
+            <div>
+              <span className="eyebrow">Accommodations</span>
+              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-charcoal mt-3">
+                Rooms we'd book ourselves
+              </h2>
+            </div>
+            <Link to="/rooms" className="text-sm font-medium text-brass hover:text-brass-dark transition-colors flex items-center gap-1.5">
+              View all
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-6 w-6 animate-spin text-brass" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {representativeRooms.map((room) => {
+                const carouselImgs = roomCarouselImages[room.room_type] || roomCarouselImages.SINGLE;
+                return (
+                  <div key={room.id} className="card-warm overflow-hidden">
+                    <RoomImageCarousel images={carouselImgs} className="aspect-[4/3]" />
+                    <div className="p-4 sm:p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] tracking-[0.12em] uppercase text-brass/70 bg-brass/5 px-2 py-0.5 rounded-full">
+                          {room.room_type === 'SINGLE' ? 'Single Room' : room.room_type === 'TWIN' ? 'Twin Room' : 'Studio Suite'}
+                        </span>
+                      </div>
+                      <h3 className="font-display text-lg text-charcoal">Room {room.room_number}</h3>
+                      <p className="text-xs text-charcoal/40 mt-1 line-clamp-2">{room.description}</p>
+                      <div className="flex items-center justify-between mt-4">
+                        <div>
+                          <span className="font-display text-xl text-charcoal">Ksh {Number(room.base_price).toFixed(0)}</span>
+                          <span className="text-xs text-charcoal/30 ml-1">/night</span>
+                        </div>
+                        <Button variant="brass" size="sm" onClick={() => handleBookRoom(room)}>Book</Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-16 sm:py-24 md:py-32 bg-charcoal text-cream relative grain-overlay">
+        <div className="container text-center relative z-10 px-4">
+          <h2 className="font-display text-2xl sm:text-3xl md:text-5xl text-cream">
+            Ready for a quiet stay?
+          </h2>
+          <p className="text-cream/50 mt-3 sm:mt-4 max-w-md mx-auto text-sm sm:text-base">
+            Browse availability and book directly. No middlemen, no hidden fees.
+          </p>
+          <Link to="/rooms" className="inline-block mt-6 sm:mt-8">
+            <Button variant="brass" size="lg">
+              Check Availability
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      <BookingModal
+        room={selectedRoom}
+        open={bookingOpen}
+        onOpenChange={setBookingOpen}
+      />
+    </Layout>
+  );
+}

@@ -1,0 +1,214 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display:ital@0;1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Editorial Luxury Palette — grounded, warm, physical */
+    --background: 30 20% 97%;
+    --foreground: 0 0% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
+
+    /* Charcoal — not navy, not black */
+    --primary: 0 0% 12%;
+    --primary-foreground: 30 20% 97%;
+
+    /* Warm stone — not cream, not gray */
+    --secondary: 28 16% 86%;
+    --secondary-foreground: 0 0% 12%;
+
+    --muted: 28 14% 92%;
+    --muted-foreground: 0 0% 45%;
+
+    /* Antique brass — not gold, not yellow */
+    --accent: 30 30% 44%;
+    --accent-foreground: 0 0% 97%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 28 12% 88%;
+    --input: 28 12% 88%;
+    --ring: 30 30% 44%;
+
+    --radius: 0.5rem;
+
+    /* Custom tokens */
+    --brass: 30 30% 44%;
+    --brass-light: 30 25% 58%;
+    --brass-dark: 30 35% 32%;
+    --charcoal: 0 0% 12%;
+    --charcoal-light: 0 0% 25%;
+    --stone-warm: 28 16% 86%;
+    --cream: 30 20% 97%;
+    --cream-dark: 28 16% 90%;
+
+    /* Navy retained for footer/dark sections only */
+    --navy: 210 35% 15%;
+    --navy-light: 210 30% 25%;
+    --gold: 30 30% 44%;
+    --gold-light: 30 25% 58%;
+    --gold-dark: 30 35% 32%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 30 20% 95%;
+
+    --card: 0 0% 10%;
+    --card-foreground: 30 20% 95%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 30 20% 95%;
+
+    --primary: 30 30% 55%;
+    --primary-foreground: 0 0% 7%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 30 20% 95%;
+
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 30 30% 55%;
+    --accent-foreground: 0 0% 7%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 30 30% 55%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  /* Eyebrow label — used once per section, never repeated */
+  .eyebrow {
+    @apply inline-block text-[11px] font-medium tracking-[0.15em] uppercase text-brass;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* Subtle film-grain texture overlay — applied to hero/featured sections */
+  .grain-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+  }
+
+  /* Button — brass accent, pill shape, no generic gold */
+  .btn-brass {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-7 py-3 text-sm font-medium transition-all duration-300;
+    background: hsl(var(--brass));
+    color: hsl(var(--cream));
+  }
+
+  .btn-brass:hover {
+    background: hsl(var(--brass-dark));
+    transform: translateY(-1px);
+  }
+
+  .btn-brass:active {
+    transform: translateY(0);
+  }
+
+  /* Card with subtle warmth, no harsh shadows */
+  .card-warm {
+    @apply bg-white rounded-lg;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+  }
+
+  /* Separator line — brass accent, not generic border */
+  .divider-brass {
+    @apply h-px w-12;
+    background: hsl(var(--brass));
+    opacity: 0.5;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Scroll snap for horizontal sections */
+  .scroll-snap-x {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scroll-snap-center {
+    scroll-snap-align: center;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
