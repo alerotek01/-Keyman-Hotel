@@ -189,7 +189,7 @@ export default function Index() {
         <div className="relative z-10 container text-center text-cream animate-fade-in px-4">
           <span className="eyebrow text-brass-light/60">Mwatate, Taita Taveta</span>
           <h1 className="font-display text-4xl sm:text-5xl md:text-7xl text-cream mt-4 leading-[1.1]">
-            Rooms with a view
+            View
             <br />
             <span className="text-brass-light">of the Taita Hills</span>
           </h1>
