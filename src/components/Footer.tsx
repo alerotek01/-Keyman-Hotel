@@ -13,7 +13,7 @@ export function Footer() {
               <span className="text-[9px] sm:text-[10px] font-medium tracking-[0.2em] uppercase text-brass-light">Hotel</span>
             </div>
             <p className="text-xs sm:text-sm text-cream/50 max-w-xs leading-relaxed">
-              A considered stay in the heart of the city. Thoughtful rooms, unhurried service, 
+              A considered stay at the foot of the Taita Hills. Thoughtful rooms, unhurried service,
               and the kind of quiet that lets you actually rest.
             </p>
             <div className="divider-brass mt-4 sm:mt-6" />
@@ -27,7 +27,7 @@ export function Footer() {
             <ul className="space-y-2.5 text-xs sm:text-sm">
               <li className="flex items-start gap-2.5">
                 <MapPin className="h-3.5 w-3.5 text-brass-light/60 mt-0.5 shrink-0" />
-                <span>123 Luxury Avenue, Downtown</span>
+                <span>Mwatate, Taita Taveta</span>
               </li>
               <li className="flex items-start gap-2.5">
                 <Phone className="h-3.5 w-3.5 text-brass-light/60 mt-0.5 shrink-0" />
@@ -35,7 +35,7 @@ export function Footer() {
               </li>
               <li className="flex items-start gap-2.5">
                 <Mail className="h-3.5 w-3.5 text-brass-light/60 mt-0.5 shrink-0" />
-                <a href="mailto:stay@keymanhotel.com" className="hover:text-cream transition-colors">stay@keymanhotel.com</a>
+                <a href="mailto:info@keymanhotel.co.ke" className="hover:text-cream transition-colors">info@keymanhotel.co.ke</a>
               </li>
             </ul>
           </div>
