@@ -160,6 +160,11 @@ export default function Cafeteria() {
                   const qty = getQuantity(item.id);
                   return (
                     <div key={item.id} className="card-warm overflow-hidden">
+                      {item.image_url && (
+                        <div className="aspect-[16/9] overflow-hidden">
+                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      )}
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
