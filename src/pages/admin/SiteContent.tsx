@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useSiteSettings, useUpdateSiteSetting } from '@/hooks/useCms';
 import { usePageContent, useUpdatePageContent } from '@/hooks/useCms';
-import { useHeroSlides, useCreateHeroSlide, useDeleteHeroSlide } from '@/hooks/useCms';
+import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide } from '@/hooks/useCms';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Globe, FileText, ImagePlus, Trash2, GripVertical } from 'lucide-react';
 
@@ -20,6 +21,7 @@ export default function AdminSiteContent() {
   const updateSetting = useUpdateSiteSetting();
   const updateContent = useUpdatePageContent();
   const createSlide = useCreateHeroSlide();
+  const updateSlide = useUpdateHeroSlide();
   const deleteSlide = useDeleteHeroSlide();
   const { toast } = useToast();
 
@@ -78,6 +80,15 @@ export default function AdminSiteContent() {
       setSlideDialogOpen(false);
       setSlideForm({ image_url: '', caption: '', alt_text: '' });
       toast({ title: 'Slide Added' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateSlide = async (id: string, field: string, value: string) => {
+    try {
+      await updateSlide.mutateAsync({ id, [field]: value });
+      toast({ title: 'Slide Updated' });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
@@ -307,9 +318,19 @@ export default function AdminSiteContent() {
                     alt={slide.alt_text || 'Hero slide'}
                     className="h-20 w-36 object-cover rounded-lg"
                   />
-                  <div className="flex-1">
-                    <p className="font-medium">{slide.caption || 'No caption'}</p>
-                    <p className="text-sm text-muted-foreground">{slide.alt_text || 'No alt text'}</p>
+                  <div className="flex-1 space-y-1">
+                    <Input
+                      defaultValue={slide.caption || ''}
+                      placeholder="Caption"
+                      className="text-sm h-8"
+                      onBlur={(e) => handleUpdateSlide(slide.id, 'caption', e.target.value)}
+                    />
+                    <Input
+                      defaultValue={slide.alt_text || ''}
+                      placeholder="Alt text"
+                      className="text-xs h-7 text-muted-foreground"
+                      onBlur={(e) => handleUpdateSlide(slide.id, 'alt_text', e.target.value)}
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-1 rounded-full ${slide.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
