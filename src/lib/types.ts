@@ -180,6 +180,70 @@ export interface RevenueReport {
   averageBookingValue: number;
 }
 
+// ===== Payments =====
+export type PaymentMethod = 'cash' | 'mpesa' | 'card' | 'room_charge' | 'other';
+export type PaymentStatus = 'pending' | 'verified' | 'rejected';
+
+export interface Payment {
+  id: string;
+  order_id: string | null;
+  folio_id: string | null;
+  amount: number;
+  method: PaymentMethod;
+  mpesa_transaction_id: string | null;
+  receipt_image_url: string | null;
+  status: PaymentStatus;
+  recorded_by: string | null;
+  verified_by: string | null;
+  created_at: string;
+  // Joined
+  restaurant_orders?: any;
+  guest_folios?: any;
+  users_recorded?: any;
+  users_verified?: any;
+}
+
+// ===== Staff Shifts =====
+export type ShiftStatus = 'not_started' | 'active' | 'ended' | 'submitted' | 'reconciled' | 'closed';
+export type ReconciliationStatus = 'submitted' | 'approved' | 'flagged' | 'explained' | 'reconciled' | 'closed';
+
+export interface StaffShift {
+  id: string;
+  user_id: string;
+  department_id: string | null;
+  shift_date: string;
+  shift_name: string;
+  start_time: string | null;
+  end_time: string | null;
+  status: ShiftStatus;
+  created_at: string;
+  // Joined
+  users?: any;
+  departments?: any;
+}
+
+export interface ShiftReconciliation {
+  id: string;
+  shift_id: string;
+  submitted_by: string | null;
+  sales_total: number;
+  cash_total: number;
+  mpesa_total: number;
+  room_charges_total: number;
+  expected_cash: number;
+  actual_cash: number;
+  variance: number;
+  notes: string | null;
+  status: ReconciliationStatus;
+  manager_id: string | null;
+  reconciled_at: string | null;
+  created_at: string;
+  // Joined
+  staff_shifts?: StaffShift;
+  users_submitted?: any;
+  users_manager?: any;
+}
+
 export interface GuestInsight {
   totalGuests: number;
   guestsWithVehicle: number;

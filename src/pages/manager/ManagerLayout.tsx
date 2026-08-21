@@ -1,13 +1,14 @@
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Loader2, LayoutDashboard, BarChart3, Users, CalendarCheck, LogOut, Home } from 'lucide-react';
+import { Loader2, LayoutDashboard, BarChart3, Users, CalendarCheck, LogOut, Home, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/manager', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { path: '/manager/reports', label: 'Reports', icon: BarChart3 },
   { path: '/manager/bookings', label: 'Bookings', icon: CalendarCheck },
+  { path: '/manager/reconciliation', label: 'Reconciliation', icon: DollarSign },
   { path: '/manager/staff', label: 'Staff', icon: Users },
 ];
 

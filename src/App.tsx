@@ -32,6 +32,9 @@ import HousekeepingSupervisor from "./pages/staff/HousekeepingSupervisor";
 import ReceptionistPda from "./pages/staff/ReceptionistPda";
 import WaiterPda from "./pages/staff/WaiterPda";
 import KitchenTablet from "./pages/staff/KitchenTablet";
+import PaymentRecording from "./pages/staff/PaymentRecording";
+import ShiftManager from "./pages/staff/ShiftManager";
+import Reconciliation from "./pages/manager/Reconciliation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +69,7 @@ const App = () => (
             <Route index element={<ManagerDashboard />} />
             <Route path="reports" element={<ManagerReports />} />
             <Route path="bookings" element={<ManagerBookings />} />
+            <Route path="reconciliation" element={<Reconciliation />} />
             <Route path="staff" element={<ManagerStaff />} />
           </Route>
           
@@ -76,6 +80,8 @@ const App = () => (
             <Route path="reception" element={<ReceptionistPda />} />
             <Route path="waiter" element={<WaiterPda />} />
             <Route path="kitchen" element={<KitchenTablet />} />
+            <Route path="payments" element={<PaymentRecording />} />
+            <Route path="shift" element={<ShiftManager />} />
             <Route path="housekeeping" element={<HousekeeperPda />} />
             <Route path="inspection" element={<HousekeepingSupervisor />} />
             <Route path="requests" element={<StaffRequests />} />
