@@ -1,12 +1,14 @@
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Loader2, LayoutDashboard, CalendarCheck, ClipboardList, Receipt, LogOut, Home } from 'lucide-react';
+import { Loader2, LayoutDashboard, CalendarCheck, ClipboardList, Receipt, LogOut, Home, Sparkles, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/staff', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { path: '/staff/bookings', label: 'Bookings', icon: CalendarCheck },
+  { path: '/staff/housekeeping', label: 'My Rooms', icon: Sparkles },
+  { path: '/staff/inspection', label: 'Inspection', icon: ClipboardCheck },
   { path: '/staff/requests', label: 'Guest Requests', icon: ClipboardList },
   { path: '/staff/receipts', label: 'Receipts', icon: Receipt },
 ];

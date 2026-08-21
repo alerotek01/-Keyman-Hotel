@@ -27,6 +27,8 @@ import StaffDashboard from "./pages/staff/Dashboard";
 import StaffBookings from "./pages/staff/Bookings";
 import StaffRequests from "./pages/staff/GuestRequests";
 import StaffReceipts from "./pages/staff/Receipts";
+import HousekeeperPda from "./pages/staff/HousekeeperPda";
+import HousekeepingSupervisor from "./pages/staff/HousekeepingSupervisor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +70,8 @@ const App = () => (
           <Route path="/staff" element={<StaffLayout />}>
             <Route index element={<StaffDashboard />} />
             <Route path="bookings" element={<StaffBookings />} />
+            <Route path="housekeeping" element={<HousekeeperPda />} />
+            <Route path="inspection" element={<HousekeepingSupervisor />} />
             <Route path="requests" element={<StaffRequests />} />
             <Route path="receipts" element={<StaffReceipts />} />
           </Route>
