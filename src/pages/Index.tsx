@@ -11,13 +11,15 @@ import type { RoomWithAvailability } from '@/lib/types';
 
 const BASE = 'https://uuojiyehhnhjcakgpsjd.supabase.co/storage/v1/object/public/rooms';
 
-// Hero carousel — real hotel photos from images-to-use folder
+// Hero carousel — real hotel photos (WebP)
 const heroSlides = [
-  { src: `${BASE}/hotel-night.jpg`, alt: 'Keyman Hotel at night with colorful lights', caption: 'Evening ambiance' },
-  { src: `${BASE}/entrance.png`, alt: 'Hotel entrance with parking', caption: 'Welcome' },
-  { src: `${BASE}/lounge.jpg`, alt: 'Guest lounge with comfortable seating', caption: 'Guest lounge' },
-  { src: `${BASE}/room-single.jpg`, alt: 'Comfortable single room interior', caption: 'Our rooms' },
-  { src: `${BASE}/hero-parking.jpg`, alt: 'Parking area', caption: 'Free parking' },
+  { src: `${BASE}/hero-night.webp`, alt: 'Keyman Hotel at night with colorful lights', caption: 'Evening ambiance' },
+  { src: `${BASE}/hero-entrance.webp`, alt: 'Hotel entrance and front view', caption: 'Welcome' },
+  { src: `${BASE}/hero-arrival.webp`, alt: 'Arrival and parking area', caption: 'Arrival' },
+  { src: `${BASE}/hero-lounge.webp`, alt: 'Guest lounge with comfortable seating', caption: 'Guest lounge' },
+  { src: `${BASE}/hero-single.webp`, alt: 'Comfortable single room interior', caption: 'Our rooms' },
+  { src: `${BASE}/hero-twin.webp`, alt: 'Twin room with two beds', caption: 'Twin rooms' },
+  { src: `${BASE}/hero-front-view.webp`, alt: 'Keyman Hotel front view', caption: 'Front view' },
 ];
 
 // Room images by type — each room gets a carousel of min 3 images
