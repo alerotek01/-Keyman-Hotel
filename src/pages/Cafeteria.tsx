@@ -24,8 +24,8 @@ export default function Cafeteria() {
             Our Cafeteria
           </h1>
           <p className="text-cream/50 max-w-lg mt-4 text-sm leading-relaxed">
-            Kenyan favourites and continental dishes, three meals a day.
-            Home-cooked food at honest prices — for guests and walk-ins.
+            Fresh, home-cooked meals with a view of the hills.
+            Kenyan favourites and continental dishes — three meals a day.
           </p>
         </div>
       </section>

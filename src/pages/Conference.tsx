@@ -55,7 +55,7 @@ export default function Conference() {
           <span className="eyebrow text-brass-light/70">Mwatate, Taita Taveta</span>
           <h1 className="font-display text-3xl sm:text-4xl md:text-6xl text-cream mt-3">Conference Hall</h1>
           <p className="text-cream/50 max-w-lg mt-4 text-sm leading-relaxed">
-            The only professional conference venue in Taita Taveta. Seats 70, full AV, catering available. Half-day and full-day packages.
+            Professional meeting space with views of the Taita Hills. Seats 70, full AV, catering on request.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 mt-8">
             <Button variant="brass" size="lg">Book This Space<ArrowRight className="h-4 w-4" /></Button>

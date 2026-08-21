@@ -46,8 +46,8 @@ export default function RoomsPage() {
             Our Rooms
           </h1>
           <p className="text-cream/40 max-w-lg mx-auto mt-3 sm:mt-4 text-xs sm:text-sm leading-relaxed">
-            From KES 91/night. Clean, quiet, and honest.
-            Single, twin, and studio — all with free parking.
+            Clean, quiet rooms at the foot of the Taita Hills.
+            From KES 91/night — single, twin, and studio.
           </p>
         </div>
       </section>

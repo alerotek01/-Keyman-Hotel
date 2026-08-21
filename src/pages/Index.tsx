@@ -21,14 +21,14 @@ const heroSlides = [
   { src: `${BASE}/hero-front-view.webp`, alt: 'Keyman Hotel front view', caption: 'Front view' },
 ];
 
-// Amenity carousel data — each block has images, title, caption, and link
+// Amenity carousel data
 const amenityBlocks = [
   {
     id: 'rooms',
     icon: Bed,
     eyebrow: 'Stay',
-    title: 'Rest properly',
-    caption: 'Clean rooms, real beds, quiet nights. From KES 91/night — no hidden charges, no surprises at checkout. Single, twin, and studio options.',
+    title: 'Wake up to the hills',
+    caption: 'Clean rooms with views of the Taita Hills. From KES 91/night — no hidden charges, no surprises at checkout. Single, twin, and studio options.',
     link: '/rooms',
     linkText: 'See rooms & rates',
     images: [
@@ -44,8 +44,8 @@ const amenityBlocks = [
     id: 'conference',
     icon: Presentation,
     eyebrow: 'Events',
-    title: 'Your venue in Mwatate',
-    caption: 'The only professional conference space in Taita Taveta. Seats 70, full AV setup, catering on request. Half-day and full-day packages available.',
+    title: 'Host with a view',
+    caption: 'Taita Taveta\'s only professional conference venue. Seats 70, full AV setup, catering on request. Half-day and full-day packages.',
     link: '/conference',
     linkText: 'Book the conference hall',
     images: [
@@ -58,8 +58,8 @@ const amenityBlocks = [
     id: 'cafeteria',
     icon: UtensilsCrossed,
     eyebrow: 'Dining',
-    title: 'Home-cooked meals',
-    caption: 'Kenyan favourites and continental dishes, served three times a day. Not a restaurant — a proper cafeteria with real food and fair prices.',
+    title: 'Eat like a local',
+    caption: 'Kenyan favourites and continental dishes, three meals a day. Home-cooked food at honest prices — for guests and walk-ins.',
     link: '/cafeteria',
     linkText: 'View today\'s menu',
     images: [
@@ -185,19 +185,16 @@ export default function Index() {
           </div>
         ))}
 
-        {/* Hero copy — clean, minimal, location-anchored */}
+        {/* Hero copy — Taita Hills as the hook */}
         <div className="relative z-10 container text-center text-cream animate-fade-in px-4">
-          <h1 className="font-display text-4xl sm:text-5xl md:text-7xl text-cream leading-[1.1]">
-            Keyman Hotel
+          <span className="eyebrow text-brass-light/60">Mwatate, Taita Taveta</span>
+          <h1 className="font-display text-4xl sm:text-5xl md:text-7xl text-cream mt-4 leading-[1.1]">
+            Rooms with a view
+            <br />
+            <span className="text-brass-light">of the Taita Hills</span>
           </h1>
-          <p className="text-cream/60 text-sm sm:text-base md:text-lg mt-3 tracking-wide">
-            Mwatate, Taita Taveta
-          </p>
-          <div className="w-12 h-px bg-brass mx-auto mt-5" />
-          <p className="text-cream/40 text-sm sm:text-base mt-5 max-w-sm mx-auto leading-relaxed">
-            A proper hotel stop on the Mombasa–Nairobi highway.
-            <br className="hidden sm:block" />
-            Rooms, food, parking — all in one place.
+          <p className="text-cream/45 text-sm sm:text-base mt-5 max-w-sm mx-auto leading-relaxed">
+            Comfortable beds, honest prices, and the kind of quiet you don't find in the city.
           </p>
           <div className="flex flex-col sm:flex-row items-center gap-4 mt-8">
             <Link to="/rooms">
@@ -259,7 +256,7 @@ export default function Index() {
               Everything in one place
             </h2>
             <p className="text-sm text-charcoal/40 mt-3 max-w-md mx-auto">
-              Rooms, meals, events, and parking. No need to look elsewhere.
+              Rooms, meals, events, and parking — at the foot of the Taita Hills.
             </p>
           </div>
 
@@ -310,15 +307,15 @@ export default function Index() {
         </div>
       </section>
 
-      {/* CTA — loss aversion framing */}
+      {/* CTA — contrast with city */}
       <section className="py-16 sm:py-24 md:py-32 bg-charcoal text-cream relative grain-overlay">
         <div className="container text-center relative z-10 px-4">
           <h2 className="font-display text-2xl sm:text-3xl md:text-5xl text-cream">
-            Don't settle for a roadside stop
+            Tired of city hotels?
           </h2>
           <p className="text-cream/50 mt-3 sm:mt-4 max-w-md mx-auto text-sm sm:text-base">
-            Book direct — best rates, no middlemen, no hidden fees.
-            Mwatate's most comfortable stopover.
+            Come up to the hills. Cool air, quiet nights, and views that actually matter.
+            Book direct for the best rates.
           </p>
           <Link to="/rooms" className="inline-block mt-6 sm:mt-8">
             <Button variant="brass" size="lg">
