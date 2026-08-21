@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Layout } from '@/components/Layout';
-import { RoomCard } from '@/components/RoomCard';
 import { BookingModal } from '@/components/BookingModal';
 import { Button } from '@/components/ui/button';
 import { useRoomAvailability } from '@/hooks/useRooms';
-import { ArrowRight, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Bed, Presentation, UtensilsCrossed, Car } from 'lucide-react';
 import type { RoomWithAvailability } from '@/lib/types';
 
 const BASE = 'https://uuojiyehhnhjcakgpsjd.supabase.co/storage/v1/object/public/rooms';
@@ -22,72 +21,116 @@ const heroSlides = [
   { src: `${BASE}/hero-front-view.webp`, alt: 'Keyman Hotel front view', caption: 'Front view' },
 ];
 
-// Room images by type — each room gets a carousel of min 3 images
-const roomCarouselImages: Record<string, { src: string; alt: string }[]> = {
-  SINGLE: [
-    { src: `${BASE}/room-single.jpg`, alt: 'Single room — clean linens and dark headboard' },
-    { src: `${BASE}/single-1.jpg`, alt: 'Single room — white sheets, side table' },
-    { src: `${BASE}/hotel-front.png`, alt: 'Hotel building exterior' },
-  ],
-  TWIN: [
-    { src: `${BASE}/room-twin.jpg`, alt: 'Twin room — two beds with fresh linens' },
-    { src: `${BASE}/twin-1.jpg`, alt: 'Twin room — lounge area' },
-    { src: `${BASE}/twin-2.jpg`, alt: 'Twin room — hotel entrance view' },
-  ],
-  STUDIO: [
-    { src: `${BASE}/hotel-front.png`, alt: 'Studio suite — hotel exterior' },
-    { src: `${BASE}/studio-1.jpg`, alt: 'Studio — two-bed setup' },
-    { src: `${BASE}/studio-2.jpg`, alt: 'Studio — room interior' },
-  ],
-};
+// Amenity carousel data — each block has images, title, caption, and link
+const amenityBlocks = [
+  {
+    id: 'rooms',
+    icon: Bed,
+    eyebrow: 'Stay',
+    title: 'Comfortable Rooms',
+    caption: 'Quiet rooms with clean linens, good beds, and everything you actually need. No gimmicks — just a good night\'s sleep at honest prices.',
+    link: '/rooms',
+    linkText: 'View all rooms',
+    images: [
+      { src: `${BASE}/room-single.jpg`, alt: 'Single room — clean linens and dark headboard' },
+      { src: `${BASE}/single-1.jpg`, alt: 'Single room — white sheets, side table' },
+      { src: `${BASE}/single-2.jpg`, alt: 'Single room — cozy interior' },
+      { src: `${BASE}/room-twin.jpg`, alt: 'Twin room — two beds with fresh linens' },
+      { src: `${BASE}/twin-1.jpg`, alt: 'Twin room — lounge area' },
+      { src: `${BASE}/studio-1.jpg`, alt: 'Studio suite — spacious setup' },
+    ],
+  },
+  {
+    id: 'conference',
+    icon: Presentation,
+    eyebrow: 'Events',
+    title: 'Conference Hall',
+    caption: 'Professional meeting space with modern AV facilities. Flexible seating for up to 70 guests — board meetings, workshops, and corporate events.',
+    link: '/conference',
+    linkText: 'Book this space',
+    images: [
+      { src: `${BASE}/conference-01.jpg`, alt: 'Conference hall — boardroom setup with white linens' },
+      { src: `${BASE}/conference-1.jpg`, alt: 'Conference hall — meeting arrangement' },
+      { src: `${BASE}/conference-01.jpg`, alt: 'Conference hall — boardroom setup' },
+    ],
+  },
+  {
+    id: 'cafeteria',
+    icon: UtensilsCrossed,
+    eyebrow: 'Dining',
+    title: 'Our Cafeteria',
+    caption: 'Fresh, home-cooked meals served daily. Kenyan classics and international dishes — breakfast, lunch, and dinner. Good food at honest prices.',
+    link: '/cafeteria',
+    linkText: 'See today\'s menu',
+    images: [
+      { src: `${BASE}/cafe.jpg`, alt: 'Cafeteria dining area' },
+      { src: `${BASE}/lounge.jpg`, alt: 'Guest lounge — comfortable seating' },
+      { src: `${BASE}/lounge.jpg`, alt: 'Guest lounge area' },
+    ],
+  },
+  {
+    id: 'parking',
+    icon: Car,
+    eyebrow: 'Convenience',
+    title: 'Free Parking',
+    caption: 'Secure, complimentary parking for all guests. No stress finding a spot — pull in, check in, and relax.',
+    link: '/rooms',
+    linkText: 'Book a room',
+    images: [
+      { src: `${BASE}/parking.jpg`, alt: 'Secure parking area' },
+      { src: `${BASE}/hero-arrival.webp`, alt: 'Arrival and parking area' },
+      { src: `${BASE}/parking.jpg`, alt: 'Hotel parking lot' },
+    ],
+  },
+];
 
-// Inline mini-carousel for room cards
-function RoomImageCarousel({ images, className }: { images: { src: string; alt: string }[]; className?: string }) {
+// Full-width amenity carousel with auto-scroll, arrows, and dots
+function AmenityCarousel({ images, className }: { images: { src: string; alt: string }[]; className?: string }) {
   const [idx, setIdx] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setIdx((p) => (p + 1) % images.length);
-    }, 3500);
+    }, 4000);
     return () => clearInterval(timerRef.current);
   }, [images.length]);
 
   const go = (n: number) => {
     setIdx(n);
     clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => setIdx((p) => (p + 1) % images.length), 3500);
+    timerRef.current = setInterval(() => setIdx((p) => (p + 1) % images.length), 4000);
   };
 
   return (
-    <div className={cn("relative overflow-hidden group", className)}>
+    <div className={cn("relative overflow-hidden group rounded-2xl", className)}>
       {images.map((img, i) => (
         <div key={i} className="absolute inset-0 transition-opacity duration-700" style={{ opacity: i === idx ? 1 : 0 }}>
           <img src={img.src} alt={img.alt} className="w-full h-full object-cover" loading="lazy" />
         </div>
       ))}
       {/* Dots */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
         {images.map((_, i) => (
           <button
             key={i}
             onClick={(e) => { e.stopPropagation(); go(i); }}
-            className={cn("w-1.5 h-1.5 rounded-full transition-all duration-300", i === idx ? "bg-white w-4" : "bg-white/50")}
+            className={cn("w-2 h-2 rounded-full transition-all duration-300", i === idx ? "bg-white w-5" : "bg-white/40")}
           />
         ))}
       </div>
       {/* Arrows */}
       <button
         onClick={(e) => { e.stopPropagation(); go((idx - 1 + images.length) % images.length); }}
-        className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <ChevronLeft className="h-3 w-3" />
+        <ChevronLeft className="h-4 w-4" />
       </button>
       <button
         onClick={(e) => { e.stopPropagation(); go((idx + 1) % images.length); }}
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <ChevronRight className="h-3 w-3" />
+        <ChevronRight className="h-4 w-4" />
       </button>
     </div>
   );
@@ -98,7 +141,7 @@ export default function Index() {
   const [selectedRoom, setSelectedRoom] = useState<RoomWithAvailability | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const roomsRef = useRef<HTMLDivElement>(null);
+  const amenitiesRef = useRef<HTMLDivElement>(null);
   const slideInterval = useRef<ReturnType<typeof setInterval>>();
 
   const { data: rooms, isLoading } = useRoomAvailability(null, null);
@@ -123,14 +166,6 @@ export default function Index() {
     setSelectedRoom(room);
     setBookingOpen(true);
   };
-
-  // One room of each guest type (Single, Twin, Studio)
-  const representativeRooms = rooms?.filter(r =>
-    r.room_type === 'SINGLE' || r.room_type === 'TWIN' || r.room_type === 'STUDIO'
-  ).reduce((acc, room) => {
-    if (!acc.find(r => r.room_type === room.room_type)) acc.push(room);
-    return acc;
-  }, [] as RoomWithAvailability[]) || [];
 
   return (
     <Layout>
@@ -170,7 +205,7 @@ export default function Index() {
               </Button>
             </Link>
             <button
-              onClick={() => roomsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => amenitiesRef.current?.scrollIntoView({ behavior: 'smooth' })}
               className="text-sm font-medium text-cream/40 hover:text-cream transition-colors"
             >
               or browse below ↓
@@ -213,54 +248,63 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Rooms Preview — one of each type with image carousels */}
-      <section ref={roomsRef} className="py-16 sm:py-24 md:py-32 bg-cream/40">
+      {/* What We Offer — Amenity carousel blocks */}
+      <section ref={amenitiesRef} className="py-16 sm:py-24 md:py-32 bg-cream/40">
         <div className="container px-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 sm:mb-12 gap-4">
-            <div>
-              <span className="eyebrow">Accommodations</span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-charcoal mt-3">
-                Rooms we'd book ourselves
-              </h2>
-            </div>
-            <Link to="/rooms" className="text-sm font-medium text-brass hover:text-brass-dark transition-colors flex items-center gap-1.5">
-              View all
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+          <div className="text-center mb-12 sm:mb-16">
+            <span className="eyebrow">Everything You Need</span>
+            <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-charcoal mt-3">
+              More than just a bed
+            </h2>
+            <p className="text-sm text-charcoal/40 mt-3 max-w-md mx-auto">
+              Rooms, dining, events, parking — everything in one place, done right.
+            </p>
           </div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-6 w-6 animate-spin text-brass" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {representativeRooms.map((room) => {
-                const carouselImgs = roomCarouselImages[room.room_type] || roomCarouselImages.SINGLE;
-                return (
-                  <div key={room.id} className="card-warm overflow-hidden">
-                    <RoomImageCarousel images={carouselImgs} className="aspect-[4/3]" />
-                    <div className="p-4 sm:p-5">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] tracking-[0.12em] uppercase text-brass/70 bg-brass/5 px-2 py-0.5 rounded-full">
-                          {room.room_type === 'SINGLE' ? 'Single Room' : room.room_type === 'TWIN' ? 'Twin Room' : 'Studio Suite'}
-                        </span>
-                      </div>
-                      <h3 className="font-display text-lg text-charcoal">Room {room.room_number}</h3>
-                      <p className="text-xs text-charcoal/40 mt-1 line-clamp-2">{room.description}</p>
-                      <div className="flex items-center justify-between mt-4">
-                        <div>
-                          <span className="font-display text-xl text-charcoal">Ksh {Number(room.base_price).toFixed(0)}</span>
-                          <span className="text-xs text-charcoal/30 ml-1">/night</span>
-                        </div>
-                        <Button variant="brass" size="sm" onClick={() => handleBookRoom(room)}>Book</Button>
-                      </div>
-                    </div>
+          <div className="space-y-16 sm:space-y-24">
+            {amenityBlocks.map((block, blockIdx) => {
+              const Icon = block.icon;
+              const isReversed = blockIdx % 2 === 1;
+              return (
+                <div
+                  key={block.id}
+                  className={cn(
+                    "grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center",
+                    isReversed && "lg:[direction:rtl]"
+                  )}
+                >
+                  {/* Carousel */}
+                  <div className={cn(isReversed && "lg:[direction:ltr]")}>
+                    <AmenityCarousel images={block.images} className="aspect-[4/3] sm:aspect-[16/10]" />
                   </div>
-                );
-              })}
-            </div>
-          )}
+
+                  {/* Text */}
+                  <div className={cn("lg:[direction:ltr]", isReversed && "lg:text-right")}>
+                    <div className={cn("flex items-center gap-2 mb-3", isReversed && "lg:justify-end")}>
+                      <Icon className="h-4 w-4 text-brass" />
+                      <span className="eyebrow">{block.eyebrow}</span>
+                    </div>
+                    <h3 className="font-display text-xl sm:text-2xl md:text-3xl text-charcoal">
+                      {block.title}
+                    </h3>
+                    <p className="text-sm text-charcoal/50 mt-3 leading-relaxed max-w-md">
+                      {block.caption}
+                    </p>
+                    <Link
+                      to={block.link}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 mt-5 text-sm font-medium text-brass hover:text-brass-dark transition-colors",
+                        isReversed && "lg:flex-row-reverse"
+                      )}
+                    >
+                      {block.linkText}
+                      <ArrowRight className={cn("h-3.5 w-3.5", isReversed && "lg:rotate-180")} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
