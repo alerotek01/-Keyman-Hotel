@@ -52,10 +52,10 @@ export default function Conference() {
           <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/40 to-transparent" />
         </div>
         <div className="relative z-10 container pb-16 pt-32 px-4">
-          <span className="eyebrow text-brass-light/70">Events &amp; Meetings</span>
+          <span className="eyebrow text-brass-light/70">Mwatate, Taita Taveta</span>
           <h1 className="font-display text-3xl sm:text-4xl md:text-6xl text-cream mt-3">Conference Hall</h1>
           <p className="text-cream/50 max-w-lg mt-4 text-sm leading-relaxed">
-            Professional meeting space equipped with modern AV facilities. Flexible layout for board meetings, workshops, and corporate events.
+            The only professional conference venue in Taita Taveta. Seats 70, full AV, catering available. Half-day and full-day packages.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 mt-8">
             <Button variant="brass" size="lg">Book This Space<ArrowRight className="h-4 w-4" /></Button>
@@ -122,8 +122,8 @@ export default function Conference() {
 
       <section className="py-12 sm:py-16 bg-charcoal text-cream">
         <div className="container text-center px-4">
-          <h2 className="font-display text-2xl sm:text-3xl">Ready to book?</h2>
-          <p className="text-cream/40 mt-3 max-w-md mx-auto text-sm">Contact us for pricing and availability. Custom packages for half-day and full-day events.</p>
+          <h2 className="font-display text-2xl sm:text-3xl">Book the venue</h2>
+          <p className="text-cream/40 mt-3 max-w-md mx-auto text-sm">Call or WhatsApp for pricing. Custom packages for half-day and full-day events.</p>
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <a href="tel:+254721384779"><Button variant="brass" size="lg">Call +254 721 384 779</Button></a>
             <Button variant="brass-outline" size="lg">WhatsApp Us</Button>

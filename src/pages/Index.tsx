@@ -27,10 +27,10 @@ const amenityBlocks = [
     id: 'rooms',
     icon: Bed,
     eyebrow: 'Stay',
-    title: 'Comfortable Rooms',
-    caption: 'Quiet rooms with clean linens, good beds, and everything you actually need. No gimmicks — just a good night\'s sleep at honest prices.',
+    title: 'Rest properly',
+    caption: 'Clean rooms, real beds, quiet nights. From KES 91/night — no hidden charges, no surprises at checkout. Single, twin, and studio options.',
     link: '/rooms',
-    linkText: 'View all rooms',
+    linkText: 'See rooms & rates',
     images: [
       { src: `${BASE}/room-single.jpg`, alt: 'Single room — clean linens and dark headboard' },
       { src: `${BASE}/single-1.jpg`, alt: 'Single room — white sheets, side table' },
@@ -44,10 +44,10 @@ const amenityBlocks = [
     id: 'conference',
     icon: Presentation,
     eyebrow: 'Events',
-    title: 'Conference Hall',
-    caption: 'Professional meeting space with modern AV facilities. Flexible seating for up to 70 guests — board meetings, workshops, and corporate events.',
+    title: 'Your venue in Mwatate',
+    caption: 'The only professional conference space in Taita Taveta. Seats 70, full AV setup, catering on request. Half-day and full-day packages available.',
     link: '/conference',
-    linkText: 'Book this space',
+    linkText: 'Book the conference hall',
     images: [
       { src: `${BASE}/conference-01.jpg`, alt: 'Conference hall — boardroom setup with white linens' },
       { src: `${BASE}/conference-1.jpg`, alt: 'Conference hall — meeting arrangement' },
@@ -58,10 +58,10 @@ const amenityBlocks = [
     id: 'cafeteria',
     icon: UtensilsCrossed,
     eyebrow: 'Dining',
-    title: 'Our Cafeteria',
-    caption: 'Fresh, home-cooked meals served daily. Kenyan classics and international dishes — breakfast, lunch, and dinner. Good food at honest prices.',
+    title: 'Home-cooked meals',
+    caption: 'Kenyan favourites and continental dishes, served three times a day. Not a restaurant — a proper cafeteria with real food and fair prices.',
     link: '/cafeteria',
-    linkText: 'See today\'s menu',
+    linkText: 'View today\'s menu',
     images: [
       { src: `${BASE}/cafe.jpg`, alt: 'Cafeteria dining area' },
       { src: `${BASE}/lounge.jpg`, alt: 'Guest lounge — comfortable seating' },
@@ -72,8 +72,8 @@ const amenityBlocks = [
     id: 'parking',
     icon: Car,
     eyebrow: 'Convenience',
-    title: 'Free Parking',
-    caption: 'Secure, complimentary parking for all guests. No stress finding a spot — pull in, check in, and relax.',
+    title: 'Free parking',
+    caption: 'Secure parking, no extra charge. Drive in, park, check in. Simple.',
     link: '/rooms',
     linkText: 'Book a room',
     images: [
@@ -185,30 +185,32 @@ export default function Index() {
           </div>
         ))}
 
+        {/* Hero copy — clean, minimal, location-anchored */}
         <div className="relative z-10 container text-center text-cream animate-fade-in px-4">
-          <span className="eyebrow text-brass-light/70">Est. 2024 — Downtown</span>
-          <h1 className="font-display text-4xl sm:text-5xl md:text-7xl text-cream mt-3 leading-[1.05]">
-            A room that
-            <br />
-            <span className="text-brass-light italic">lets you</span>
-            <br />
-            actually rest
+          <h1 className="font-display text-4xl sm:text-5xl md:text-7xl text-cream leading-[1.1]">
+            Keyman Hotel
           </h1>
-          <p className="text-cream/50 text-base sm:text-lg md:text-xl mt-4 sm:mt-6 max-w-md mx-auto leading-relaxed">
-            Not another generic hotel. Quiet rooms, good beds, honest prices.
+          <p className="text-cream/60 text-sm sm:text-base md:text-lg mt-3 tracking-wide">
+            Mwatate, Taita Taveta
           </p>
-          <div className="flex flex-col sm:flex-row items-center gap-4 mt-6 sm:mt-10">
+          <div className="w-12 h-px bg-brass mx-auto mt-5" />
+          <p className="text-cream/40 text-sm sm:text-base mt-5 max-w-sm mx-auto leading-relaxed">
+            A proper hotel stop on the Mombasa–Nairobi highway.
+            <br className="hidden sm:block" />
+            Rooms, food, parking — all in one place.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-4 mt-8">
             <Link to="/rooms">
               <Button variant="brass" size="lg">
-                See Our Rooms
+                Book a Room
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <button
               onClick={() => amenitiesRef.current?.scrollIntoView({ behavior: 'smooth' })}
-              className="text-sm font-medium text-cream/40 hover:text-cream transition-colors"
+              className="text-sm text-cream/30 hover:text-cream/60 transition-colors"
             >
-              or browse below ↓
+              See what we offer ↓
             </button>
           </div>
         </div>
@@ -252,12 +254,12 @@ export default function Index() {
       <section ref={amenitiesRef} className="py-16 sm:py-24 md:py-32 bg-cream/40">
         <div className="container px-4">
           <div className="text-center mb-12 sm:mb-16">
-            <span className="eyebrow">Everything You Need</span>
+            <span className="eyebrow">What we offer</span>
             <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-charcoal mt-3">
-              More than just a bed
+              Everything in one place
             </h2>
             <p className="text-sm text-charcoal/40 mt-3 max-w-md mx-auto">
-              Rooms, dining, events, parking — everything in one place, done right.
+              Rooms, meals, events, and parking. No need to look elsewhere.
             </p>
           </div>
 
@@ -308,14 +310,15 @@ export default function Index() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* CTA — loss aversion framing */}
       <section className="py-16 sm:py-24 md:py-32 bg-charcoal text-cream relative grain-overlay">
         <div className="container text-center relative z-10 px-4">
           <h2 className="font-display text-2xl sm:text-3xl md:text-5xl text-cream">
-            Ready for a quiet stay?
+            Don't settle for a roadside stop
           </h2>
           <p className="text-cream/50 mt-3 sm:mt-4 max-w-md mx-auto text-sm sm:text-base">
-            Browse availability and book directly. No middlemen, no hidden fees.
+            Book direct — best rates, no middlemen, no hidden fees.
+            Mwatate's most comfortable stopover.
           </p>
           <Link to="/rooms" className="inline-block mt-6 sm:mt-8">
             <Button variant="brass" size="lg">

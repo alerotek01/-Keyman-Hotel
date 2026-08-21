@@ -41,13 +41,13 @@ export default function RoomsPage() {
       {/* Header */}
       <section className="bg-charcoal py-12 sm:py-16 md:py-20 mt-[72px]">
         <div className="container text-center px-4">
-          <span className="eyebrow text-brass-light/70">Browse & Book</span>
+          <span className="eyebrow text-brass-light/70">Mwatate, Taita Taveta</span>
           <h1 className="font-display text-3xl sm:text-4xl md:text-5xl text-cream mt-3">
             Our Rooms
           </h1>
           <p className="text-cream/40 max-w-lg mx-auto mt-3 sm:mt-4 text-xs sm:text-sm leading-relaxed">
-            Each room is designed for actual comfort — not Instagram. 
-            Quiet, clean, and well worth the rate.
+            From KES 91/night. Clean, quiet, and honest.
+            Single, twin, and studio — all with free parking.
           </p>
         </div>
       </section>

@@ -44,6 +44,9 @@ export function Header() {
             <span className="text-[9px] sm:text-[10px] font-medium tracking-[0.2em] uppercase text-brass">
               Hotel
             </span>
+            <span className="text-[8px] sm:text-[9px] text-charcoal/30 ml-1 hidden sm:inline">
+              Mwatate
+            </span>
           </Link>
 
           {/* Desktop nav */}

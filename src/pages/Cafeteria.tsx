@@ -19,13 +19,13 @@ export default function Cafeteria() {
           <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/40 to-transparent" />
         </div>
         <div className="relative z-10 container pb-16 pt-32 px-4">
-          <span className="eyebrow text-brass-light/70">Dining</span>
+          <span className="eyebrow text-brass-light/70">Mwatate, Taita Taveta</span>
           <h1 className="font-display text-3xl sm:text-4xl md:text-6xl text-cream mt-3">
             Our Cafeteria
           </h1>
           <p className="text-cream/50 max-w-lg mt-4 text-sm leading-relaxed">
-            Fresh, home-cooked meals served daily. Not a fancy restaurant — just good food
-            at honest prices, the way it should be.
+            Kenyan favourites and continental dishes, three meals a day.
+            Home-cooked food at honest prices — for guests and walk-ins.
           </p>
         </div>
       </section>
