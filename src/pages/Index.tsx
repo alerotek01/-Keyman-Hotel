@@ -34,9 +34,8 @@ const amenityBlocks = [
     images: [
       { src: `${BASE}/room-single.jpg`, alt: 'Single room — clean linens and dark headboard' },
       { src: `${BASE}/single-1.jpg`, alt: 'Single room — white sheets, side table' },
-      { src: `${BASE}/single-2.jpg`, alt: 'Single room — cozy interior' },
       { src: `${BASE}/room-twin.jpg`, alt: 'Twin room — two beds with fresh linens' },
-      { src: `${BASE}/twin-1.jpg`, alt: 'Twin room — lounge area' },
+      { src: `${BASE}/twin-1.jpg`, alt: 'Twin room — comfortable seating' },
       { src: `${BASE}/studio-1.jpg`, alt: 'Studio suite — spacious setup' },
     ],
   },
@@ -78,7 +77,7 @@ const amenityBlocks = [
     linkText: 'Book a room',
     images: [
       { src: `${BASE}/hero-arrival.webp`, alt: 'Free parking — arrival area' },
-      { src: `${BASE}/parking.jpg`, alt: 'Secure parking lot' },
+      { src: `${BASE}/hero-entrance.webp`, alt: 'Hotel entrance' },
       { src: `${BASE}/hero-arrival.webp`, alt: 'Hotel arrival and parking' },
     ],
   },
