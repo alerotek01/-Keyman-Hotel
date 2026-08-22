@@ -133,25 +133,19 @@ export function useBulkCreateTasks() {
   });
 }
 
-// ===== Room Status Updates =====
+// ===== Room Status Updates (STATE MACHINE via DB function) =====
 export function useUpdateRoomStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ roomId, status, notes }: { roomId: string; status: string; notes?: string }) => {
-      // Update room status
-      const { error: roomErr } = await sb
-        .from('rooms')
-        .update({ status })
-        .eq('id', roomId);
-      if (roomErr) throw roomErr;
-
-      // Log to room_status_history
-      const { error: histErr } = await sb
-        .from('room_status_history')
-        .insert({ room_id: roomId, status, notes: notes || null });
-      if (histErr) throw histErr;
-
-      return { roomId, status };
+      // Call the state machine DB function — validates transitions
+      const { data: result, error } = await sb.rpc('update_room_status_sm', {
+        p_room_id: roomId,
+        p_new_status: status,
+        p_notes: notes || null,
+      });
+      if (error) throw error;
+      return result;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['rooms'] });

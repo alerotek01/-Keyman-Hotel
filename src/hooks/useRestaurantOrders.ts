@@ -67,7 +67,7 @@ export function useWaiterOrders(waiterId?: string) {
   });
 }
 
-// ===== Create Order =====
+// ===== Create Order (SERVER-VALIDATED via DB function) =====
 export function useCreateOrder() {
   const qc = useQueryClient();
   return useMutation({
@@ -78,58 +78,21 @@ export function useCreateOrder() {
       guest_id?: string;
       waiter_id?: string;
       notes?: string;
-      items: { menu_item_id: string; quantity: number; unit_price: number; notes?: string }[];
+      items: { menu_item_id: string; quantity: number; notes?: string }[];
     }) => {
-      // Calculate totals
-      const subtotal = data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
-      const vatRate = 0.16;
-      const vatAmount = Math.round(subtotal * vatRate);
-      const total = subtotal + vatAmount;
+      // Call the safe DB function — prices are validated server-side
+      const { data: result, error } = await sb.rpc('create_order_safe', {
+        p_guest_id: data.guest_id || null,
+        p_room_number: data.room_number || null,
+        p_staff_id: data.waiter_id || null,
+        p_items: data.items.map(item => ({
+          menu_item_id: item.menu_item_id,
+          quantity: item.quantity,
+        })),
+      });
 
-      // Create order
-      const { data: order, error: orderErr } = await sb
-        .from('restaurant_orders')
-        .insert({
-          source: data.source,
-          guest_name: data.guest_name || null,
-          room_number: data.room_number || null,
-          guest_id: data.guest_id || null,
-          waiter_id: data.waiter_id || null,
-          notes: data.notes || null,
-          status: 'new',
-          total,
-          vat_amount: vatAmount,
-        })
-        .select()
-        .single();
-      if (orderErr) throw orderErr;
-
-      // Create order items
-      const orderItems = data.items.map(item => ({
-        order_id: order.id,
-        menu_item_id: item.menu_item_id,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        subtotal: item.unit_price * item.quantity,
-        notes: item.notes || null,
-      }));
-
-      const { error: itemsErr } = await sb
-        .from('restaurant_order_items')
-        .insert(orderItems);
-      if (itemsErr) throw itemsErr;
-
-      // Log order event
-      await sb
-        .from('order_events')
-        .insert({
-          order_id: order.id,
-          from_status: null,
-          to_status: 'new',
-          notes: `Order created from ${data.source}`,
-        });
-
-      return order;
+      if (error) throw error;
+      return result;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['restaurant-orders'] });
@@ -139,36 +102,19 @@ export function useCreateOrder() {
   });
 }
 
-// ===== Update Order Status =====
+// ===== Update Order Status (SERVER-VALIDATED via DB function) =====
 export function useUpdateOrderStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ orderId, status, notes }: { orderId: string; status: OrderStatus; notes?: string }) => {
-      // Get current status
-      const { data: current } = await sb
-        .from('restaurant_orders')
-        .select('status')
-        .eq('id', orderId)
-        .single();
+      // Call the state machine DB function — validates transitions
+      const { data: result, error } = await sb.rpc('update_order_status_sm', {
+        p_order_id: orderId,
+        p_new_status: status,
+      });
 
-      // Update order status
-      const { error } = await sb
-        .from('restaurant_orders')
-        .update({ status })
-        .eq('id', orderId);
       if (error) throw error;
-
-      // Log event
-      await sb
-        .from('order_events')
-        .insert({
-          order_id: orderId,
-          from_status: current?.status || null,
-          to_status: status,
-          notes: notes || null,
-        });
-
-      return { orderId, status };
+      return result;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['restaurant-orders'] });
@@ -178,26 +124,17 @@ export function useUpdateOrderStatus() {
   });
 }
 
-// ===== Delete Order (cancel) =====
+// ===== Cancel Order (via state machine) =====
 export function useCancelOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (orderId: string) => {
-      const { error } = await sb
-        .from('restaurant_orders')
-        .update({ status: 'cancelled' })
-        .eq('id', orderId);
+      const { data: result, error } = await sb.rpc('update_order_status_sm', {
+        p_order_id: orderId,
+        p_new_status: 'cancelled',
+      });
       if (error) throw error;
-
-      await sb
-        .from('order_events')
-        .insert({
-          order_id: orderId,
-          to_status: 'cancelled',
-          notes: 'Order cancelled',
-        });
-
-      return orderId;
+      return result;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['restaurant-orders'] });

@@ -19,31 +19,66 @@ export function usePayments() {
   });
 }
 
+// ===== Record Payment (SAFE via DB function — validates amounts, prevents duplicates) =====
 export function useRecordPayment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
-      order_id?: string;
-      folio_id?: string;
+      reservation_id: string;
+      method: string;
+      amount: number;
+      mpesa_transaction_id?: string;
+      notes?: string;
+    }) => {
+      // Call safe DB function — validates amount, checks M-Pesa duplicates
+      const { data: result, error } = await sb.rpc('record_payment_safe', {
+        p_reservation_id: data.reservation_id,
+        p_method: data.method,
+        p_amount: data.amount,
+        p_mpesa_txn_id: data.mpesa_transaction_id || null,
+        p_notes: data.notes || null,
+      });
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['restaurant-orders'] });
+    },
+  });
+}
+
+// ===== Record Order Payment (for restaurant orders — still uses direct insert with server validation) =====
+export function useRecordOrderPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      order_id: string;
       amount: number;
       method: string;
       mpesa_transaction_id?: string;
-      receipt_image_url?: string;
       recorded_by: string;
     }) => {
       const { data: payment, error } = await sb
         .from('payments')
-        .insert(data)
+        .insert({
+          order_id: data.order_id,
+          amount: data.amount,
+          method: data.method,
+          mpesa_transaction_id: data.mpesa_transaction_id || null,
+          recorded_by: data.recorded_by,
+          status: 'pending',
+        })
         .select()
         .single();
       if (error) throw error;
 
-      // Update order status if linked
+      // Update order status via state machine
       if (data.order_id) {
-        await sb
-          .from('restaurant_orders')
-          .update({ status: 'payment_submitted' })
-          .eq('id', data.order_id);
+        await sb.rpc('update_order_status_sm', {
+          p_order_id: data.order_id,
+          p_new_status: 'payment_submitted',
+        });
       }
 
       return payment;
@@ -66,15 +101,6 @@ export function useVerifyPayment() {
         .select()
         .single();
       if (error) throw error;
-
-      // Update order if payment verified
-      if (status === 'verified' && data.order_id) {
-        await sb
-          .from('restaurant_orders')
-          .update({ status: 'payment_verified' })
-          .eq('id', data.order_id);
-      }
-
       return data;
     },
     onSuccess: () => {

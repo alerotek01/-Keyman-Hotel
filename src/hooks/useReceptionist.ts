@@ -62,44 +62,18 @@ export function useAvailableRooms(roomTypeId?: string) {
   });
 }
 
-// ===== Check-In Mutation =====
+// ===== Check-In (ATOMIC via DB function — prevents double-assignment) =====
 export function useCheckIn() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ reservationId, roomId }: { reservationId: string; roomId: string }) => {
-      // 1. Update reservation: assign room, status -> checked_in
-      const { error: resErr } = await sb
-        .from('reservations')
-        .update({ room_id: roomId, status: 'checked_in' })
-        .eq('id', reservationId);
-      if (resErr) throw resErr;
-
-      // 2. Update room status -> occupied
-      const { error: roomErr } = await sb
-        .from('rooms')
-        .update({ status: 'occupied' })
-        .eq('id', roomId);
-      if (roomErr) throw roomErr;
-
-      // 3. Log room status change
-      await sb
-        .from('room_status_history')
-        .insert({ room_id: roomId, status: 'occupied', notes: 'Guest checked in' });
-
-      // 4. Create guest folio
-      const { data: reservation } = await sb
-        .from('reservations')
-        .select('guest_id')
-        .eq('id', reservationId)
-        .single();
-
-      if (reservation) {
-        await sb
-          .from('guest_folios')
-          .insert({ reservation_id: reservationId, guest_id: reservation.guest_id });
-      }
-
-      return { reservationId, roomId };
+      // Call atomic DB function — uses SELECT FOR UPDATE to prevent race conditions
+      const { data: result, error } = await sb.rpc('check_in_guest_atomic', {
+        p_reservation_id: reservationId,
+        p_room_id: roomId,
+      });
+      if (error) throw error;
+      return result;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['receptionist'] });
@@ -109,37 +83,30 @@ export function useCheckIn() {
   });
 }
 
-// ===== Check-Out Mutation =====
+// ===== Check-Out (SAFE via DB function — validates payment before closing) =====
 export function useCheckOut() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ reservationId, roomId }: { reservationId: string; roomId: string }) => {
-      // 1. Update reservation -> checked_out
-      const { error: resErr } = await sb
-        .from('reservations')
-        .update({ status: 'checked_out' })
-        .eq('id', reservationId);
-      if (resErr) throw resErr;
-
-      // 2. Update room status -> dirty (needs housekeeping)
-      const { error: roomErr } = await sb
-        .from('rooms')
-        .update({ status: 'dirty' })
-        .eq('id', roomId);
-      if (roomErr) throw roomErr;
-
-      // 3. Log room status change
-      await sb
-        .from('room_status_history')
-        .insert({ room_id: roomId, status: 'dirty', notes: 'Guest checked out' });
-
-      // 4. Create housekeeping task
-      const today = new Date().toISOString().split('T')[0];
-      await sb
-        .from('housekeeping_tasks')
-        .insert({ room_id: roomId, shift_date: today, status: 'pending' });
-
-      return { reservationId, roomId };
+    mutationFn: async ({
+      reservationId,
+      paymentMethod = 'cash',
+      paymentAmount = 0,
+      paymentReference,
+    }: {
+      reservationId: string;
+      paymentMethod?: string;
+      paymentAmount?: number;
+      paymentReference?: string;
+    }) => {
+      // Call safe DB function — validates reservation status, records payment, creates housekeeping task
+      const { data: result, error } = await sb.rpc('check_out_guest_safe', {
+        p_reservation_id: reservationId,
+        p_payment_method: paymentMethod,
+        p_payment_amount: paymentAmount,
+        p_payment_reference: paymentReference || null,
+      });
+      if (error) throw error;
+      return result;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['receptionist'] });

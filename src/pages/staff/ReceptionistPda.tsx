@@ -98,22 +98,12 @@ export default function ReceptionistPda() {
   const handlePayment = async () => {
     if (!folio || !selectedReservation) return;
     try {
-      // Record payment
-      await postPayment.mutateAsync({
-        folioId: folio.id,
-        amount: parseFloat(paymentForm.amount) || balanceDue,
-        method: paymentForm.method,
-        reference: paymentForm.reference || undefined,
-        recordedBy: user?.id,
-      });
-
-      // Close folio
-      await closeFolio.mutateAsync(folio.id);
-
-      // Complete check-out
+      // Complete check-out (payment + folio close + housekeeping task — all atomic)
       await checkOut.mutateAsync({
         reservationId: selectedReservation.id,
-        roomId: selectedReservation.room_id,
+        paymentMethod: paymentForm.method,
+        paymentAmount: parseFloat(paymentForm.amount) || balanceDue,
+        paymentReference: paymentForm.reference || undefined,
       });
 
       setPaymentDialog(false);
