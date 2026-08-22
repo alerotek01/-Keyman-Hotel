@@ -116,7 +116,7 @@ export function useCreateHeroSlide() {
 export function useUpdateHeroSlide() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; caption?: string; alt_text?: string; sort_order?: number; is_active?: boolean }) => {
+    mutationFn: async ({ id, ...data }: { id: string; caption?: string; alt_text?: string; link_url?: string | null; icon?: string | null; sort_order?: number; is_active?: boolean }) => {
       const { data: slide, error } = await sb
         .from('hero_slides')
         .update(data)

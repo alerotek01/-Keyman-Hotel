@@ -32,18 +32,18 @@ export default function AdminSiteContent() {
 
   // Hero slide create dialog
   const [slideDialogOpen, setSlideDialogOpen] = useState(false);
-  const [slideForm, setSlideForm] = useState({ caption: '', alt_text: '' });
+  const [slideForm, setSlideForm] = useState({ caption: '', alt_text: '', link_url: '', icon: '' });
   const [slideFile, setSlideFile] = useState<File | null>(null);
 
   // Hero slide edit dialog
   const [editSlideOpen, setEditSlideOpen] = useState(false);
   const [editingSlide, setEditingSlide] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ caption: '', alt_text: '', link_url: '' });
+  const [editForm, setEditForm] = useState({ caption: '', alt_text: '', link_url: '', icon: '' });
   const [editFile, setEditFile] = useState<File | null>(null);
 
   const openEditSlide = (slide: any) => {
     setEditingSlide(slide);
-    setEditForm({ caption: slide.caption || '', alt_text: slide.alt_text || '', link_url: slide.link_url || '' });
+    setEditForm({ caption: slide.caption || '', alt_text: slide.alt_text || '', link_url: slide.link_url || '', icon: slide.icon || '' });
     setEditFile(null);
     setEditSlideOpen(true);
   };
@@ -61,6 +61,7 @@ export default function AdminSiteContent() {
         caption: editForm.caption,
         alt_text: editForm.alt_text,
         link_url: editForm.link_url || null,
+        icon: editForm.icon || null,
       });
       setEditSlideOpen(false);
       toast({ title: 'Slide updated' });
@@ -115,6 +116,8 @@ export default function AdminSiteContent() {
           image_url: '',
           caption: slideForm.caption || undefined,
           alt_text: slideForm.alt_text || undefined,
+          link_url: slideForm.link_url || undefined,
+          icon: slideForm.icon || undefined,
           sort_order: heroSlides?.length || 0,
         })
         .select()
@@ -125,7 +128,7 @@ export default function AdminSiteContent() {
       await uploadSlideImage.mutateAsync({ slideId: slide.id, file: slideFile });
 
       setSlideDialogOpen(false);
-      setSlideForm({ caption: '', alt_text: '' });
+      setSlideForm({ caption: '', alt_text: '', link_url: '', icon: '' });
       setSlideFile(null);
       toast({ title: 'Slide Added' });
     } catch (error: any) {
@@ -375,6 +378,23 @@ export default function AdminSiteContent() {
                       placeholder="Accessibility description"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Link URL (optional)</Label>
+                    <Input
+                      value={slideForm.link_url}
+                      onChange={(e) => setSlideForm({ ...slideForm, link_url: e.target.value })}
+                      placeholder="/rooms or https://..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Icon (optional)</Label>
+                    <Input
+                      value={slideForm.icon}
+                      onChange={(e) => setSlideForm({ ...slideForm, icon: e.target.value })}
+                      placeholder="e.g. BedDouble, UtensilsCrossed, Sparkles"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Lucide icon name — shown on the public site</p>
+                  </div>
                   <Button type="submit" variant="brass" className="w-full" disabled={createSlide.isPending}>
                     {createSlide.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Add Slide
@@ -430,7 +450,10 @@ export default function AdminSiteContent() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{slide.caption || 'No caption'}</p>
                     <p className="text-xs text-muted-foreground truncate">{slide.alt_text || 'No alt text'}</p>
-                    {slide.link_url && <p className="text-xs text-brass truncate mt-0.5">Link: {slide.link_url}</p>}
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {slide.link_url && <p className="text-xs text-brass truncate">Link: {slide.link_url}</p>}
+                      {slide.icon && <p className="text-xs text-purple-600 truncate">Icon: {slide.icon}</p>}
+                    </div>
                   </div>
 
                   {/* Status + Actions */}
@@ -508,13 +531,22 @@ export default function AdminSiteContent() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Link URL (optional)</Label>
+            <div className="space-y-2">                    <Label>Link URL (optional)</Label>
               <Input
                 value={editForm.link_url}
                 onChange={(e) => setEditForm({ ...editForm, link_url: e.target.value })}
                 placeholder="/rooms or https://..."
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Icon (optional)</Label>
+              <Input
+                value={editForm.icon}
+                onChange={(e) => setEditForm({ ...editForm, icon: e.target.value })}
+                placeholder="e.g. BedDouble, UtensilsCrossed, Sparkles"
+              />
+              <p className="text-[10px] text-muted-foreground">Lucide icon name — shown on the public site</p>
             </div>
           </div>
 
