@@ -36,7 +36,7 @@ export default function FolioManagement() {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     const guestName = f.reservations?.guests?.name?.toLowerCase() || '';
-    const roomNumber = String(f.room_number || '');
+    const roomNumber = String(f.reservations?.rooms?.room_number || '');
     const guestEmail = f.reservations?.guests?.email?.toLowerCase() || '';
     return guestName.includes(q) || roomNumber.includes(q) || guestEmail.includes(q);
   }) || [];
@@ -180,7 +180,7 @@ export default function FolioManagement() {
             ) : (
               filteredFolios.map((f: any) => {
                 const guestName = f.reservations?.guests?.name || 'Unknown';
-                const roomNumber = f.room_number || '—';
+                const roomNumber = f.reservations?.rooms?.room_number || '—';
                 const roomType = f.reservations?.rooms?.room_types?.name || '';
                 const isActive = f.status === 'open';
 
@@ -256,7 +256,7 @@ export default function FolioManagement() {
                         {folio.reservations?.guests?.name || 'Guest'}
                       </h2>
                       <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
-                        <span>Room {folio.room_number}</span>
+                        <span>Room {folio.reservations?.rooms?.room_number || '—'}</span>
                         {folio.reservations?.rooms?.room_types?.name && (
                           <>
                             <span>·</span>
@@ -418,13 +418,13 @@ export default function FolioManagement() {
         </div>
       </div>
 
-      {/* ===== Post Charge Dialog ===== */}
-      <Dialog open={chargeDialog} onOpenChange={setChargeDialog}>
+      {/* ===== Post Charge Dialog ===== */}              <Dialog open={chargeDialog} onOpenChange={setChargeDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {chargeType === 'room' ? 'Post Room Charge' : 'Post Restaurant Charge'}
             </DialogTitle>
+            <p className="text-sm text-muted-foreground">Add a charge to this guest's folio.</p>
           </DialogHeader>
           <form onSubmit={handlePostCharge} className="space-y-4">
             <div>
@@ -453,6 +453,7 @@ export default function FolioManagement() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
+            <p className="text-sm text-muted-foreground">Record a payment against this folio.</p>
           </DialogHeader>
           <form onSubmit={handlePostPayment} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -497,6 +498,7 @@ export default function FolioManagement() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Close Folio</DialogTitle>
+            <p className="text-sm text-muted-foreground">Permanently close this guest folio.</p>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-muted-foreground">
