@@ -28,7 +28,7 @@ interface FolioReceiptData {
 }
 
 function formatKES(amount: number): string {
-  return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(amount);
+  return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount).replace('KES', 'KSH');
 }
 
 export function generateFolioReceipt(data: FolioReceiptData): void {

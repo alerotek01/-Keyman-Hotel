@@ -34,7 +34,9 @@ export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-KE', {
     style: 'currency',
     currency: 'KES',
-  }).format(amount);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount).replace('KES', 'KSH');
 }
 
 export function formatDate(date: string | Date): string {
