@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import NotificationBell from '@/components/NotificationBell';
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -83,6 +84,7 @@ export default function AdminLayout() {
         </div>
 
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <div className="text-right hidden sm:block">
             <p className="text-xs text-muted-foreground">Signed in as</p>
             <p className="text-sm font-medium">{user.email}</p>

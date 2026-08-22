@@ -2,6 +2,7 @@ import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Loader2, LayoutDashboard, BarChart3, Users, CalendarCheck, LogOut, Home, DollarSign } from 'lucide-react';
+import NotificationBell from '@/components/NotificationBell';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -56,7 +57,7 @@ export default function ManagerLayout() {
   return (
     <div className="min-h-screen flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-navy text-primary-foreground flex flex-col">
+      <aside className="w-64 bg-navy text-primary-foreground flex flex-col shrink-0">
         <div className="p-6 border-b border-primary-foreground/10">
           <Link to="/" className="font-display text-2xl font-bold">
             Keyman<span className="text-brass"> Hotel</span>
@@ -104,9 +105,14 @@ export default function ManagerLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 bg-muted/30 overflow-auto">
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-12 bg-white border-b border-border flex items-center justify-end px-4 shrink-0">
+          <NotificationBell />
+        </header>
+        <main className="flex-1 bg-muted/30 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
