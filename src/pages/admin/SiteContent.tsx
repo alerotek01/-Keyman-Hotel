@@ -30,10 +30,44 @@ export default function AdminSiteContent() {
   const [settingsForm, setSettingsForm] = useState<Record<string, string>>({});
   const [settingsDirty, setSettingsDirty] = useState(false);
 
-  // Hero slide dialog
+  // Hero slide create dialog
   const [slideDialogOpen, setSlideDialogOpen] = useState(false);
   const [slideForm, setSlideForm] = useState({ caption: '', alt_text: '' });
   const [slideFile, setSlideFile] = useState<File | null>(null);
+
+  // Hero slide edit dialog
+  const [editSlideOpen, setEditSlideOpen] = useState(false);
+  const [editingSlide, setEditingSlide] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ caption: '', alt_text: '', link_url: '' });
+  const [editFile, setEditFile] = useState<File | null>(null);
+
+  const openEditSlide = (slide: any) => {
+    setEditingSlide(slide);
+    setEditForm({ caption: slide.caption || '', alt_text: slide.alt_text || '', link_url: slide.link_url || '' });
+    setEditFile(null);
+    setEditSlideOpen(true);
+  };
+
+  const handleSaveEditSlide = async () => {
+    if (!editingSlide) return;
+    try {
+      // Upload new image if selected
+      if (editFile) {
+        await uploadSlideImage.mutateAsync({ slideId: editingSlide.id, file: editFile });
+      }
+      // Update fields
+      await updateSlide.mutateAsync({
+        id: editingSlide.id,
+        caption: editForm.caption,
+        alt_text: editForm.alt_text,
+        link_url: editForm.link_url || null,
+      });
+      setEditSlideOpen(false);
+      toast({ title: 'Slide updated' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
 
   const isLoading = settingsLoading || contentLoading || slidesLoading;
 
@@ -352,10 +386,14 @@ export default function AdminSiteContent() {
 
           <div className="grid gap-4">
             {heroSlides?.map((slide, idx) => (
-              <Card key={slide.id} className={slide.is_active ? '' : 'opacity-60'}>
+              <Card
+                key={slide.id}
+                className={`cursor-pointer transition-all hover:ring-2 hover:ring-brass/50 ${slide.is_active ? '' : 'opacity-60'}`}
+                onClick={() => openEditSlide(slide)}
+              >
                 <CardContent className="flex items-center gap-4 py-4">
                   {/* Order controls */}
-                  <div className="flex flex-col items-center gap-1">
+                  <div className="flex flex-col items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <span className="text-sm font-mono text-muted-foreground">{idx + 1}</span>
                     <div className="flex flex-col -space-y-1">
                       <button
@@ -385,40 +423,18 @@ export default function AdminSiteContent() {
                     </div>
                   </div>
 
-                  {/* Image (click to change) */}
-                  <label className="relative cursor-pointer group shrink-0">
-                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      try {
-                        await uploadSlideImage.mutateAsync({ slideId: slide.id, file: f });
-                        toast({ title: 'Image updated' });
-                      } catch (err: any) { toast({ title: 'Upload failed', variant: 'destructive' }); }
-                    }} />
-                    <img src={slide.image_url} alt={slide.alt_text || 'Hero slide'} className="h-20 w-36 object-cover rounded-lg group-hover:opacity-80 transition-opacity" />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-white text-xs font-medium">Change Image</span>
-                    </div>
-                  </label>
+                  {/* Image preview */}
+                  <img src={slide.image_url} alt={slide.alt_text || 'Hero slide'} className="h-20 w-36 object-cover rounded-lg shrink-0" />
 
-                  {/* Caption & Alt Text */}
-                  <div className="flex-1 space-y-1">
-                    <Input
-                      defaultValue={slide.caption || ''}
-                      placeholder="Caption"
-                      className="text-sm h-8"
-                      onBlur={(e) => handleUpdateSlide(slide.id, 'caption', e.target.value)}
-                    />
-                    <Input
-                      defaultValue={slide.alt_text || ''}
-                      placeholder="Alt text"
-                      className="text-xs h-7 text-muted-foreground"
-                      onBlur={(e) => handleUpdateSlide(slide.id, 'alt_text', e.target.value)}
-                    />
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{slide.caption || 'No caption'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{slide.alt_text || 'No alt text'}</p>
+                    {slide.link_url && <p className="text-xs text-brass truncate mt-0.5">Link: {slide.link_url}</p>}
                   </div>
 
-                  {/* Active toggle + Delete */}
-                  <div className="flex items-center gap-2">
+                  {/* Status + Actions */}
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => handleUpdateSlide(slide.id, 'is_active', String(!slide.is_active))}
                       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
@@ -447,6 +463,70 @@ export default function AdminSiteContent() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* ===== EDIT HERO SLIDE DIALOG ===== */}
+      <Dialog open={editSlideOpen} onOpenChange={setEditSlideOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Hero Slide</DialogTitle>
+            <DialogDescription>Update image, caption, alt text, and link for this slide.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Current image preview */}
+            {editingSlide && (
+              <div className="relative">
+                <img
+                  src={editFile ? URL.createObjectURL(editFile) : editingSlide.image_url}
+                  alt="Preview"
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+                <label className="absolute bottom-2 right-2 cursor-pointer">
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setEditFile(e.target.files?.[0] || null)} />
+                  <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full hover:bg-black/80 transition-colors">
+                    Change Image
+                  </span>
+                </label>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Caption</Label>
+              <Input
+                value={editForm.caption}
+                onChange={(e) => setEditForm({ ...editForm, caption: e.target.value })}
+                placeholder="Text overlay on the hero image"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Alt Text</Label>
+              <Input
+                value={editForm.alt_text}
+                onChange={(e) => setEditForm({ ...editForm, alt_text: e.target.value })}
+                placeholder="Accessibility description"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Link URL (optional)</Label>
+              <Input
+                value={editForm.link_url}
+                onChange={(e) => setEditForm({ ...editForm, link_url: e.target.value })}
+                placeholder="/rooms or https://..."
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setEditSlideOpen(false)}>Cancel</Button>
+            <Button variant="brass" onClick={handleSaveEditSlide} disabled={updateSlide.isPending}>
+              {updateSlide.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
