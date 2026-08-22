@@ -43,9 +43,21 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
 
-  const isAdmin = role === 'admin';
-  const isManager = role === 'admin' || role === 'manager';
-  const isStaff = role !== null && role !== undefined;
+  // Check for impersonation
+  const impersonateRaw = typeof window !== 'undefined' ? localStorage.getItem('impersonate') : null;
+  const impersonateData = impersonateRaw ? JSON.parse(impersonateRaw) : null;
+  const isImpersonating = !!impersonateData;
+  const impersonatedRole = impersonateData?.targetUser?.role as AppRole | undefined;
+  const impersonatedName = impersonateData?.targetUser?.full_name || impersonateData?.targetUser?.email;
+
+  // If impersonating, use the impersonated role; otherwise use real role
+  const effectiveRole = isImpersonating ? impersonatedRole : role;
+
+  const isAdmin = isImpersonating ? impersonateData.targetUser?.role === 'admin' : role === 'admin';
+  const isManager = isImpersonating
+    ? ['admin', 'manager'].includes(impersonateData.targetUser?.role)
+    : role === 'admin' || role === 'manager';
+  const isStaff = isImpersonating ? !!impersonatedRole : (role !== null && role !== undefined);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -110,9 +122,21 @@ export function useAuth() {
     setRole(null);
   };
 
+  // If impersonating, create a synthetic user object with the target user's info
+  const displayUser = isImpersonating ? {
+    ...user,
+    id: impersonateData.targetUser?.id || user?.id,
+    email: impersonateData.targetUser?.email || user?.email,
+    user_metadata: {
+      ...user?.user_metadata,
+      full_name: impersonatedName,
+    },
+  } as User : user;
+
   return {
-    user,
-    role,
+    user: displayUser,
+    realUser: user, // Always the actual logged-in user
+    role: effectiveRole,
     isAdmin,
     isManager,
     isStaff,
@@ -120,5 +144,7 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
+    isImpersonating,
+    impersonatedName,
   };
 }

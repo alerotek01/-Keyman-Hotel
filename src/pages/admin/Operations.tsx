@@ -43,7 +43,7 @@ const TABLE_COLORS: Record<string, string> = {
 };
 
 export default function Operations() {
-  const { user } = useAuth();
+  const { user, isImpersonating, impersonatedName } = useAuth();
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [tableFilter, setTableFilter] = useState('all');
@@ -144,7 +144,6 @@ export default function Operations() {
     window.location.reload();
   };
 
-  const isImpersonating = !!localStorage.getItem('impersonate');
   const impersonateData = isImpersonating ? JSON.parse(localStorage.getItem('impersonate') || '{}') : null;
 
   return (
@@ -155,8 +154,8 @@ export default function Operations() {
           <div className="flex items-center gap-3">
             <Shield className="h-5 w-5" />
             <span className="font-semibold">
-              You are acting as {impersonateData.targetUser?.full_name || impersonateData.targetUser?.email}
-              <span className="text-amber-100 ml-2">({impersonateData.targetUser?.role})</span>
+              You are acting as {impersonatedName || impersonateData?.targetUser?.email}
+              <span className="text-amber-100 ml-2">({impersonateData?.targetUser?.role})</span>
             </span>
           </div>
           <Button variant="outline" size="sm" className="text-white border-white hover:bg-white/20" onClick={stopImpersonating}>
