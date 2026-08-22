@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
+import { useAllRooms } from '@/hooks/useRooms';
+import BookingCalendar from '@/components/BookingCalendar';
 import { formatCurrency, getStatusColor } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -13,6 +15,7 @@ import type { BookingStatus } from '@/lib/types';
 
 export default function StaffBookings() {
   const { data: bookings, isLoading } = useBookings();
+  const { data: rooms } = useAllRooms();
   const updateStatus = useUpdateBookingStatus();
   const [filter, setFilter] = useState<string>('all');
 
@@ -58,6 +61,12 @@ export default function StaffBookings() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Booking Calendar */}
+      <BookingCalendar
+        bookings={bookings || []}
+        rooms={rooms || []}
+      />
 
       <Card>
         <CardHeader>
