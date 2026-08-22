@@ -1,0 +1,50 @@
+-- ============================================================
+-- ROLE-SPECIFIC RLS POLICIES — Migration Record
+-- Date: August 22, 2026
+-- Replaces generic is_staff() with granular role-based access
+-- ============================================================
+
+-- ROLE HELPER FUNCTIONS (all include admin + manager)
+-- is_receptionist() → admin, manager, receptionist
+-- is_waiter()       → admin, manager, waiter
+-- is_chef()         → admin, manager, chef
+-- is_housekeeper()  → admin, manager, housekeeper
+
+-- POLICY MAP (after migration):
+
+-- TABLE                      SELECT              INSERT              UPDATE              DELETE
+-- ─────────────────────────────────────────────────────────────────────────────────────────────
+-- departments                is_staff()          is_admin()          is_admin()          is_admin()
+-- users                      self/manager        is_admin()          is_admin()          is_admin()
+-- room_types                 active/staff        is_admin()          is_admin()          is_admin()
+-- rooms                      public/staff        is_admin()          is_admin()          is_admin()
+-- room_images                public              is_admin()          is_admin()          is_admin()
+-- room_status_history        reception/housekeeping —                 —                   —
+-- guests                     reception           anyone              —                   —
+-- reservations               reception           reception           reception           —
+-- booking_payments           reception           reception           —                   —
+-- guest_folios               reception           reception           reception           —
+-- folio_transactions         reception           reception           —                   —
+-- folio_payments             reception           reception           manager             NO DELETE
+-- menu_categories            active/staff        is_admin()          is_admin()          is_admin()
+-- menu_items                 available/staff     is_admin()          is_admin()          is_admin()
+-- restaurant_orders          waiter/chef         waiter              chef                —
+-- restaurant_order_items     chef/waiter         waiter              —                   —
+-- order_events               waiter/chef         waiter/chef         —                   —
+-- payments                   reception/waiter    reception/waiter    manager             NO DELETE
+-- staff_shifts               self/manager        self                self/manager        —
+-- shift_opening_records      self/manager        staff               —                   —
+-- shift_transactions         self/manager        staff               —                   —
+-- shift_reconciliations      self/manager        self                manager             —
+-- housekeeping_tasks         assigned/manager    reception/manager   housekeeper/manager —
+-- exceptions                 manager             system              manager             —
+-- audit_logs                 manager             system              NO UPDATE           —
+-- daily_reports              manager             system              manager             —
+-- notifications              self                system              self                —
+-- site_settings              public              is_admin()          is_admin()          is_admin()
+-- page_content               active/staff        is_admin()          is_admin()          is_admin()
+-- hero_slides                active/staff        is_admin()          is_admin()          is_admin()
+-- media_library              public              is_admin()          is_admin()          is_admin()
+-- vat_config                 public              is_admin()          is_admin()          is_admin()
+
+-- Applied directly to Supabase via Management API on August 22, 2026.
