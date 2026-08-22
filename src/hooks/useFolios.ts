@@ -4,6 +4,27 @@ import { supabase } from '@/integrations/supabase/client';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
+// ===== List All Folios (admin view) =====
+export function useAllFolios(statusFilter?: string) {
+  return useQuery({
+    queryKey: ['all-folios', statusFilter],
+    queryFn: async () => {
+      let query = sb
+        .from('guest_folios')
+        .select('*, reservations(guests(name, email, phone), rooms(room_number, room_types(name)), check_in, check_out, status)')
+        .order('created_at', { ascending: false });
+
+      if (statusFilter && statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+}
+
 // ===== Get Folio by Reservation =====
 export function useFolio(reservationId?: string) {
   return useQuery({
