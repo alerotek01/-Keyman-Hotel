@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useSiteSettings, useUpdateSiteSetting } from '@/hooks/useCms';
 import { usePageContent, useUpdatePageContent } from '@/hooks/useCms';
 import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide, useUploadHeroSlideImage } from '@/hooks/useCms';
@@ -305,6 +305,7 @@ export default function AdminSiteContent() {
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Add Hero Slide</DialogTitle>
+                  <DialogDescription>Upload an image and add a caption for the hero carousel.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleAddSlide} className="space-y-4">
                   <div className="space-y-2">
