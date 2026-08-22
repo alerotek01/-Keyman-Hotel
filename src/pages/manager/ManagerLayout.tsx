@@ -16,7 +16,7 @@ const navItems = [
 ];
 
 export default function ManagerLayout() {
-  const { user, isManager, loading, signOut } = useAuth();
+  const { user, displayName, displayRole, isManager, loading, signOut } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -92,8 +92,8 @@ export default function ManagerLayout() {
 
         <div className="p-4 border-t border-primary-foreground/10">
           <div className="mb-4 px-3">
-            <p className="text-xs text-primary-foreground/50">Signed in as</p>
-            <p className="text-sm truncate">{user.email}</p>
+            <p className="text-sm font-semibold text-primary-foreground truncate">{displayName}</p>
+            <p className="text-[10px] text-brass uppercase tracking-wide">{displayRole}</p>
           </div>
           <Button
             variant="ghost"

@@ -8,38 +8,57 @@ const sb = supabase as any;
 
 const ROLE_FETCH_TIMEOUT_MS = 8000;
 
-async function fetchUserRoleWithTimeout(userId: string): Promise<AppRole | null> {
+interface UserProfile {
+  full_name: string | null;
+  role: AppRole | null;
+  email: string | null;
+}
+
+async function fetchUserProfile(userId: string): Promise<UserProfile> {
   return new Promise(async (resolve) => {
     const timer = setTimeout(() => {
-      console.warn('fetchUserRole timed out after', ROLE_FETCH_TIMEOUT_MS, 'ms');
-      resolve(null);
+      resolve({ full_name: null, role: null, email: null });
     }, ROLE_FETCH_TIMEOUT_MS);
 
     try {
       const { data, error } = await sb
         .from('users')
-        .select('role')
+        .select('full_name, role, email')
         .eq('id', userId)
         .maybeSingle();
 
       clearTimeout(timer);
-      if (error) {
-        console.error('fetchUserRole error:', error);
-        resolve(null);
+      if (error || !data) {
+        resolve({ full_name: null, role: null, email: null });
       } else {
-        resolve((data?.role as AppRole) ?? null);
+        resolve({
+          full_name: data.full_name || null,
+          role: (data.role as AppRole) || null,
+          email: data.email || null,
+        });
       }
     } catch (err) {
       clearTimeout(timer);
-      console.error('fetchUserRole exception:', err);
-      resolve(null);
+      resolve({ full_name: null, role: null, email: null });
     }
   });
 }
 
+// Role label mapping for display
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrator',
+  manager: 'Manager',
+  receptionist: 'Receptionist',
+  chef: 'Chef',
+  waiter: 'Waiter',
+  housekeeper: 'Housekeeper',
+  accountant: 'Accountant',
+};
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
 
@@ -49,6 +68,7 @@ export function useAuth() {
   const isImpersonating = !!impersonateData;
   const impersonatedRole = impersonateData?.targetUser?.role as AppRole | undefined;
   const impersonatedName = impersonateData?.targetUser?.full_name || impersonateData?.targetUser?.email;
+  const impersonatedEmail = impersonateData?.targetUser?.email as string | undefined;
 
   // If impersonating, use the impersonated role; otherwise use real role
   const effectiveRole = isImpersonating ? impersonatedRole : role;
@@ -59,6 +79,17 @@ export function useAuth() {
     : role === 'admin' || role === 'manager';
   const isStaff = isImpersonating ? !!impersonatedRole : (role !== null && role !== undefined);
 
+  // Display identity — show impersonated user if impersonating, otherwise real user
+  const displayName = isImpersonating
+    ? (impersonatedName || impersonatedEmail || 'Unknown')
+    : (fullName || user?.email?.split('@')[0] || 'User');
+  const displayRole = isImpersonating
+    ? (ROLE_LABELS[impersonatedRole || ''] || impersonatedRole || 'Staff')
+    : (ROLE_LABELS[role || ''] || role || 'Staff');
+  const displayEmail = isImpersonating
+    ? (impersonatedEmail || user?.email)
+    : user?.email;
+
   useEffect(() => {
     mountedRef.current = true;
 
@@ -68,10 +99,14 @@ export function useAuth() {
       setUser(sessionUser);
 
       if (sessionUser) {
-        const r = await fetchUserRoleWithTimeout(sessionUser.id);
-        if (mountedRef.current) setRole(r);
+        const profile = await fetchUserProfile(sessionUser.id);
+        if (mountedRef.current) {
+          setRole(profile.role);
+          setFullName(profile.full_name);
+        }
       } else {
         setRole(null);
+        setFullName(null);
       }
 
       if (mountedRef.current) setLoading(false);
@@ -117,9 +152,19 @@ export function useAuth() {
   };
 
   const signOut = async () => {
+    // Clear impersonation before signing out
+    localStorage.removeItem('impersonate');
     await supabase.auth.signOut();
     setUser(null);
     setRole(null);
+    setFullName(null);
+    // Force redirect to login
+    window.location.href = '/login';
+  };
+
+  const stopImpersonating = () => {
+    localStorage.removeItem('impersonate');
+    window.location.reload();
   };
 
   // If impersonating, create a synthetic user object with the target user's info
@@ -137,6 +182,9 @@ export function useAuth() {
     user: displayUser,
     realUser: user, // Always the actual logged-in user
     role: effectiveRole,
+    displayName,
+    displayRole,
+    displayEmail,
     isAdmin,
     isManager,
     isStaff,
@@ -144,6 +192,7 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
+    stopImpersonating,
     isImpersonating,
     impersonatedName,
   };

@@ -43,7 +43,7 @@ const TABLE_COLORS: Record<string, string> = {
 };
 
 export default function Operations() {
-  const { user, isImpersonating, impersonatedName } = useAuth();
+  const { user, isImpersonating, impersonatedName, stopImpersonating } = useAuth();
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [tableFilter, setTableFilter] = useState('all');
@@ -138,14 +138,6 @@ export default function Operations() {
     window.location.reload();
   };
 
-  const stopImpersonating = () => {
-    localStorage.removeItem('impersonate');
-    toast.success('Stopped impersonating');
-    window.location.reload();
-  };
-
-  const impersonateData = isImpersonating ? JSON.parse(localStorage.getItem('impersonate') || '{}') : null;
-
   return (
     <div className="p-6 space-y-6">
       {/* Impersonation Banner */}
@@ -159,6 +151,7 @@ export default function Operations() {
             </span>
           </div>
           <Button variant="outline" size="sm" className="text-white border-white hover:bg-white/20" onClick={stopImpersonating}>
+            <Shield className="h-4 w-4 mr-1" />
             Stop Impersonating
           </Button>
         </div>

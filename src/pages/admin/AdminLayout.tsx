@@ -26,7 +26,7 @@ const navItems = [
 ];
 
 export default function AdminLayout() {
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, displayName, displayRole, displayEmail, isAdmin, loading, signOut, isImpersonating, stopImpersonating } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -88,9 +88,14 @@ export default function AdminLayout() {
 
         <div className="flex items-center gap-3">
           <NotificationBell />
+          {isImpersonating && (
+            <Button variant="outline" size="sm" onClick={stopImpersonating} className="text-amber-600 border-amber-300 hover:bg-amber-50">
+              Stop Impersonating
+            </Button>
+          )}
           <div className="text-right hidden sm:block">
-            <p className="text-xs text-muted-foreground">Signed in as</p>
-            <p className="text-sm font-medium">{user.email}</p>
+            <p className="text-sm font-semibold leading-tight">{displayName}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{displayRole}</p>
           </div>
           <Button 
             variant="destructive" 
