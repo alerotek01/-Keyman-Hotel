@@ -28,6 +28,7 @@ import ManagerReports from "./pages/admin/Reports";
 import ManagerBookings from "./pages/admin/Bookings";
 import ManagerStaff from "./pages/manager/Staff";
 import StaffLayout from "./pages/staff/StaffLayout";
+import StaffPdaLayout from "./components/StaffPdaLayout";
 import StaffDashboard from "./pages/staff/Dashboard";
 import StaffBookings from "./pages/staff/Bookings";
 import StaffRequests from "./pages/staff/GuestRequests";
@@ -85,8 +86,8 @@ const App = () => (
             <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>
           
-          {/* Staff Routes */}
-          <Route path="/staff" element={<StaffLayout />}>
+          {/* Staff Routes (Mobile PDA) */}
+          <Route path="/staff" element={<StaffPdaLayout />}>
             <Route index element={<StaffDashboard />} />
             <Route path="bookings" element={<StaffBookings />} />
             <Route path="reception" element={<ReceptionistPda />} />

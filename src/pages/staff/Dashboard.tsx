@@ -1,212 +1,317 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
 import { useGuestRequests } from '@/hooks/useGuestRequests';
+import { useAllRooms } from '@/hooks/useRooms';
+import { useAuth } from '@/hooks/useAuth';
+import { StatCard, TaskCard, SectionHeader, StatsRow } from '@/components/StaffPdaLayout';
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { 
-  CalendarCheck, 
-  ClipboardList, 
-  CheckCircle2, 
-  Clock,
-  Loader2,
-  ArrowRight
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
+  pending: { bg: 'bg-amber-50', color: 'bg-amber-100 text-amber-700' },
+  confirmed: { bg: 'bg-blue-50', color: 'bg-blue-100 text-blue-700' },
+  checked_in: { bg: 'bg-emerald-50', color: 'bg-emerald-100 text-emerald-700' },
+  checked_out: { bg: 'bg-gray-50', color: 'bg-gray-100 text-gray-600' },
+  in_progress: { bg: 'bg-blue-50', color: 'bg-blue-100 text-blue-700' },
+  completed: { bg: 'bg-emerald-50', color: 'bg-emerald-100 text-emerald-700' },
+  urgent: { bg: 'bg-red-50', color: 'bg-red-100 text-red-700' },
+};
+
 export default function StaffDashboard() {
+  const { displayName, role } = useAuth();
   const { data: bookings, isLoading: bookingsLoading } = useBookings();
   const { data: guestRequests, isLoading: requestsLoading } = useGuestRequests();
+  const { data: rooms, isLoading: roomsLoading } = useAllRooms();
 
-  const isLoading = bookingsLoading || requestsLoading;
+  const isLoading = bookingsLoading || requestsLoading || roomsLoading;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-brass" />
       </div>
     );
   }
 
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const todayCheckIns = bookings?.filter(b => b.check_in === today && b.status !== 'cancelled') || [];
+  const todayCheckOuts = bookings?.filter(b => b.check_out === today && b.status !== 'cancelled') || [];
   const pendingBookings = bookings?.filter(b => b.status === 'pending') || [];
-  const todayCheckIns = bookings?.filter(b => b.check_in === format(new Date(), 'yyyy-MM-dd')) || [];
-  const todayCheckOuts = bookings?.filter(b => b.check_out === format(new Date(), 'yyyy-MM-dd')) || [];
-  
   const pendingRequests = guestRequests?.filter(r => r.status === 'pending') || [];
   const inProgressRequests = guestRequests?.filter(r => r.status === 'in_progress') || [];
+  const availableRooms = rooms?.filter(r => r.status === 'available') || [];
+  const occupiedRooms = rooms?.filter(r => r.status === 'occupied') || [];
+
+  // Role-specific dashboard
+  if (role === 'receptionist') {
+    return <ReceptionistDashboard
+      todayCheckIns={todayCheckIns}
+      todayCheckOuts={todayCheckOuts}
+      pendingBookings={pendingBookings}
+      pendingRequests={pendingRequests}
+      availableRooms={availableRooms}
+    />;
+  }
+
+  if (role === 'waiter') {
+    return <WaiterDashboard />;
+  }
+
+  if (role === 'chef') {
+    return <ChefDashboard />;
+  }
+
+  if (role === 'housekeeper') {
+    return <HousekeeperDashboard
+      pendingRequests={pendingRequests}
+      inProgressRequests={inProgressRequests}
+      rooms={rooms || []}
+    />;
+  }
+
+  // Default / manager
+  return <DefaultDashboard
+    todayCheckIns={todayCheckIns}
+    todayCheckOuts={todayCheckOuts}
+    pendingBookings={pendingBookings}
+    pendingRequests={pendingRequests}
+    availableRooms={availableRooms}
+  />;
+}
+
+// ═══════════════════════════════════════════════
+// RECEPTIONIST DASHBOARD
+// ═══════════════════════════════════════════════
+function ReceptionistDashboard({ todayCheckIns, todayCheckOuts, pendingBookings, pendingRequests, availableRooms }: any) {
+  return (
+    <div className="px-5 py-4 space-y-1">
+      {/* Stats */}
+      <StatsRow>
+        <StatCard icon="🔑" number={todayCheckIns.length} label="Check-Ins Today" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
+        <StatCard icon="🚪" number={todayCheckOuts.length} label="Check-Outs" color="bg-gradient-to-br from-orange-400 to-pink-500" />
+        <StatCard icon="🛏️" number={availableRooms.length} label="Rooms Available" color="bg-gradient-to-br from-blue-400 to-purple-500" />
+        <StatCard icon="📋" number={pendingBookings.length} label="Pending Bookings" color="bg-gradient-to-br from-brass to-yellow-500" />
+      </StatsRow>
+
+      {/* Today's Arrivals */}
+      <SectionHeader title="Today's Arrivals" count={`${todayCheckIns.length} guests`} />
+      <div className="space-y-2">
+        {todayCheckIns.length === 0 ? (
+          <p className="text-center text-gray-400 text-sm py-8">No arrivals today</p>
+        ) : (
+          todayCheckIns.slice(0, 5).map((b: any) => (
+            <TaskCard
+              key={b.id}
+              icon="🧑"
+              iconBg="bg-emerald-50"
+              title={b.guests?.name || 'Guest'}
+              meta={`Room ${b.rooms?.room_number} · ${b.num_adults + b.num_children} guest(s)`}
+              status="Pending"
+              statusColor="bg-amber-100 text-amber-700"
+              onClick={() => window.location.href = '/staff/reception'}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Pending Bookings */}
+      {pendingBookings.length > 0 && (
+        <>
+          <SectionHeader title="Pending Bookings" count={`${pendingBookings.length} awaiting`} />
+          <div className="space-y-2">
+            {pendingBookings.slice(0, 3).map((b: any) => (
+              <TaskCard
+                key={b.id}
+                icon="📅"
+                iconBg="bg-blue-50"
+                title={b.guests?.name || 'Guest'}
+                meta={`Room ${b.rooms?.room_number} · ${format(new Date(b.check_in), 'MMM d')} - ${format(new Date(b.check_out), 'MMM d')}`}
+                status="Confirm"
+                statusColor="bg-blue-100 text-blue-700"
+                onClick={() => window.location.href = '/staff/bookings'}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Guest Requests */}
+      {pendingRequests.length > 0 && (
+        <>
+          <SectionHeader title="Guest Requests" count={`${pendingRequests.length} open`} />
+          <div className="space-y-2">
+            {pendingRequests.slice(0, 3).map((r: any) => (
+              <TaskCard
+                key={r.id}
+                icon="🛎️"
+                iconBg="bg-red-50"
+                title={r.request_type.replace('_', ' ')}
+                meta={`${r.bookings?.guests?.name} · Room ${r.bookings?.rooms?.room_number}`}
+                status="Urgent"
+                statusColor="bg-red-100 text-red-700"
+                onClick={() => window.location.href = '/staff/requests'}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// WAITER DASHBOARD
+// ═══════════════════════════════════════════════
+function WaiterDashboard() {
+  // Placeholder — will use restaurant orders data
+  return (
+    <div className="px-5 py-4 space-y-1">
+      <StatsRow>
+        <StatCard icon="🍽️" number="4" label="Active Orders" color="bg-gradient-to-br from-orange-400 to-pink-500" />
+        <StatCard icon="✅" number="12" label="Served Today" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
+        <StatCard icon="🪑" number="8" label="Tables Active" color="bg-gradient-to-br from-blue-400 to-purple-500" />
+      </StatsRow>
+
+      <SectionHeader title="Ready to Serve" count="2 ready" />
+      <div className="space-y-2">
+        <TaskCard icon="🔥" iconBg="bg-emerald-50" title="Table 3 — Chicken & Chips" meta="2 items · Ready since 12:15" status="Ready" statusColor="bg-emerald-100 text-emerald-700" />
+        <TaskCard icon="🍲" iconBg="bg-emerald-50" title="Table 7 — Beef Stew + Rice" meta="3 items · Ready since 12:18" status="Ready" statusColor="bg-emerald-100 text-emerald-700" />
+      </div>
+
+      <SectionHeader title="Preparing" count="2 cooking" />
+      <div className="space-y-2">
+        <TaskCard icon="⏳" iconBg="bg-amber-50" title="Table 5 — Fish & Vegetables" meta="1 item · ~5 min remaining" status="Cooking" statusColor="bg-amber-100 text-amber-700" />
+        <TaskCard icon="⏳" iconBg="bg-amber-50" title="Table 1 — Full Breakfast" meta="4 items · ~8 min remaining" status="Cooking" statusColor="bg-amber-100 text-amber-700" />
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// CHEF DASHBOARD
+// ═══════════════════════════════════════════════
+function ChefDashboard() {
+  return (
+    <div className="px-5 py-4 space-y-1">
+      <StatsRow>
+        <StatCard icon="🔥" number="5" label="In Queue" color="bg-gradient-to-br from-orange-400 to-pink-500" />
+        <StatCard icon="✅" number="18" label="Completed" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
+        <StatCard icon="🚫" number="2" label="Sold Out" color="bg-gradient-to-br from-red-400 to-red-600" />
+      </StatsRow>
+
+      <SectionHeader title="Order Queue" count="5 pending" />
+      <div className="space-y-2">
+        <TaskCard icon="🔴" iconBg="bg-red-50" title="Order #47 — Table 3" meta="Chicken & Chips · 12:10 PM" status="New" statusColor="bg-red-100 text-red-700" />
+        <TaskCard icon="🟡" iconBg="bg-amber-50" title="Order #46 — Table 7" meta="Beef Stew + Rice · 12:08 PM" status="Preparing" statusColor="bg-amber-100 text-amber-700" />
+        <TaskCard icon="🟡" iconBg="bg-amber-50" title="Order #45 — Table 5" meta="Fish & Vegetables · 12:05 PM" status="Preparing" statusColor="bg-amber-100 text-amber-700" />
+        <TaskCard icon="🟢" iconBg="bg-emerald-50" title="Order #44 — Table 1" meta="Full Breakfast · 12:02 PM" status="Done" statusColor="bg-emerald-100 text-emerald-700" />
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// HOUSEKEEPER DASHBOARD
+// ═══════════════════════════════════════════════
+function HousekeeperDashboard({ pendingRequests, inProgressRequests, rooms }: any) {
+  const dirtyRooms = rooms?.filter((r: any) => r.status === 'dirty') || [];
+  const cleanRooms = rooms?.filter((r: any) => r.status === 'available') || [];
 
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-bold">Staff Dashboard</h1>
-        <p className="text-muted-foreground">Welcome! Here's what needs your attention today.</p>
+    <div className="px-5 py-4 space-y-1">
+      <StatsRow>
+        <StatCard icon="🧹" number={dirtyRooms.length} label="To Clean" color="bg-gradient-to-br from-orange-400 to-pink-500" />
+        <StatCard icon="✅" number={cleanRooms.length} label="Clean" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
+        <StatCard icon="📋" number={pendingRequests.length + inProgressRequests.length} label="Guest Requests" color="bg-gradient-to-br from-blue-400 to-purple-500" />
+      </StatsRow>
+
+      <SectionHeader title="Rooms to Clean" count={`${dirtyRooms.length} remaining`} />
+      <div className="space-y-2">
+        {dirtyRooms.length === 0 ? (
+          <p className="text-center text-gray-400 text-sm py-8">All rooms clean! 🎉</p>
+        ) : (
+          dirtyRooms.slice(0, 5).map((r: any) => (
+            <TaskCard
+              key={r.id}
+              icon="🛏️"
+              iconBg="bg-red-50"
+              title={`Room ${r.room_number}`}
+              meta={`${r.room_types?.name || 'Room'} · Needs cleaning`}
+              status="Dirty"
+              statusColor="bg-red-100 text-red-700"
+              onClick={() => window.location.href = '/staff/housekeeping'}
+            />
+          ))
+        )}
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Bookings</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{pendingBookings.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting confirmation</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Check-ins</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{todayCheckIns.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">{format(new Date(), 'MMM d, yyyy')}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Check-outs</CardTitle>
-            <Clock className="h-4 w-4 text-brass" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{todayCheckOuts.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">{format(new Date(), 'MMM d, yyyy')}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Open Requests</CardTitle>
-            <ClipboardList className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{pendingRequests.length + inProgressRequests.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">{pendingRequests.length} pending, {inProgressRequests.length} in progress</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Bookings */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Pending Bookings</CardTitle>
-            <Link to="/staff/bookings">
-              <Button variant="ghost" size="sm">
-                View All <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {pendingBookings.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No pending bookings</p>
-            ) : (
-              <div className="space-y-3">
-                {pendingBookings.slice(0, 5).map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div>
-                      <p className="font-medium">{booking.guests?.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Room {booking.rooms?.room_number} • {format(new Date(booking.check_in), 'MMM d')} - {format(new Date(booking.check_out), 'MMM d')}
-                      </p>
-                    </div>
-                    <span className="font-semibold">{formatCurrency(Number(booking.rate))}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Guest Requests */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Open Guest Requests</CardTitle>
-            <Link to="/staff/requests">
-              <Button variant="ghost" size="sm">
-                View All <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {pendingRequests.length === 0 && inProgressRequests.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No open requests</p>
-            ) : (
-              <div className="space-y-3">
-                {[...pendingRequests, ...inProgressRequests].slice(0, 5).map((request) => (
-                  <div key={request.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div>
-                      <p className="font-medium capitalize">{request.request_type.replace('_', ' ')}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {request.bookings?.guests?.name} • Room {request.bookings?.rooms?.room_number}
-                      </p>
-                    </div>
-                    <span className={cn(
-                      'text-xs px-2 py-1 rounded-full',
-                      request.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                      'bg-blue-100 text-blue-800'
-                    )}>
-                      {request.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Today's Schedule */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Today's Schedule - {format(new Date(), 'MMMM d, yyyy')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Check-ins
-              </h3>
-              {todayCheckIns.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No check-ins today</p>
-              ) : (
-                <div className="space-y-2">
-                  {todayCheckIns.map((booking) => (
-                    <div key={booking.id} className="p-3 rounded-lg bg-emerald-50 text-emerald-900">
-                      <p className="font-medium">{booking.guests?.name}</p>
-                      <p className="text-sm">Room {booking.rooms?.room_number} • {booking.num_adults + booking.num_children} guest(s)</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Clock className="h-4 w-4 text-brass" />
-                Check-outs
-              </h3>
-              {todayCheckOuts.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No check-outs today</p>
-              ) : (
-                <div className="space-y-2">
-                  {todayCheckOuts.map((booking) => (
-                    <div key={booking.id} className="p-3 rounded-lg bg-amber-50 text-amber-900">
-                      <p className="font-medium">{booking.guests?.name}</p>
-                      <p className="text-sm">Room {booking.rooms?.room_number}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+      {/* Guest Requests */}
+      {[...pendingRequests, ...inProgressRequests].length > 0 && (
+        <>
+          <SectionHeader title="Guest Requests" count={`${pendingRequests.length} new`} />
+          <div className="space-y-2">
+            {[...pendingRequests, ...inProgressRequests].slice(0, 3).map((r: any) => (
+              <TaskCard
+                key={r.id}
+                icon="🛎️"
+                iconBg="bg-blue-50"
+                title={r.request_type.replace('_', ' ')}
+                meta={`${r.bookings?.guests?.name} · Room ${r.bookings?.rooms?.room_number}`}
+                status={r.status === 'pending' ? 'New' : 'In Progress'}
+                statusColor={r.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}
+                onClick={() => window.location.href = '/staff/requests'}
+              />
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// DEFAULT DASHBOARD (Manager / Other)
+// ═══════════════════════════════════════════════
+function DefaultDashboard({ todayCheckIns, todayCheckOuts, pendingBookings, pendingRequests, availableRooms }: any) {
+  return (
+    <div className="px-5 py-4 space-y-1">
+      <StatsRow>
+        <StatCard icon="🔑" number={todayCheckIns.length} label="Check-Ins" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
+        <StatCard icon="🚪" number={todayCheckOuts.length} label="Check-Outs" color="bg-gradient-to-br from-orange-400 to-pink-500" />
+        <StatCard icon="🛏️" number={availableRooms.length} label="Available" color="bg-gradient-to-br from-blue-400 to-purple-500" />
+        <StatCard icon="📋" number={pendingBookings.length} label="Pending" color="bg-gradient-to-br from-brass to-yellow-500" />
+      </StatsRow>
+
+      <SectionHeader title="Today's Schedule" count={`${todayCheckIns.length + todayCheckOuts.length} total`} />
+      <div className="space-y-2">
+        {todayCheckIns.slice(0, 3).map((b: any) => (
+          <TaskCard
+            key={b.id}
+            icon="✅"
+            iconBg="bg-emerald-50"
+            title={b.guests?.name || 'Guest'}
+            meta={`Room ${b.rooms?.room_number} · Check-in · ${b.num_adults} adult(s)`}
+            status="In"
+            statusColor="bg-emerald-100 text-emerald-700"
+          />
+        ))}
+        {todayCheckOuts.slice(0, 3).map((b: any) => (
+          <TaskCard
+            key={b.id}
+            icon="🚪"
+            iconBg="bg-amber-50"
+            title={b.guests?.name || 'Guest'}
+            meta={`Room ${b.rooms?.room_number} · Check-out`}
+            status="Out"
+            statusColor="bg-amber-100 text-amber-700"
+          />
+        ))}
+        {todayCheckIns.length === 0 && todayCheckOuts.length === 0 && (
+          <p className="text-center text-gray-400 text-sm py-8">No activity today</p>
+        )}
+      </div>
     </div>
   );
 }
