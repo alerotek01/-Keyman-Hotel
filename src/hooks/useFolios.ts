@@ -26,20 +26,20 @@ export function useAllFolios(statusFilter?: string) {
 }
 
 // ===== Get Folio by Reservation =====
-export function useFolio(reservationId?: string) {
+export function useFolio(folioId?: string) {
   return useQuery({
-    queryKey: ['folio', reservationId],
+    queryKey: ['folio', folioId],
     queryFn: async () => {
-      if (!reservationId) return null;
+      if (!folioId) return null;
       const { data, error } = await sb
         .from('guest_folios')
         .select('*, folio_transactions(*), folio_payments(*), reservations(*, guests(*), rooms(*, room_types(*)))')
-        .eq('reservation_id', reservationId)
+        .eq('id', folioId)
         .single();
       if (error) throw error;
       return data;
     },
-    enabled: !!reservationId,
+    enabled: !!folioId,
   });
 }
 
