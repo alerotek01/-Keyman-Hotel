@@ -213,8 +213,10 @@ export default function FolioManagement() {
                         <span className="text-muted-foreground">
                           {f.created_at ? format(new Date(f.created_at), 'MMM d') : '—'}
                         </span>
-                        <span className={cn('font-mono font-semibold', balance > 0 ? 'text-red-600' : 'text-green-600')}>
-                          {formatCurrency(balance)}
+                        <span className={cn('font-mono font-semibold',
+                          (f._listBalance ?? 0) > 0 ? 'text-red-600' : 'text-green-600'
+                        )}>
+                          {formatCurrency(f._listBalance ?? 0)}
                         </span>
                       </div>
                     </CardContent>

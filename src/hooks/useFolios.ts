@@ -11,7 +11,7 @@ export function useAllFolios(statusFilter?: string) {
     queryFn: async () => {
       let query = sb
         .from('guest_folios')
-        .select('*, reservations(guests(name, email, phone), rooms(room_number, room_types(name)), check_in, check_out, status)')
+        .select('*, reservations(guests(name, email, phone), rooms(room_number, room_types(name)), check_in, check_out, status), folio_transactions(amount), folio_payments(amount)')
         .order('created_at', { ascending: false });
 
       if (statusFilter && statusFilter !== 'all') {
@@ -20,7 +20,12 @@ export function useAllFolios(statusFilter?: string) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      // Compute list balance from transactions and payments
+      return (data || []).map((f: any) => {
+        const totalCharges = (f.folio_transactions || []).reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+        const totalPayments = (f.folio_payments || []).reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+        return { ...f, _listBalance: totalCharges - totalPayments };
+      });
     },
   });
 }
@@ -31,12 +36,44 @@ export function useFolio(folioId?: string) {
     queryKey: ['folio', folioId],
     queryFn: async () => {
       if (!folioId) return null;
+      // Step 1: Get folio with transactions, payments, and reservation data
       const { data, error } = await sb
         .from('guest_folios')
-        .select('*, folio_transactions(*, recorded_by_user:recorded_by(full_name, email, role)), folio_payments(*, recorded_by_user:recorded_by(full_name, email, role)), reservations(*, guests(*), rooms(*, room_types(*)))')
+        .select('*, folio_transactions(*), folio_payments(*), reservations(*, guests(*), rooms(*, room_types(*)))')
         .eq('id', folioId)
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error('[useFolio] Query error:', JSON.stringify(error));
+        throw error;
+      }
+      if (!data) return null;
+
+      // Step 2: Fetch staff info for recorded_by users (separate query to avoid join failures)
+      const staffIds = new Set<string>();
+      (data.folio_transactions || []).forEach((t: any) => { if (t.recorded_by) staffIds.add(t.recorded_by); });
+      (data.folio_payments || []).forEach((p: any) => { if (p.recorded_by) staffIds.add(p.recorded_by); });
+
+      let staffMap: Record<string, { full_name: string; email: string; role: string }> = {};
+      if (staffIds.size > 0) {
+        const { data: staffData } = await sb
+          .from('users')
+          .select('id, full_name, email, role')
+          .in('id', Array.from(staffIds));
+        if (staffData) {
+          staffMap = Object.fromEntries(staffData.map((s: any) => [s.id, s]));
+        }
+      }
+
+      // Step 3: Attach staff info to transactions and payments
+      data.folio_transactions = (data.folio_transactions || []).map((t: any) => ({
+        ...t,
+        recorded_by_user: t.recorded_by ? staffMap[t.recorded_by] || null : null,
+      }));
+      data.folio_payments = (data.folio_payments || []).map((p: any) => ({
+        ...p,
+        recorded_by_user: p.recorded_by ? staffMap[p.recorded_by] || null : null,
+      }));
+
       return data;
     },
     enabled: !!folioId,
