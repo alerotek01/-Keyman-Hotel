@@ -170,26 +170,48 @@ export default function AdminSiteContent() {
                 </div>
                 <div className="space-y-2">
                   <Label>Phone</Label>
-                  <Input value={getSetting('phone')} onChange={(e) => setSetting('phone', e.target.value)} />
+                  <Input value={getSetting('phone')} onChange={(e) => setSetting('phone', e.target.value)} placeholder="+254 700 000 000" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Email</Label>
-                  <Input type="email" value={getSetting('email')} onChange={(e) => setSetting('email', e.target.value)} />
+                  <Input type="email" value={getSetting('hotel_email')} onChange={(e) => setSetting('hotel_email', e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Address</Label>
-                  <Input value={getSetting('address')} onChange={(e) => setSetting('address', e.target.value)} />
+                  <Input value={getSetting('hotel_address')} onChange={(e) => setSetting('hotel_address', e.target.value)} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Tagline</Label>
-                <Input value={getSetting('tagline')} onChange={(e) => setSetting('tagline', e.target.value)} placeholder="A proper hotel stop on the Mombasa–Nairobi highway." />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tagline</Label>
+                  <Input value={getSetting('tagline')} onChange={(e) => setSetting('tagline', e.target.value)} placeholder="Rooms with views of the Taita Hills" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Operating Hours</Label>
+                  <Input value={getSetting('operating_hours')} onChange={(e) => setSetting('operating_hours', e.target.value)} placeholder="24/7 Front Desk" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Operating Hours</Label>
-                <Input value={getSetting('operating_hours')} onChange={(e) => setSetting('operating_hours', e.target.value)} placeholder="24/7" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Check-in Time</Label>
+                  <Input value={getSetting('check_in_time')} onChange={(e) => setSetting('check_in_time', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Check-out Time</Label>
+                  <Input value={getSetting('check_out_time')} onChange={(e) => setSetting('check_out_time', e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <Input value={getSetting('currency')} onChange={(e) => setSetting('currency', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>VAT Rate (%)</Label>
+                  <Input type="number" value={getSetting('vat_rate')} onChange={(e) => setSetting('vat_rate', e.target.value)} />
+                </div>
               </div>
             </CardContent>
           </Card>
