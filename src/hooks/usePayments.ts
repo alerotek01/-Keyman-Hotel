@@ -117,7 +117,7 @@ export function useStaffShifts(userId?: string, date?: string) {
     queryFn: async () => {
       let query = sb
         .from('staff_shifts')
-        .select('*, users(user_id, full_name, email), departments(name)')
+        .select('*, users(full_name, email, role), departments(name)')
         .order('shift_date', { ascending: false });
 
       if (userId) query = query.eq('user_id', userId);
@@ -136,7 +136,7 @@ export function useAllShifts(date?: string) {
     queryFn: async () => {
       let query = sb
         .from('staff_shifts')
-        .select('*, users(user_id, full_name, email), departments(name)')
+        .select('*, users(full_name, email, role), departments(name)')
         .order('shift_date', { ascending: false });
 
       if (date) query = query.eq('shift_date', date);
@@ -200,7 +200,7 @@ export function useReconciliations(date?: string) {
     queryFn: async () => {
       let query = sb
         .from('shift_reconciliations')
-        .select('*, staff_shifts(*, users(user_id, full_name)), users_submitted:submitted_by(full_name), users_manager:manager_id(full_name)')
+        .select('*, staff_shifts(*, users(full_name, email)), users_submitted:submitted_by(full_name), users_manager:manager_id(full_name)')
         .order('created_at', { ascending: false });
 
       if (date) query = query.eq('staff_shifts.shift_date', date);
