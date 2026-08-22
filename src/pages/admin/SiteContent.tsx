@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useSiteSettings, useUpdateSiteSetting } from '@/hooks/useCms';
 import { usePageContent, useUpdatePageContent } from '@/hooks/useCms';
-import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide } from '@/hooks/useCms';
+import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide, useUploadHeroSlideImage } from '@/hooks/useCms';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Globe, FileText, ImagePlus, Trash2, GripVertical } from 'lucide-react';
 
@@ -23,6 +23,7 @@ export default function AdminSiteContent() {
   const createSlide = useCreateHeroSlide();
   const updateSlide = useUpdateHeroSlide();
   const deleteSlide = useDeleteHeroSlide();
+  const uploadSlideImage = useUploadHeroSlideImage();
   const { toast } = useToast();
 
   // Local state for settings form
@@ -31,7 +32,8 @@ export default function AdminSiteContent() {
 
   // Hero slide dialog
   const [slideDialogOpen, setSlideDialogOpen] = useState(false);
-  const [slideForm, setSlideForm] = useState({ image_url: '', caption: '', alt_text: '' });
+  const [slideForm, setSlideForm] = useState({ caption: '', alt_text: '' });
+  const [slideFile, setSlideFile] = useState<File | null>(null);
 
   const isLoading = settingsLoading || contentLoading || slidesLoading;
 
@@ -70,15 +72,27 @@ export default function AdminSiteContent() {
 
   const handleAddSlide = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!slideFile) { toast({ title: 'Please select an image', variant: 'destructive' }); return; }
     try {
-      await createSlide.mutateAsync({
-        image_url: slideForm.image_url,
-        caption: slideForm.caption || undefined,
-        alt_text: slideForm.alt_text || undefined,
-        sort_order: heroSlides?.length || 0,
-      });
+      // Create slide first with placeholder
+      const { data: slide, error } = await (await import('@/integrations/supabase/client')).supabase
+        .from('hero_slides')
+        .insert({
+          image_url: '',
+          caption: slideForm.caption || undefined,
+          alt_text: slideForm.alt_text || undefined,
+          sort_order: heroSlides?.length || 0,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Upload image
+      await uploadSlideImage.mutateAsync({ slideId: slide.id, file: slideFile });
+
       setSlideDialogOpen(false);
-      setSlideForm({ image_url: '', caption: '', alt_text: '' });
+      setSlideForm({ caption: '', alt_text: '' });
+      setSlideFile(null);
       toast({ title: 'Slide Added' });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -272,11 +286,12 @@ export default function AdminSiteContent() {
                 </DialogHeader>
                 <form onSubmit={handleAddSlide} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Image URL</Label>
-                    <Input
-                      value={slideForm.image_url}
-                      onChange={(e) => setSlideForm({ ...slideForm, image_url: e.target.value })}
-                      placeholder="https://... or storage path"
+                    <Label>Image</Label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brass file:text-white hover:file:bg-brass/90"
+                      onChange={(e) => setSlideFile(e.target.files?.[0] || null)}
                       required
                     />
                   </div>
@@ -313,11 +328,20 @@ export default function AdminSiteContent() {
                     <GripVertical className="h-4 w-4" />
                     <span className="text-sm font-mono">{idx + 1}</span>
                   </div>
-                  <img
-                    src={slide.image_url}
-                    alt={slide.alt_text || 'Hero slide'}
-                    className="h-20 w-36 object-cover rounded-lg"
-                  />
+                  <label className="relative cursor-pointer group">
+                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      try {
+                        await uploadSlideImage.mutateAsync({ slideId: slide.id, file: f });
+                        toast({ title: 'Image updated' });
+                      } catch (err: any) { toast({ title: 'Upload failed', variant: 'destructive' }); }
+                    }} />
+                    <img src={slide.image_url} alt={slide.alt_text || 'Hero slide'} className="h-20 w-36 object-cover rounded-lg group-hover:opacity-80 transition-opacity" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-white text-xs font-medium">Change</span>
+                    </div>
+                  </label>
                   <div className="flex-1 space-y-1">
                     <Input
                       defaultValue={slide.caption || ''}

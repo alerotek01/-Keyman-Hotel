@@ -9,10 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMenuCategories, useCreateMenuCategory, useUpdateMenuCategory, useDeleteMenuCategory } from '@/hooks/useMenu';
-import { useMenuItems, useCreateMenuItem, useUpdateMenuItem, useDeleteMenuItem } from '@/hooks/useMenu';
+import { useMenuItems, useCreateMenuItem, useUpdateMenuItem, useDeleteMenuItem, useUploadMenuItemImage } from '@/hooks/useMenu';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Loader2, UtensilsCrossed, FolderOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, UtensilsCrossed, FolderOpen, Upload } from 'lucide-react';
 
 export default function AdminMenu() {
   const { data: categories, isLoading: catsLoading } = useMenuCategories();
@@ -23,6 +23,7 @@ export default function AdminMenu() {
   const createItem = useCreateMenuItem();
   const updateItem = useUpdateMenuItem();
   const deleteItem = useDeleteMenuItem();
+  const uploadItemImage = useUploadMenuItemImage();
   const { toast } = useToast();
 
   // Category dialog
@@ -225,7 +226,10 @@ export default function AdminMenu() {
                 <div className="grid gap-3">
                   {catItems.map(item => (
                     <Card key={item.id} className={!item.is_available ? 'opacity-50' : ''}>
-                      <CardContent className="flex items-center justify-between py-4">
+                      <CardContent className="flex items-center gap-4 py-4">
+                        {item.image_url && (
+                          <img src={item.image_url} alt={item.name} className="h-16 w-16 rounded-lg object-cover flex-shrink-0" />
+                        )}
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium">{item.name}</h4>
@@ -235,6 +239,19 @@ export default function AdminMenu() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-semibold">{formatCurrency(item.price)}</span>
+                          <label className="cursor-pointer">
+                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                await uploadItemImage.mutateAsync({ itemId: item.id, file });
+                                toast({ title: 'Image uploaded' });
+                              } catch (err: any) {
+                                toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+                              }
+                            }} />
+                            <Button variant="ghost" size="sm" asChild><span><Upload className="h-4 w-4" /></span></Button>
+                          </label>
                           <Button variant="ghost" size="sm" onClick={() => handleItemToggle(item)}>
                             {item.is_available ? 'Disable' : 'Enable'}
                           </Button>

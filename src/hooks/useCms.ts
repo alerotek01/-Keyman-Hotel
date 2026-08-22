@@ -140,3 +140,32 @@ export function useDeleteHeroSlide() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['hero-slides'] }),
   });
 }
+
+// ===== Hero Slide Image Upload =====
+export function useUploadHeroSlideImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ slideId, file }: { slideId: string; file: File }) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `hero/${slideId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('rooms')
+        .upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = sb.storage
+        .from('rooms')
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await sb
+        .from('hero_slides')
+        .update({ image_url: publicUrl })
+        .eq('id', slideId);
+      if (updateError) throw updateError;
+
+      return publicUrl;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hero-slides'] }),
+  });
+}

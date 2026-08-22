@@ -128,3 +128,32 @@ export function useDeleteMenuItem() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['menu-items'] }),
   });
 }
+
+// ===== Menu Item Image Upload =====
+export function useUploadMenuItemImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ itemId, file }: { itemId: string; file: File }) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `menu/${itemId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('rooms')
+        .upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = sb.storage
+        .from('rooms')
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await sb
+        .from('menu_items')
+        .update({ image_url: publicUrl })
+        .eq('id', itemId);
+      if (updateError) throw updateError;
+
+      return publicUrl;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['menu-items'] }),
+  });
+}
