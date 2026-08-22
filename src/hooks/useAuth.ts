@@ -35,7 +35,12 @@ export function useAuth() {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          await fetchUserRole(session.user.id);
+          try {
+            await fetchUserRole(session.user.id);
+          } catch (err) {
+            console.error('Auth state change - role fetch failed:', err);
+            setRole(null);
+          }
         } else {
           setRole(null);
         }
@@ -47,7 +52,12 @@ export function useAuth() {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await fetchUserRole(session.user.id);
+        try {
+          await fetchUserRole(session.user.id);
+        } catch (err) {
+          console.error('Failed to fetch user role:', err);
+          setRole(null);
+        }
       }
       setLoading(false);
     });
