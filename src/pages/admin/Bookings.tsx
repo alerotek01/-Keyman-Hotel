@@ -3,14 +3,19 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useState } from 'react';
 import { useBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
+import { useAllRooms } from '@/hooks/useRooms';
 import { formatCurrency, formatDate, getStatusColor, getRoomTypeLabel } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import BookingCalendar from '@/components/BookingCalendar';
 import type { BookingStatus } from '@/lib/types';
-import { Loader2, Check, X, Clock } from 'lucide-react';
+import { Loader2, Check, X, Clock, Calendar, TableIcon } from 'lucide-react';
 
 export default function AdminBookings() {
+  const [view, setView] = useState<'calendar' | 'table'>('calendar');
   const { data: bookings, isLoading } = useBookings();
+  const { data: rooms } = useAllRooms();
   const updateStatus = useUpdateBookingStatus();
   const { toast } = useToast();
 
@@ -45,7 +50,42 @@ export default function AdminBookings() {
         <p className="text-muted-foreground">View and manage all reservations</p>
       </div>
 
+      {/* View Toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center border rounded-lg overflow-hidden">
+          <Button
+            variant={view === 'calendar' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 px-4"
+            onClick={() => setView('calendar')}
+          >
+            <Calendar className="h-4 w-4 mr-1.5" />
+            Calendar
+          </Button>
+          <Button
+            variant={view === 'table' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 px-4"
+            onClick={() => setView('table')}
+          >
+            <TableIcon className="h-4 w-4 mr-1.5" />
+            Table
+          </Button>
+        </div>
+      </div>
+
+      {/* Calendar View */}
+      {view === 'calendar' && (
+        <div className="mb-8">
+          <BookingCalendar
+            bookings={bookings || []}
+            rooms={rooms || []}
+          />
+        </div>
+      )}
+
       {/* Stats Cards */}
+      {view === 'table' && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardContent className="pt-6">
@@ -87,8 +127,10 @@ export default function AdminBookings() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Bookings Table */}
+      {view === 'table' && (
       <Card>
         <CardHeader>
           <CardTitle>All Reservations</CardTitle>
@@ -167,6 +209,7 @@ export default function AdminBookings() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
