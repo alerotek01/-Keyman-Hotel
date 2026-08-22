@@ -12,7 +12,7 @@ import { useSiteSettings, useUpdateSiteSetting } from '@/hooks/useCms';
 import { usePageContent, useUpdatePageContent } from '@/hooks/useCms';
 import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide, useUploadHeroSlideImage } from '@/hooks/useCms';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Globe, FileText, ImagePlus, Trash2, GripVertical } from 'lucide-react';
+import { Loader2, Save, Globe, FileText, ImagePlus, Trash2, GripVertical, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminSiteContent() {
   const { data: settings, isLoading: settingsLoading } = useSiteSettings();
@@ -101,7 +101,14 @@ export default function AdminSiteContent() {
 
   const handleUpdateSlide = async (id: string, field: string, value: string) => {
     try {
-      await updateSlide.mutateAsync({ id, [field]: value });
+      // Convert string booleans for is_active field
+      const update: Record<string, unknown> = { id };
+      if (field === 'is_active') {
+        update[field] = value === 'true';
+      } else {
+        update[field] = value;
+      }
+      await updateSlide.mutateAsync(update);
       toast({ title: 'Slide Updated' });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -345,13 +352,41 @@ export default function AdminSiteContent() {
 
           <div className="grid gap-4">
             {heroSlides?.map((slide, idx) => (
-              <Card key={slide.id}>
+              <Card key={slide.id} className={slide.is_active ? '' : 'opacity-60'}>
                 <CardContent className="flex items-center gap-4 py-4">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <GripVertical className="h-4 w-4" />
-                    <span className="text-sm font-mono">{idx + 1}</span>
+                  {/* Order controls */}
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-sm font-mono text-muted-foreground">{idx + 1}</span>
+                    <div className="flex flex-col -space-y-1">
+                      <button
+                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        disabled={idx === 0}
+                        onClick={async () => {
+                          if (idx === 0) return;
+                          const prev = heroSlides[idx - 1];
+                          await updateSlide.mutateAsync({ id: prev.id, sort_order: slide.sort_order });
+                          await updateSlide.mutateAsync({ id: slide.id, sort_order: prev.sort_order });
+                        }}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </button>
+                      <button
+                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        disabled={idx === heroSlides.length - 1}
+                        onClick={async () => {
+                          if (idx === heroSlides.length - 1) return;
+                          const next = heroSlides[idx + 1];
+                          await updateSlide.mutateAsync({ id: next.id, sort_order: slide.sort_order });
+                          await updateSlide.mutateAsync({ id: slide.id, sort_order: next.sort_order });
+                        }}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                  <label className="relative cursor-pointer group">
+
+                  {/* Image (click to change) */}
+                  <label className="relative cursor-pointer group shrink-0">
                     <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                       const f = e.target.files?.[0];
                       if (!f) return;
@@ -362,9 +397,11 @@ export default function AdminSiteContent() {
                     }} />
                     <img src={slide.image_url} alt={slide.alt_text || 'Hero slide'} className="h-20 w-36 object-cover rounded-lg group-hover:opacity-80 transition-opacity" />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-white text-xs font-medium">Change</span>
+                      <span className="text-white text-xs font-medium">Change Image</span>
                     </div>
                   </label>
+
+                  {/* Caption & Alt Text */}
                   <div className="flex-1 space-y-1">
                     <Input
                       defaultValue={slide.caption || ''}
@@ -379,10 +416,20 @@ export default function AdminSiteContent() {
                       onBlur={(e) => handleUpdateSlide(slide.id, 'alt_text', e.target.value)}
                     />
                   </div>
+
+                  {/* Active toggle + Delete */}
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${slide.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
+                    <button
+                      onClick={() => handleUpdateSlide(slide.id, 'is_active', String(!slide.is_active))}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        slide.is_active
+                          ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {slide.is_active ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                       {slide.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                    </button>
                     <Button variant="outline" size="sm" onClick={() => handleDeleteSlide(slide.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
