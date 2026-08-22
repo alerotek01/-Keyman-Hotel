@@ -1,7 +1,7 @@
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Loader2, LayoutDashboard, BedDouble, CalendarCheck, ScrollText, LogOut, Home, UtensilsCrossed, Globe, Receipt } from 'lucide-react';
+import { Loader2, LayoutDashboard, BedDouble, CalendarCheck, ScrollText, LogOut, Home, UtensilsCrossed, Globe, Receipt, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { path: '/admin/content', label: 'Site Content', icon: Globe },
   { path: '/admin/bookings', label: 'Bookings', icon: CalendarCheck },
   { path: '/admin/folios', label: 'Folios', icon: Receipt },
+  { path: '/admin/users', label: 'Users', icon: Users },
   { path: '/admin/reports', label: 'Reports', icon: ScrollText },
   { path: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
 ];

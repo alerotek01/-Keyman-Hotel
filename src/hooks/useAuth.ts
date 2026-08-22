@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { AppRole } from '@/lib/types';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sb = supabase as any;
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
@@ -10,28 +13,27 @@ export function useAuth() {
 
   const isAdmin = role === 'admin';
   const isManager = role === 'admin' || role === 'manager';
-  const isStaff = role === 'admin' || role === 'manager' || role === 'staff';
+  const isStaff = role !== null && role !== undefined;
 
   useEffect(() => {
     const fetchUserRole = async (userId: string) => {
-      const { data } = await supabase
-        .from('user_roles')
+      const { data } = await sb
+        .from('users')
         .select('role')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .maybeSingle();
-      
+
       if (data) {
         setRole(data.role as AppRole);
       } else {
-        setRole('public');
+        setRole(null);
       }
     };
 
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
           await fetchUserRole(session.user.id);
         } else {
@@ -41,10 +43,9 @@ export function useAuth() {
       }
     );
 
-    // Then get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         await fetchUserRole(session.user.id);
       }

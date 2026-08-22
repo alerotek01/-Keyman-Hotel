@@ -18,6 +18,7 @@ import AdminReports from "./pages/admin/Reports";
 import AdminMenu from "./pages/admin/Menu";
 import AdminSiteContent from "./pages/admin/SiteContent";
 import AdminFolios from "./pages/admin/FolioManagement";
+import AdminUsers from "./pages/admin/Users";
 import ManagerLayout from "./pages/manager/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerReports from "./pages/admin/Reports";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="content" element={<AdminSiteContent />} />
             <Route path="bookings" element={<AdminBookings />} />
             <Route path="folios" element={<AdminFolios />} />
+            <Route path="users" element={<AdminUsers />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="audit" element={<AdminAudit />} />
           </Route>
