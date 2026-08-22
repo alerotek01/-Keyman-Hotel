@@ -16,6 +16,7 @@ import AdminBookings from "./pages/admin/Bookings";
 import AdminAudit from "./pages/admin/Audit";
 import AdminOperations from "./pages/admin/Operations";
 import MessagePage from "./pages/MessagePage";
+import NotificationSettings from "./pages/NotificationSettings";
 import AdminReports from "./pages/admin/Reports";
 import AdminMenu from "./pages/admin/Menu";
 import AdminSiteContent from "./pages/admin/SiteContent";
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="audit" element={<AdminAudit />} />
             <Route path="operations" element={<AdminOperations />} />
             <Route path="messages" element={<MessagePage />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>
           
           {/* Manager Routes */}
@@ -80,6 +82,7 @@ const App = () => (
             <Route path="reconciliation" element={<Reconciliation />} />
             <Route path="staff" element={<ManagerStaff />} />
             <Route path="messages" element={<MessagePage />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>
           
           {/* Staff Routes */}
@@ -96,6 +99,7 @@ const App = () => (
             <Route path="requests" element={<StaffRequests />} />
             <Route path="receipts" element={<StaffReceipts />} />
             <Route path="messages" element={<MessagePage />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>
           
           <Route path="*" element={<NotFound />} />

@@ -1,7 +1,7 @@
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Loader2, LayoutDashboard, CalendarCheck, ClipboardList, Receipt, LogOut, Home, Sparkles, ClipboardCheck, LogIn, UtensilsCrossed, ChefHat, CreditCard, Clock, MessageSquare } from 'lucide-react';
+import { Loader2, LayoutDashboard, CalendarCheck, ClipboardList, Receipt, LogOut, Home, Sparkles, ClipboardCheck, LogIn, UtensilsCrossed, ChefHat, CreditCard, Clock, MessageSquare, Bell } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,7 @@ const navItems = [
   { path: '/staff/requests', label: 'Guest Requests', icon: ClipboardList },
   { path: '/staff/receipts', label: 'Receipts', icon: Receipt },
   { path: '/staff/messages', label: 'Messages', icon: MessageSquare },
+  { path: '/staff/notification-settings', label: 'Notifications', icon: Bell },
 ];
 
 export default function StaffLayout() {

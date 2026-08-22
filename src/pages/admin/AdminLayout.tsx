@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { 
   Loader2, LayoutDashboard, BedDouble, CalendarCheck, ScrollText, 
   LogOut, Home, UtensilsCrossed, Globe, Receipt, Users, Menu, X,
-  ChevronLeft, Activity, MessageSquare
+  ChevronLeft, Activity, MessageSquare, Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -22,6 +22,7 @@ const navItems = [
   { path: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
   { path: '/admin/operations', label: 'Operations', icon: Activity },
   { path: '/admin/messages', label: 'Messages', icon: MessageSquare },
+  { path: '/admin/notification-settings', label: 'Notifications', icon: Bell },
 ];
 
 export default function AdminLayout() {
