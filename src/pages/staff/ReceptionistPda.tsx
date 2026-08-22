@@ -41,7 +41,7 @@ export default function ReceptionistPda() {
   // Walk-in form
   const [walkInForm, setWalkInForm] = useState({
     guest_name: '', guest_phone: '', guest_email: '', room_type_id: '',
-    room_id: '', num_adults: '2', num_children: '0', check_out: '', special_requests: '',
+    room_id: '', num_adults: '2', num_children: '0', check_out: '', special_requests: '', plate_number: '',
   });
 
   // Payment form
@@ -134,9 +134,10 @@ export default function ReceptionistPda() {
         num_children: parseInt(walkInForm.num_children) || 0,
         check_out: walkInForm.check_out, rate,
         special_requests: walkInForm.special_requests || undefined,
+        plate_number: walkInForm.plate_number || undefined,
       });
       setWalkInDialog(false);
-      setWalkInForm({ guest_name: '', guest_phone: '', guest_email: '', room_type_id: '', room_id: '', num_adults: '2', num_children: '0', check_out: '', special_requests: '' });
+      setWalkInForm({ guest_name: '', guest_phone: '', guest_email: '', room_type_id: '', room_id: '', num_adults: '2', num_children: '0', check_out: '', special_requests: '', plate_number: '' });
       toast.success('Walk-in guest checked in!');
     } catch (error: any) { toast.error(error.message || 'Failed'); }
   };
@@ -415,6 +416,7 @@ export default function ReceptionistPda() {
               <div className="space-y-2"><Label>Children</Label><Input type="number" min={0} value={walkInForm.num_children} onChange={(e) => setWalkInForm({ ...walkInForm, num_children: e.target.value })} /></div>
               <div className="space-y-2"><Label>Check-Out *</Label><Input type="date" value={walkInForm.check_out} onChange={(e) => setWalkInForm({ ...walkInForm, check_out: e.target.value })} required /></div>
             </div>
+            <div className="space-y-2"><Label>Plate Number (optional)</Label><Input placeholder="KXX 000X" value={walkInForm.plate_number} onChange={(e) => setWalkInForm({ ...walkInForm, plate_number: e.target.value.toUpperCase() })} className="uppercase" /></div>
             <Button type="submit" variant="brass" className="w-full" disabled={walkIn.isPending}>{walkIn.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Check In Walk-In Guest</Button>
           </form>
         </DialogContent>

@@ -132,6 +132,7 @@ export function useWalkIn() {
       check_out: string;
       rate: number;
       special_requests?: string;
+      plate_number?: string;
     }) => {
       // 1. Find or create guest
       let guestId: string;
@@ -179,6 +180,7 @@ export function useWalkIn() {
           source: 'walk_in',
           status: 'checked_in',
           special_requests: data.special_requests || null,
+          plate_number: data.plate_number || null,
         })
         .select()
         .single();

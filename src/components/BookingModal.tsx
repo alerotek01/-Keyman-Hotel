@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, addDays } from 'date-fns';
-import { CalendarIcon, Users, Loader2, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, Users, Loader2, CheckCircle2, Car } from 'lucide-react';
 import { cn, formatCurrency, calculateBookingPrice, getRoomTypeLabel } from '@/lib/utils';
 import { useCreateBooking } from '@/hooks/useBookings';
 import type { RoomWithAvailability } from '@/lib/types';
@@ -31,6 +31,7 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [plateNumber, setPlateNumber] = useState('');
 
   if (!room) return null;
 
@@ -65,6 +66,7 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
         guest_email: guestEmail,
         guest_phone: guestPhone,
         special_requests: specialRequests || undefined,
+        plate_number: plateNumber || undefined,
       });
 
       setSuccess(true);
@@ -234,6 +236,21 @@ export function BookingModal({ room, open, onOpenChange }: BookingModalProps) {
               onChange={(e) => setSpecialRequests(e.target.value)}
               className="rounded-full border-charcoal/10"
             />
+          </div>
+
+          {/* Parking */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60 flex items-center gap-2">
+              <Car className="h-3.5 w-3.5 text-brass/60" />
+              Parking (Free)
+            </Label>
+            <Input
+              placeholder="Plate number (optional)"
+              value={plateNumber}
+              onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+              className="rounded-full border-charcoal/10 uppercase"
+            />
+            <p className="text-xs text-charcoal/40">Free parking for all guests. Add your plate number for security.</p>
           </div>
 
           {/* Price Summary */}

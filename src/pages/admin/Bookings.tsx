@@ -107,6 +107,7 @@ export default function AdminBookings() {
                   <TableHead>Check-in</TableHead>
                   <TableHead>Check-out</TableHead>
                   <TableHead>Guests</TableHead>
+                  <TableHead>Plate</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -130,6 +131,13 @@ export default function AdminBookings() {
                     <TableCell>{formatDate(booking.check_in)}</TableCell>
                     <TableCell>{formatDate(booking.check_out)}</TableCell>
                     <TableCell>{booking.num_adults + booking.num_children}</TableCell>
+                    <TableCell>
+                      {booking.plate_number ? (
+                        <Badge variant="outline" className="font-mono text-xs">{booking.plate_number}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="font-semibold">
                       {formatCurrency(Number(booking.rate))}
                     </TableCell>

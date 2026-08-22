@@ -33,6 +33,7 @@ export function useCreateBooking() {
       guest_email: string;
       guest_phone: string;
       special_requests?: string;
+      plate_number?: string;
     }) => {
       // 1. Find or create guest
       let guestId: string;
@@ -85,6 +86,7 @@ export function useCreateBooking() {
           source: 'website',
           status: 'confirmed',
           special_requests: formData.special_requests || null,
+          plate_number: formData.plate_number || null,
         })
         .select()
         .single();
