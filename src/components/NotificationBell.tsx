@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNotifications, useMarkAsRead, useMarkAllRead, type Notification } from '@/hooks/useNotifications';
+import { useTotalUnreadMessages } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, Check, CheckCheck, CalendarCheck, LogIn, LogOut, Sparkles, UtensilsCrossed, Info, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, CalendarCheck, LogIn, LogOut, Sparkles, UtensilsCrossed, Info, X, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
@@ -43,11 +44,14 @@ function getNotificationPath(notification: Notification): string | null {
 
 export default function NotificationBell() {
   const { data: notifications, unreadCount } = useNotifications();
+  const { data: unreadMessages = 0 } = useTotalUnreadMessages();
   const { user } = useAuth();
   const markAsRead = useMarkAsRead();
   const markAllRead = useMarkAllRead();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+
+  const totalUnread = (unreadCount || 0) + (unreadMessages as number);
 
   const handleNotificationClick = (notification: Notification) => {
     // Mark as read
@@ -78,11 +82,11 @@ export default function NotificationBell() {
         onClick={() => setOpen(!open)}
       >
         <Bell className="h-5 w-5" />
-        {unreadCount > 0 && (
+        {totalUnread > 0 && (
           <Badge
             className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] font-bold bg-red-500 text-white border-2 border-white rounded-full flex items-center justify-center"
           >
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {totalUnread > 99 ? '99+' : totalUnread}
           </Badge>
         )}
       </Button>
@@ -105,7 +109,13 @@ export default function NotificationBell() {
                 <h3 className="font-semibold text-sm">Notifications</h3>
                 {unreadCount > 0 && (
                   <Badge variant="secondary" className="text-xs">
-                    {unreadCount} new
+                    {unreadCount} alerts
+                  </Badge>
+                )}
+                {unreadMessages > 0 && (
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                    <MessageSquare className="h-3 w-3 mr-1" />
+                    {unreadMessages} messages
                   </Badge>
                 )}
               </div>

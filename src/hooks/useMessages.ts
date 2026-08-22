@@ -226,3 +226,34 @@ export function useCreateDM() {
     },
   });
 }
+
+// ===== Get total unread messages across all channels =====
+export function useTotalUnreadMessages() {
+  return useQuery({
+    queryKey: ['total-unread-messages'],
+    queryFn: async () => {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return 0;
+
+      const { data: memberships } = await sb
+        .from('channel_members')
+        .select('channel_id, last_read_at')
+        .eq('user_id', user.id);
+
+      if (!memberships || memberships.length === 0) return 0;
+
+      let total = 0;
+      for (const m of memberships) {
+        const { count } = await sb
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('channel_id', m.channel_id)
+          .neq('sender_id', user.id)
+          .gt('created_at', m.last_read_at);
+        total += count || 0;
+      }
+      return total;
+    },
+    refetchInterval: 15000,
+  });
+}
