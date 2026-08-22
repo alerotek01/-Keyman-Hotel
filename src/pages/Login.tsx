@@ -49,9 +49,23 @@ export default function Login() {
         // Don't navigate here — the useEffect above handles it once role is fetched
       }
     } catch (error: any) {
+      const isTimeout = error.name === 'AbortError' || error.message?.includes('abort');
+      const isNetwork = error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError');
+      
+      let title = 'Login Failed';
+      let description = error.message || 'An error occurred. Please try again.';
+      
+      if (isTimeout) {
+        title = 'Connection Timeout';
+        description = 'Could not reach the server. Please check your internet connection and try again.';
+      } else if (isNetwork) {
+        title = 'Network Error';
+        description = 'Unable to connect to the server. Please check your internet connection.';
+      }
+
       toast({
-        title: 'Error',
-        description: error.message || 'An error occurred. Please try again.',
+        title,
+        description,
         variant: 'destructive',
       });
     } finally {

@@ -8,11 +8,17 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Custom fetch with 15s timeout to prevent infinite buffering
+// Custom fetch with adaptive timeout: 30s for auth, 15s for API calls
 const fetchWithTimeout: typeof fetch = (url, init) => {
+  const urlStr = typeof url === 'string' ? url : url.toString();
+  const isAuth = urlStr.includes('/auth/');
+  const timeoutMs = isAuth ? 30000 : 15000;
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
-  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  return fetch(url, { ...init, signal: controller.signal })
+    .finally(() => clearTimeout(timeoutId));
 };
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -20,8 +26,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    flowType: 'pkce',
   },
   global: {
     fetch: fetchWithTimeout,
+    headers: {
+      'X-Client-Info': 'keyman-hotel@1.0.0',
+    },
   },
 });
