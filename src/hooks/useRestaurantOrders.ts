@@ -80,8 +80,9 @@ export function useCreateOrder() {
       notes?: string;
       items: { menu_item_id: string; quantity: number; notes?: string }[];
     }) => {
-      // Call the safe DB function — prices are validated server-side
-      const { data: result, error } = await sb.rpc('create_order_safe', {
+      // Call the rate-limited safe DB function — validates prices + limits to 10 orders/min per source
+      const { data: result, error } = await sb.rpc('create_order_rate_limited', {
+        p_source: data.source,
         p_guest_id: data.guest_id || null,
         p_room_number: data.room_number || null,
         p_staff_id: data.waiter_id || null,
