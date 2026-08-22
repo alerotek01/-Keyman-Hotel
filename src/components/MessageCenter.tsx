@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,12 +14,55 @@ import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isYesterday } from 'date-fns';
 import {
   MessageSquare, Hash, Send, Users, Circle, Search,
-  ChevronDown, Plus, User, AtSign
+  ChevronDown, Plus, User, AtSign, Volume2, VolumeX
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
+
+// ===== Notification Sound =====
+// Generate a short beep using Web Audio API (no external file needed)
+let audioCtx: AudioContext | null = null;
+function getAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+function playMessageSound() {
+  try {
+    const ctx = getAudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    // Two-tone notification: high-low ding
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.08); // E5
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.2);
+  } catch {
+    // Audio not available — silent fallback
+  }
+}
+
+function vibrateDevice() {
+  try {
+    if (navigator.vibrate) {
+      navigator.vibrate([50, 30, 50]); // buzz-pause-buzz
+    }
+  } catch {
+    // Vibration not available
+  }
+}
 
 function formatMessageTime(dateStr: string) {
   const d = new Date(dateStr);
@@ -101,10 +144,38 @@ export default function MessageCenter() {
   // Real-time subscription
   useRealtimeMessages(selectedChannel);
 
+  // Sound & vibration on new messages
+  const prevMsgCountRef = useRef(0);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem('msg_sound') !== 'off';
+  });
+
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+    const prevCount = prevMsgCountRef.current;
+    prevMsgCountRef.current = messages.length;
+
+    // Only play on new messages (not initial load)
+    if (prevCount > 0 && messages.length > prevCount) {
+      // Check if the newest message is from someone else
+      const newestMsg = messages[messages.length - 1];
+      if (newestMsg.sender_id !== user?.id && soundEnabled) {
+        playMessageSound();
+        vibrateDevice();
+      }
+    }
+  }, [messages, user?.id, soundEnabled]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages?.length]);
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem('msg_sound', next ? 'on' : 'off');
+  };
 
   const handleSend = async () => {
     if (!messageText.trim() || !selectedChannel) return;
@@ -256,13 +327,28 @@ export default function MessageCenter() {
                     <span className="text-xs text-muted-foreground">· {selectedChannelData.description}</span>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowMembers(!showMembers)}
-                >
-                  <Users className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={toggleSound}
+                    title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}
+                  >
+                    {soundEnabled ? (
+                      <Volume2 className="h-4 w-4" />
+                    ) : (
+                      <VolumeX className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowMembers(!showMembers)}
+                  >
+                    <Users className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Messages */}
