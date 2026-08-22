@@ -13,7 +13,7 @@ export function useTodayArrivals() {
       const { data, error } = await sb
         .from('reservations')
         .select('*, guests(*), rooms(*, room_types(*)), room_types(*)')
-        .eq('check_in', today)
+        .eq('check_in_date', today)
         .in('status', ['confirmed', 'pending'])
         .order('created_at');
       if (error) throw error;
@@ -31,7 +31,7 @@ export function useTodayDepartures() {
       const { data, error } = await sb
         .from('reservations')
         .select('*, guests(*), rooms(*, room_types(*)), room_types(*)')
-        .eq('check_out', today)
+        .eq('check_out_date', today)
         .eq('status', 'checked_in')
         .order('created_at');
       if (error) throw error;
@@ -49,7 +49,7 @@ export function useAvailableRooms(roomTypeId?: string) {
         .from('rooms')
         .select('*, room_types(*)')
         .eq('is_active', true)
-        .in('status', ['available', 'inspected']);
+        .in('status', ['available']);
 
       if (roomTypeId) {
         query = query.eq('room_type_id', roomTypeId);
@@ -117,7 +117,7 @@ export function useCheckOut() {
   });
 }
 
-// ===== Walk-In Mutation =====
+// ===== Walk-In Mutation (ATOMIC via DB function — all-or-nothing) =====
 export function useWalkIn() {
   const qc = useQueryClient();
   return useMutation({
@@ -134,81 +134,28 @@ export function useWalkIn() {
       special_requests?: string;
       plate_number?: string;
     }) => {
-      // 1. Find or create guest
-      let guestId: string;
-      if (data.guest_email) {
-        const { data: existing } = await sb
-          .from('guests')
-          .select('id')
-          .eq('email', data.guest_email)
-          .maybeSingle();
-        if (existing) {
-          guestId = existing.id;
-        } else {
-          const { data: newGuest, error: gErr } = await sb
-            .from('guests')
-            .insert({ name: data.guest_name, email: data.guest_email, phone: data.guest_phone })
-            .select('id')
-            .single();
-          if (gErr) throw gErr;
-          guestId = newGuest.id;
-        }
-      } else {
-        const { data: newGuest, error: gErr } = await sb
-          .from('guests')
-          .insert({ name: data.guest_name, phone: data.guest_phone })
-          .select('id')
-          .single();
-        if (gErr) throw gErr;
-        guestId = newGuest.id;
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-
-      // 2. Create reservation (walk-in, checked_in immediately)
-      const { data: reservation, error: resErr } = await sb
-        .from('reservations')
-        .insert({
-          guest_id: guestId,
-          room_type_id: data.room_type_id,
-          room_id: data.room_id,
-          check_in: today,
-          check_out: data.check_out,
-          num_adults: data.num_adults,
-          num_children: data.num_children,
-          rate: data.rate,
-          source: 'walk_in',
-          status: 'checked_in',
-          special_requests: data.special_requests || null,
-          plate_number: data.plate_number || null,
-        })
-        .select()
-        .single();
-      if (resErr) throw resErr;
-
-      // 3. Update room -> occupied
-      const { error: roomErr } = await sb
-        .from('rooms')
-        .update({ status: 'occupied' })
-        .eq('id', data.room_id);
-      if (roomErr) throw roomErr;
-
-      // 4. Log room status
-      await sb
-        .from('room_status_history')
-        .insert({ room_id: data.room_id, new_status: 'occupied', notes: 'Walk-in guest checked in' });
-
-      // 5. Create folio
-      await sb
-        .from('guest_folios')
-        .insert({ reservation_id: reservation.id, guest_id: guestId });
-
-      return reservation;
+      // Call atomic DB function — does everything in one transaction:
+      // guest lookup/create + reservation + room status + folio + audit log
+      const { data: result, error } = await sb.rpc('walk_in_guest', {
+        p_guest_name: data.guest_name,
+        p_room_type_id: data.room_type_id,
+        p_check_in: new Date().toISOString().split('T')[0],
+        p_check_out: data.check_out,
+        p_guest_phone: data.guest_phone || null,
+        p_guest_email: data.guest_email || null,
+        p_num_adults: data.num_adults,
+        p_num_children: data.num_children,
+        p_plate_number: data.plate_number || null,
+        p_rate_override: data.rate || null,
+      });
+      if (error) throw error;
+      return result;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['receptionist'] });
       qc.invalidateQueries({ queryKey: ['reservations'] });
       qc.invalidateQueries({ queryKey: ['rooms'] });
+      qc.invalidateQueries({ queryKey: ['housekeeping-tasks'] });
     },
   });
 }

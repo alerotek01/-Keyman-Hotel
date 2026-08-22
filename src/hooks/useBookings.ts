@@ -35,64 +35,26 @@ export function useCreateBooking() {
       special_requests?: string;
       plate_number?: string;
     }) => {
-      // 1. Find or create guest
-      let guestId: string;
-      const { data: existingGuest } = await sb
-        .from('guests')
-        .select('id')
-        .eq('email', formData.guest_email)
-        .maybeSingle();
+      // Generate idempotency key from guest+dates to prevent double-booking on retry
+      const idempotencyKey = `${formData.guest_email}_${formData.check_in.toISOString().split('T')[0]}_${formData.check_out.toISOString().split('T')[0]}_${Date.now()}`;
 
-      if (existingGuest) {
-        guestId = existingGuest.id;
-      } else {
-        const { data: newGuest, error: guestErr } = await sb
-          .from('guests')
-          .insert({
-            name: formData.guest_name,
-            email: formData.guest_email,
-            phone: formData.guest_phone,
-          })
-          .select('id')
-          .single();
-        if (guestErr) throw guestErr;
-        guestId = newGuest.id;
-      }
-
-      // 2. Get rate from room_types
-      const { data: rt, error: rtErr } = await sb
-        .from('room_types')
-        .select('base_rate')
-        .eq('id', formData.room_type_id)
-        .single();
-      if (rtErr) throw rtErr;
-
-      const nights = Math.ceil(
-        (formData.check_out.getTime() - formData.check_in.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      const rate = Number(rt.base_rate) * nights;
-
-      // 3. Create reservation
-      const { data: reservation, error: resErr } = await sb
-        .from('reservations')
-        .insert({
-          guest_id: guestId,
-          room_type_id: formData.room_type_id,
-          check_in: formData.check_in.toISOString().split('T')[0],
-          check_out: formData.check_out.toISOString().split('T')[0],
-          num_adults: formData.num_adults,
-          num_children: formData.num_children,
-          rate,
-          source: 'website',
-          status: 'confirmed',
-          special_requests: formData.special_requests || null,
-          plate_number: formData.plate_number || null,
-        })
-        .select()
-        .single();
-      if (resErr) throw resErr;
-
-      return reservation;
+      // Call atomic DB function — handles guest lookup/create, rate calc, room assignment, reservation
+      const { data: result, error } = await sb.rpc('create_booking_safe', {
+        p_guest_name: formData.guest_name,
+        p_room_type_id: formData.room_type_id,
+        p_check_in: formData.check_in.toISOString().split('T')[0],
+        p_check_out: formData.check_out.toISOString().split('T')[0],
+        p_guest_email: formData.guest_email,
+        p_guest_phone: formData.guest_phone,
+        p_num_adults: formData.num_adults,
+        p_num_children: formData.num_children,
+        p_source: 'website',
+        p_special_requests: formData.special_requests || null,
+        p_plate_number: formData.plate_number || null,
+        p_idempotency_key: idempotencyKey,
+      });
+      if (error) throw error;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
