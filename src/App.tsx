@@ -14,6 +14,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminRooms from "./pages/admin/Rooms";
 import AdminBookings from "./pages/admin/Bookings";
 import AdminAudit from "./pages/admin/Audit";
+import AdminOperations from "./pages/admin/Operations";
 import AdminReports from "./pages/admin/Reports";
 import AdminMenu from "./pages/admin/Menu";
 import AdminSiteContent from "./pages/admin/SiteContent";
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="users" element={<AdminUsers />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="audit" element={<AdminAudit />} />
+            <Route path="operations" element={<AdminOperations />} />
           </Route>
           
           {/* Manager Routes */}
