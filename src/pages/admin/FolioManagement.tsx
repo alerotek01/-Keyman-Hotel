@@ -13,7 +13,7 @@ import { generateFolioReceipt } from '@/lib/receipt';
 import { useSiteSettings } from '@/hooks/useCms';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Loader2, Search, Receipt, DollarSign, Plus, X, BedDouble, UtensilsCrossed, CreditCard, CheckCircle2, AlertCircle, Printer } from 'lucide-react';
+import { Loader2, Search, Receipt, DollarSign, Plus, X, BedDouble, UtensilsCrossed, CreditCard, CheckCircle2, AlertCircle, Printer, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function FolioManagement() {
@@ -279,6 +279,10 @@ export default function FolioManagement() {
                           {format(new Date(folio.reservations.check_in), 'MMM d')} — {format(new Date(folio.reservations.check_out), 'MMM d, yyyy')}
                         </p>
                       )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Folio opened {format(new Date(folio.created_at), 'MMM d, yyyy h:mm a')}
+                        {folio.closed_at && <> · Closed {format(new Date(folio.closed_at), 'MMM d, yyyy h:mm a')}</>}
+                      </p>
                     </div>
                     <Badge variant={folio.status === 'open' ? 'default' : 'secondary'} className="text-sm">
                       {folio.status}
@@ -394,9 +398,20 @@ export default function FolioManagement() {
                                 </div>
                                 <div>
                                   <p className="text-sm font-medium">{txn.description}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {txn.type === 'room_charge' ? 'Room Charge' : 'Restaurant'} · {format(new Date(txn.created_at), 'MMM d, h:mm a')}
-                                  </p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{txn.type === 'room_charge' ? 'Room Charge' : txn.type === 'service_charge' ? 'Service' : 'Restaurant'}</span>
+                                    <span>·</span>
+                                    <span>{format(new Date(txn.created_at), 'MMM d, h:mm a')}</span>
+                                    {txn.recorded_by_user && (
+                                      <>
+                                        <span>·</span>
+                                        <span className="flex items-center gap-1">
+                                          <User className="h-3 w-3" />
+                                          {txn.recorded_by_user.full_name || txn.recorded_by_user.email}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                               <div className="text-right">
@@ -424,9 +439,19 @@ export default function FolioManagement() {
                                 </div>
                                 <div>
                                   <p className="text-sm font-medium capitalize">{pay.method} Payment</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {pay.reference ? `Ref: ${pay.reference}` : 'No reference'} · {format(new Date(pay.created_at), 'MMM d, h:mm a')}
-                                  </p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    {pay.reference && <span>Ref: {pay.reference}</span>}
+                                    <span>{format(new Date(pay.created_at), 'MMM d, h:mm a')}</span>
+                                    {pay.recorded_by_user && (
+                                      <>
+                                        <span>·</span>
+                                        <span className="flex items-center gap-1">
+                                          <User className="h-3 w-3" />
+                                          {pay.recorded_by_user.full_name || pay.recorded_by_user.email}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                               <p className="font-mono font-semibold text-sm text-green-600">-{formatCurrency(pay.amount)}</p>

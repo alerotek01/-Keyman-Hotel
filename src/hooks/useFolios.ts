@@ -33,7 +33,7 @@ export function useFolio(folioId?: string) {
       if (!folioId) return null;
       const { data, error } = await sb
         .from('guest_folios')
-        .select('*, folio_transactions(*), folio_payments(*), reservations(*, guests(*), rooms(*, room_types(*)))')
+        .select('*, folio_transactions(*, recorded_by_user:recorded_by(full_name, email, role)), folio_payments(*, recorded_by_user:recorded_by(full_name, email, role)), reservations(*, guests(*), rooms(*, room_types(*)))')
         .eq('id', folioId)
         .single();
       if (error) throw error;
