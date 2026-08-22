@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { GuestRequest, RequestStatus, RequestType } from '@/lib/types';
+import type { RequestStatus, RequestType } from '@/lib/types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -8,29 +8,44 @@ const sb = supabase as any;
 export function useGuestRequests() {
   return useQuery({
     queryKey: ['guest-requests'],
-    queryFn: async (): Promise<GuestRequest[]> => {
+    queryFn: async () => {
+      // housekeeping_tasks FKs: room_id → rooms, assigned_to → users
+      // NO reservation_id FK exists
       const { data, error } = await sb
         .from('housekeeping_tasks')
         .select(`
           *,
-          reservations (
-            *,
-            guests (*),
-            rooms (*)
-          )
+          rooms (id, room_number, floor, status, room_types (name)),
+          users:assigned_to (id, full_name)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      // Map to GuestRequest shape with bookings alias
+
+      // Enrich with active reservation info for each room
+      const roomIds = [...new Set((data || []).map((t: any) => t.room_id).filter(Boolean))];
+      let roomReservations: Record<string, any> = {};
+
+      if (roomIds.length > 0) {
+        const { data: reservations } = await sb
+          .from('reservations')
+          .select('room_id, guests(name, email, phone), check_in, check_out, status')
+          .in('room_id', roomIds)
+          .in('status', ['confirmed', 'checked_in']);
+
+        if (reservations) {
+          for (const r of reservations) {
+            if (!roomReservations[r.room_id]) {
+              roomReservations[r.room_id] = r;
+            }
+          }
+        }
+      }
+
       return (data || []).map((item: any) => ({
         ...item,
-        reservation_id: item.reservation_id,
-        bookings: item.reservations ? {
-          ...item.reservations,
-          guests: item.reservations.guests,
-          rooms: item.reservations.rooms,
-        } : null,
+        reservation: roomReservations[item.room_id] || null,
+        rooms: item.rooms,
       }));
     },
   });
@@ -41,16 +56,20 @@ export function useCreateGuestRequest() {
 
   return useMutation({
     mutationFn: async (requestData: {
-      reservation_id: string;
+      room_id: string;
       request_type: RequestType;
       description?: string;
+      shift_date?: string;
+      assigned_to?: string;
     }) => {
       const { data: result, error } = await sb
         .from('housekeeping_tasks')
         .insert({
-          reservation_id: requestData.reservation_id,
+          room_id: requestData.room_id,
           request_type: requestData.request_type,
-          description: requestData.description || null,
+          notes: requestData.description || null,
+          shift_date: requestData.shift_date || new Date().toISOString().split('T')[0],
+          assigned_to: requestData.assigned_to || null,
           status: 'pending',
         })
         .select()
@@ -61,6 +80,7 @@ export function useCreateGuestRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guest-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-tasks'] });
     },
   });
 }
@@ -87,6 +107,7 @@ export function useUpdateGuestRequestStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guest-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['housekeeping-tasks'] });
     },
   });
 }

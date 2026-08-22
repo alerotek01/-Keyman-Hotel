@@ -194,7 +194,7 @@ export function useWalkIn() {
       // 4. Log room status
       await sb
         .from('room_status_history')
-        .insert({ room_id: data.room_id, status: 'occupied', notes: 'Walk-in guest checked in' });
+        .insert({ room_id: data.room_id, new_status: 'occupied', notes: 'Walk-in guest checked in' });
 
       // 5. Create folio
       await sb
