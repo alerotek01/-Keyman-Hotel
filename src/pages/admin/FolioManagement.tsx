@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useAllFolios, useFolio, usePostRoomCharge, usePostRestaurantCharge, usePostFolioPayment, useCloseFolio } from '@/hooks/useFolios';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
+import { generateFolioReceipt } from '@/lib/receipt';
+import { useSiteSettings } from '@/hooks/useCms';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Loader2, Search, Receipt, DollarSign, Plus, X, BedDouble, UtensilsCrossed, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Search, Receipt, DollarSign, Plus, X, BedDouble, UtensilsCrossed, CreditCard, CheckCircle2, AlertCircle, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function FolioManagement() {
@@ -30,6 +32,8 @@ export default function FolioManagement() {
   const postRestaurantCharge = usePostRestaurantCharge();
   const postPayment = usePostFolioPayment();
   const closeFolio = useCloseFolio();
+  const { data: settings } = useSiteSettings();
+  const getSetting = (key: string) => settings?.find((s: any) => s.key === key)?.value || '';
 
   // Filter folios by search
   const filteredFolios = folios?.filter((f: any) => {
@@ -326,6 +330,37 @@ export default function FolioManagement() {
                   <Button variant="default" onClick={() => setPaymentDialog(true)}>
                     <CreditCard className="mr-2 h-4 w-4" />
                     Record Payment
+                  </Button>
+                  <Button variant="outline" onClick={() => {
+                    generateFolioReceipt({
+                      guestName: folio.reservations?.guests?.name || 'Guest',
+                      guestEmail: folio.reservations?.guests?.email,
+                      guestPhone: folio.reservations?.guests?.phone,
+                      roomNumber: folio.reservations?.rooms?.room_number || '—',
+                      roomType: folio.reservations?.rooms?.room_types?.name,
+                      checkIn: folio.reservations?.check_in,
+                      checkOut: folio.reservations?.check_out,
+                      folioId: folio.id,
+                      charges: (folio.folio_transactions || []).map((t: any) => ({
+                        description: t.description || t.type,
+                        amount: Number(t.amount),
+                        type: t.type,
+                        date: t.created_at,
+                      })),
+                      payments: (folio.folio_payments || []).map((p: any) => ({
+                        method: p.method,
+                        amount: Number(p.amount),
+                        reference: p.reference,
+                        date: p.created_at,
+                      })),
+                      hotelName: getSetting('hotel_name') || 'Keyman Hotel',
+                      hotelAddress: getSetting('hotel_address'),
+                      hotelPhone: getSetting('phone'),
+                      hotelEmail: getSetting('hotel_email'),
+                    });
+                  }}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print Receipt
                   </Button>
                   {balance <= 0 && (
                     <Button variant="outline" onClick={() => setCloseDialog(true)}>
