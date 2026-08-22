@@ -9,19 +9,13 @@ const BASE = 'https://uuojiyehhnhjcakgpsjd.supabase.co/storage/v1/object/public/
 
 const fallbackImages: Record<string, { src: string; alt: string }[]> = {
   Single: [
-    { src: BASE + '/room-single.jpg', alt: 'Single room — clean linens' },
-    { src: BASE + '/single-1.jpg', alt: 'Single room — dark headboard' },
-    { src: BASE + '/single-2.jpg', alt: 'Single room — cozy setup' },
-    { src: BASE + '/single-3.jpg', alt: 'Single room — modern bathroom' },
+    { src: BASE + '/room-single.jpg', alt: 'Single room — clean linens and dark headboard' },
   ],
   Twin: [
-    { src: BASE + '/room-twin.jpg', alt: 'Twin room — two beds' },
-    { src: BASE + '/twin-1.jpg', alt: 'Twin room — lounge area' },
-    { src: BASE + '/twin-2.jpg', alt: 'Twin room — mountain view' },
+    { src: BASE + '/room-twin.jpg', alt: 'Twin room — two beds with fresh linens' },
   ],
   Studio: [
-    { src: BASE + '/studio-1.jpg', alt: 'Studio suite — spacious setup' },
-    { src: BASE + '/studio-2.jpg', alt: 'Studio suite — panoramic view' },
+    { src: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=1200&h=800&fit=crop', alt: 'Studio suite — panoramic Taita Hills view' },
   ],
 };
 
