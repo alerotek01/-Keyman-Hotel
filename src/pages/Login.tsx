@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,14 @@ import { Loader2 } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, loading: authLoading } = useAuth();
+  
+  // Redirect to admin if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/admin');
+    }
+  }, [user, authLoading, navigate]);
   const { toast } = useToast();
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
