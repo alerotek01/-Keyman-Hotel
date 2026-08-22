@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { AppRole } from '@/lib/types';
@@ -6,63 +6,78 @@ import type { AppRole } from '@/lib/types';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
+const ROLE_FETCH_TIMEOUT_MS = 8000;
+
+async function fetchUserRoleWithTimeout(userId: string): Promise<AppRole | null> {
+  return new Promise(async (resolve) => {
+    const timer = setTimeout(() => {
+      console.warn('fetchUserRole timed out after', ROLE_FETCH_TIMEOUT_MS, 'ms');
+      resolve(null);
+    }, ROLE_FETCH_TIMEOUT_MS);
+
+    try {
+      const { data, error } = await sb
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+
+      clearTimeout(timer);
+      if (error) {
+        console.error('fetchUserRole error:', error);
+        resolve(null);
+      } else {
+        resolve((data?.role as AppRole) ?? null);
+      }
+    } catch (err) {
+      clearTimeout(timer);
+      console.error('fetchUserRole exception:', err);
+      resolve(null);
+    }
+  });
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
   const isAdmin = role === 'admin';
   const isManager = role === 'admin' || role === 'manager';
   const isStaff = role !== null && role !== undefined;
 
   useEffect(() => {
-    const fetchUserRole = async (userId: string) => {
-      const { data } = await sb
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .maybeSingle();
+    mountedRef.current = true;
 
-      if (data) {
-        setRole(data.role as AppRole);
+    const handleSession = async (sessionUser: User | null) => {
+      if (!mountedRef.current) return;
+
+      setUser(sessionUser);
+
+      if (sessionUser) {
+        const r = await fetchUserRoleWithTimeout(sessionUser.id);
+        if (mountedRef.current) setRole(r);
       } else {
         setRole(null);
       }
+
+      if (mountedRef.current) setLoading(false);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          try {
-            await fetchUserRole(session.user.id);
-          } catch (err) {
-            console.error('Auth state change - role fetch failed:', err);
-            setRole(null);
-          }
-        } else {
-          setRole(null);
-        }
-        setLoading(false);
+      (_event, session) => {
+        handleSession(session?.user ?? null);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        try {
-          await fetchUserRole(session.user.id);
-        } catch (err) {
-          console.error('Failed to fetch user role:', err);
-          setRole(null);
-        }
-      }
-      setLoading(false);
+    // Also check the current session immediately
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session?.user ?? null);
     });
 
     return () => {
+      mountedRef.current = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -91,6 +106,8 @@ export function useAuth() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setRole(null);
   };
 
   return {

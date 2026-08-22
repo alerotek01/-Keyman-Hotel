@@ -10,21 +10,22 @@ import { Loader2 } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, signUp, user, loading: authLoading } = useAuth();
-  
-  // Redirect to admin if already logged in
-  useEffect(() => {
-    if (!authLoading && user) {
-      navigate('/admin');
-    }
-  }, [user, authLoading, navigate]);
+  const { signIn, signUp, user, loading: authLoading, role } = useAuth();
   const { toast } = useToast();
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+
+  // Redirect based on role once auth is resolved
+  useEffect(() => {
+    if (authLoading || !user || !role) return;
+
+    if (role === 'admin') navigate('/admin', { replace: true });
+    else if (role === 'manager') navigate('/manager', { replace: true });
+    else navigate('/staff', { replace: true });
+  }, [user, role, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +46,7 @@ export default function Login() {
           title: 'Welcome Back',
           description: 'You have been signed in successfully.',
         });
-        navigate('/admin');
+        // Don't navigate here — the useEffect above handles it once role is fetched
       }
     } catch (error: any) {
       toast({
@@ -57,6 +58,20 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  // Show spinner while auth is resolving after a successful sign-in
+  if (!authLoading && user && loading) {
+    return (
+      <Layout hideFooter>
+        <div className="min-h-[100dvh] flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin text-brass mx-auto" />
+            <p className="text-sm text-muted-foreground">Signing in...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout hideFooter>
