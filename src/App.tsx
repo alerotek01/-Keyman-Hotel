@@ -59,7 +59,7 @@ const App = () => (
           <Route path="/cafeteria/:mealId" element={<CafeteriaMenu />} />
           <Route path="/login" element={<Login />} />
           
-          {/* Admin Routes */}
+          {/* Admin Routes (Mobile PDA for mobile, desktop sidebar for large screens) */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="rooms" element={<AdminRooms />} />
@@ -75,8 +75,8 @@ const App = () => (
             <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>
           
-          {/* Manager Routes */}
-          <Route path="/manager" element={<ManagerLayout />}>
+          {/* Manager Routes (Mobile PDA) */}
+          <Route path="/manager" element={<StaffPdaLayout />}>
             <Route index element={<ManagerDashboard />} />
             <Route path="reports" element={<ManagerReports />} />
             <Route path="bookings" element={<ManagerBookings />} />

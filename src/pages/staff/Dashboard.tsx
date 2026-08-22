@@ -71,6 +71,17 @@ export default function StaffDashboard() {
     />;
   }
 
+  if (role === 'admin') {
+    return <AdminDashboard
+      todayCheckIns={todayCheckIns}
+      todayCheckOuts={todayCheckOuts}
+      pendingBookings={pendingBookings}
+      pendingRequests={pendingRequests}
+      availableRooms={availableRooms}
+      occupiedRooms={occupiedRooms}
+    />;
+  }
+
   // Default / manager
   return <DefaultDashboard
     todayCheckIns={todayCheckIns}
@@ -312,6 +323,82 @@ function DefaultDashboard({ todayCheckIns, todayCheckOuts, pendingBookings, pend
           <p className="text-center text-gray-400 text-sm py-8">No activity today</p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// ADMIN DASHBOARD
+// ═══════════════════════════════════════════════
+function AdminDashboard({ todayCheckIns, todayCheckOuts, pendingBookings, pendingRequests, availableRooms, occupiedRooms }: any) {
+  return (
+    <div className="px-5 py-4 space-y-1">
+      <StatsRow>
+        <StatCard icon="🛏️" number={availableRooms.length} label="Available" color="bg-gradient-to-br from-blue-400 to-purple-500" />
+        <StatCard icon="🧑" number={occupiedRooms.length} label="Occupied" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
+        <StatCard icon="🔑" number={todayCheckIns.length} label="Check-Ins" color="bg-gradient-to-br from-orange-400 to-pink-500" />
+        <StatCard icon="🚪" number={todayCheckOuts.length} label="Check-Outs" color="bg-gradient-to-br from-brass to-yellow-500" />
+      </StatsRow>
+
+      <SectionHeader title="Quick Actions" />
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { icon: '📅', label: 'Bookings', path: '/admin/bookings', bg: 'bg-blue-50' },
+          { icon: '💰', label: 'Folios', path: '/admin/folios', bg: 'bg-emerald-50' },
+          { icon: '👥', label: 'Users', path: '/admin/users', bg: 'bg-purple-50' },
+          { icon: '🛏️', label: 'Rooms', path: '/admin/rooms', bg: 'bg-amber-50' },
+          { icon: '📊', label: 'Reports', path: '/admin/reports', bg: 'bg-pink-50' },
+          { icon: '🛡️', label: 'Ops', path: '/admin/operations', bg: 'bg-red-50' },
+        ].map((item) => (
+          <a
+            key={item.path}
+            href={item.path}
+            className={cn('flex flex-col items-center gap-2 p-4 rounded-2xl active:scale-95 transition-transform', item.bg)}
+          >
+            <span className="text-2xl">{item.icon}</span>
+            <span className="text-xs font-semibold text-gray-700">{item.label}</span>
+          </a>
+        ))}
+      </div>
+
+      {pendingBookings.length > 0 && (
+        <>
+          <SectionHeader title="Pending Bookings" count={`${pendingBookings.length} awaiting`} />
+          <div className="space-y-2">
+            {pendingBookings.slice(0, 3).map((b: any) => (
+              <TaskCard
+                key={b.id}
+                icon="📅"
+                iconBg="bg-blue-50"
+                title={b.guests?.name || 'Guest'}
+                meta={`Room ${b.rooms?.room_number} · ${format(new Date(b.check_in), 'MMM d')}`}
+                status="Confirm"
+                statusColor="bg-blue-100 text-blue-700"
+                onClick={() => window.location.href = '/admin/bookings'}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {pendingRequests.length > 0 && (
+        <>
+          <SectionHeader title="Guest Requests" count={`${pendingRequests.length} open`} />
+          <div className="space-y-2">
+            {pendingRequests.slice(0, 3).map((r: any) => (
+              <TaskCard
+                key={r.id}
+                icon="🛎️"
+                iconBg="bg-red-50"
+                title={r.request_type.replace('_', ' ')}
+                meta={`${r.bookings?.guests?.name} · Room ${r.bookings?.rooms?.room_number}`}
+                status="Open"
+                statusColor="bg-red-100 text-red-700"
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

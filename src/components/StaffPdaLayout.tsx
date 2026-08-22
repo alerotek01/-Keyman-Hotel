@@ -58,6 +58,14 @@ const ROLE_TABS: Record<string, TabConfig[]> = {
     { path: '/manager/messages', label: 'Chat', icon: '💬' },
     { path: '/manager/reconciliation', label: 'Money', icon: '💰' },
   ],
+  admin: [
+    { path: '/admin', label: 'Home', icon: '🏠', centerAction: false },
+    { path: '/admin/bookings', label: 'Bookings', icon: '📅' },
+    { path: '/admin', label: 'More', icon: '⚙️', centerAction: true },
+    { path: '/admin/messages', label: 'Chat', icon: '💬' },
+    { path: '/admin/operations', label: 'Ops', icon: '🛡️' },
+    { path: '/admin/folios', label: 'Folios', icon: '💰' },
+  ],
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -78,6 +86,16 @@ const ROLE_ICONS: Record<string, string> = {
   waiter: '🍽️',
   housekeeper: '🧹',
   accountant: '💰',
+};
+
+const ROLE_BASE_PATHS: Record<string, string> = {
+  admin: '/admin',
+  manager: '/manager',
+  receptionist: '/staff',
+  chef: '/staff',
+  waiter: '/staff',
+  housekeeper: '/staff',
+  accountant: '/staff',
 };
 
 // ═══════════════════════════════════════════════
@@ -158,24 +176,21 @@ export default function StaffPdaLayout() {
                   key={i}
                   className="w-14 h-14 bg-brass rounded-full flex items-center justify-center text-white text-2xl shadow-lg shadow-brass/30 -mt-6 border-4 border-white"
                   onClick={() => {
-                    // Center action — navigate to the appropriate page
-                    if (tab.icon === '➕') {
-                      // Walk-in / New Order — go to reception or waiter
-                      if (role === 'receptionist') {
-                        window.location.href = '/staff/reception';
-                      } else if (role === 'waiter') {
-                        window.location.href = '/staff/waiter';
-                      } else if (role === 'chef') {
-                        window.location.href = '/staff/kitchen';
-                      } else {
-                        window.location.href = '/staff';
-                      }
+                    if (role === 'admin' && tab.icon === '⚙️') {
+                      setShowMore(!showMore);
+                    } else if (tab.icon === '➕') {
+                      if (role === 'receptionist') window.location.href = '/staff/reception';
+                      else if (role === 'waiter') window.location.href = '/staff/waiter';
+                      else if (role === 'chef') window.location.href = '/staff/kitchen';
+                      else window.location.href = '/staff';
                     } else if (tab.icon === '🚫') {
                       window.location.href = '/staff/kitchen';
                     } else if (tab.icon === '🔧') {
                       window.location.href = '/staff/housekeeping';
                     } else if (tab.icon === '📊') {
                       window.location.href = '/manager/reports';
+                    } else if (tab.icon === '⚙️') {
+                      setShowMore(!showMore);
                     }
                   }}
                 >
@@ -200,6 +215,42 @@ export default function StaffPdaLayout() {
           })}
         </div>
       </nav>
+
+      {/* Admin More Menu Overlay */}
+      {showMore && role === 'admin' && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowMore(false)} />
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 p-4 mx-4">
+            <p className="text-sm font-bold text-gray-900 mb-3">Admin Tools</p>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { icon: '🏠', label: 'Dashboard', path: '/admin' },
+                { icon: '🛏️', label: 'Rooms', path: '/admin/rooms' },
+                { icon: '🍽️', label: 'Menu', path: '/admin/menu' },
+                { icon: '📅', label: 'Bookings', path: '/admin/bookings' },
+                { icon: '💰', label: 'Folios', path: '/admin/folios' },
+                { icon: '👥', label: 'Users', path: '/admin/users' },
+                { icon: '📊', label: 'Reports', path: '/admin/reports' },
+                { icon: '🛡️', label: 'Operations', path: '/admin/operations' },
+                { icon: '🌐', label: 'Content', path: '/admin/content' },
+                { icon: '📋', label: 'Audit', path: '/admin/audit' },
+                { icon: '💬', label: 'Messages', path: '/admin/messages' },
+                { icon: '🔔', label: 'Alerts', path: '/admin/notification-settings' },
+              ].map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  onClick={() => setShowMore(false)}
+                >
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="text-[10px] font-medium text-gray-600">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
