@@ -61,7 +61,6 @@ export default function ReceptionistPda() {
   const folioCharges = folio?.folio_transactions || [];
   const folioPayments = folio?.folio_payments || [];
   const totalCharges = folioCharges.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
-  const totalVat = folioCharges.reduce((sum: number, t: any) => sum + Number(t.vat_amount || 0), 0);
   const totalPayments = folioPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
   const balanceDue = totalCharges - totalPayments;
 
@@ -320,11 +319,6 @@ export default function ReceptionistPda() {
                       ))
                     ) : (
                       <p className="text-muted-foreground">No charges yet</p>
-                    )}
-                    {totalVat > 0 && (
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>VAT (16%)</span><span>{formatCurrency(totalVat)}</span>
-                      </div>
                     )}
                     {totalPayments > 0 && (
                       <div className="flex justify-between text-emerald-600">

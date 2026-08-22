@@ -47,11 +47,10 @@ export function useFolio(reservationId?: string) {
 export function usePostRoomCharge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ folioId, description, amount, vatAmount, recordedBy }: {
+    mutationFn: async ({ folioId, description, amount, recordedBy }: {
       folioId: string;
       description: string;
       amount: number;
-      vatAmount?: number;
       recordedBy?: string;
     }) => {
       const { data, error } = await sb
@@ -61,7 +60,6 @@ export function usePostRoomCharge() {
           type: 'room_charge',
           description,
           amount,
-          vat_amount: vatAmount || 0,
           recorded_by: recordedBy || null,
         })
         .select()
@@ -77,11 +75,10 @@ export function usePostRoomCharge() {
 export function usePostRestaurantCharge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ folioId, description, amount, vatAmount, recordedBy }: {
+    mutationFn: async ({ folioId, description, amount, recordedBy }: {
       folioId: string;
       description: string;
       amount: number;
-      vatAmount?: number;
       recordedBy?: string;
     }) => {
       const { data, error } = await sb
@@ -91,7 +88,6 @@ export function usePostRestaurantCharge() {
           type: 'restaurant_charge',
           description,
           amount,
-          vat_amount: vatAmount || 0,
           recorded_by: recordedBy || null,
         })
         .select()
@@ -180,7 +176,6 @@ export function useLinkOrderToFolio() {
             type: 'restaurant_charge',
             description: `Order #${order.order_number}: ${description}`,
             amount: order.total,
-            vat_amount: order.vat_amount || 0,
           });
       }
 

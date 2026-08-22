@@ -125,7 +125,6 @@ export interface PriceCalculation {
   breakfast_cost: number;
   vehicle_cost: number;
   total: number;
-  vat_amount: number;
 }
 
 export interface UserRole {

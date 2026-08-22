@@ -43,7 +43,6 @@ export default function FolioManagement() {
 
   // Calculate totals for selected folio
   const totalCharges = folio?.folio_transactions?.reduce((sum: number, t: any) => sum + Number(t.amount), 0) || 0;
-  const totalVat = folio?.folio_transactions?.reduce((sum: number, t: any) => sum + Number(t.vat_amount || 0), 0) || 0;
   const totalPayments = folio?.folio_payments?.reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
   const balance = totalCharges - totalPayments;
 
@@ -54,7 +53,6 @@ export default function FolioManagement() {
     const formData = new FormData(form);
     const description = formData.get('description') as string;
     const amount = parseFloat(formData.get('amount') as string);
-    const vatAmount = parseFloat(formData.get('vat_amount') as string) || 0;
 
     if (!description || !amount || amount <= 0) {
       toast.error('Please enter a valid description and amount');
@@ -67,7 +65,6 @@ export default function FolioManagement() {
           folioId: selectedFolioId!,
           description,
           amount,
-          vatAmount,
           recordedBy: user?.id,
         });
       } else {
@@ -75,7 +72,6 @@ export default function FolioManagement() {
           folioId: selectedFolioId!,
           description,
           amount,
-          vatAmount,
           recordedBy: user?.id,
         });
       }
@@ -370,9 +366,7 @@ export default function FolioManagement() {
                               </div>
                               <div className="text-right">
                                 <p className="font-mono font-semibold text-sm">+{formatCurrency(txn.amount)}</p>
-                                {Number(txn.vat_amount) > 0 && (
-                                  <p className="text-xs text-muted-foreground">incl. {formatCurrency(txn.vat_amount)} VAT</p>
-                                )}
+
                               </div>
                             </div>
                           ))}
@@ -418,17 +412,7 @@ export default function FolioManagement() {
                 </CardContent>
               </Card>
 
-              {/* VAT Summary */}
-              {totalVat > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">VAT Collected (16%)</span>
-                      <span className="font-mono font-semibold">{formatCurrency(totalVat)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+
             </div>
           )}
         </div>
@@ -447,15 +431,9 @@ export default function FolioManagement() {
               <Label htmlFor="description">Description</Label>
               <Input id="description" name="description" required placeholder="e.g. Room 101 — 3 nights" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="amount">Amount (KES)</Label>
-                <Input id="amount" name="amount" type="number" step="0.01" min="0.01" required placeholder="0.00" />
-              </div>
-              <div>
-                <Label htmlFor="vat_amount">VAT Amount (KES)</Label>
-                <Input id="vat_amount" name="vat_amount" type="number" step="0.01" min="0" placeholder="0.00" />
-              </div>
+            <div>
+              <Label htmlFor="amount">Amount (KES)</Label>
+              <Input id="amount" name="amount" type="number" step="0.01" min="0.01" required placeholder="0.00" />
             </div>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setChargeDialog(false)}>

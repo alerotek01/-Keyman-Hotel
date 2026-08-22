@@ -35,8 +35,6 @@ export default function Cafeteria() {
     : availableItems.filter(i => i.category_id === activeCategory);
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const vatAmount = Math.round(cartTotal * 0.16);
-  const grandTotal = cartTotal + vatAmount;
 
   const updateQuantity = (item: any, delta: number) => {
     setCart(prev => {
@@ -229,17 +227,9 @@ export default function Cafeteria() {
                       </div>
 
                       <div className="border-t border-charcoal/[0.06] pt-3 space-y-1 mb-4">
-                        <div className="flex justify-between text-sm text-charcoal/50">
-                          <span>Subtotal</span>
-                          <span>{formatCurrency(cartTotal)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm text-charcoal/50">
-                          <span>VAT (16%)</span>
-                          <span>{formatCurrency(vatAmount)}</span>
-                        </div>
                         <div className="flex justify-between font-display text-lg text-charcoal pt-1 border-t border-charcoal/[0.06]">
                           <span>Total</span>
-                          <span className="text-brass">{formatCurrency(grandTotal)}</span>
+                          <span className="text-brass">{formatCurrency(cartTotal)}</span>
                         </div>
                       </div>
 
