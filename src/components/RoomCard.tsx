@@ -11,17 +11,17 @@ const fallbackImages: Record<string, { src: string; alt: string }[]> = {
   Single: [
     { src: BASE + '/room-single.jpg', alt: 'Single room — clean linens' },
     { src: BASE + '/single-1.jpg', alt: 'Single room — dark headboard' },
-    { src: BASE + '/hotel-front.png', alt: 'Hotel building exterior' },
+    { src: BASE + '/single-2.jpg', alt: 'Single room — cozy setup' },
+    { src: BASE + '/single-3.jpg', alt: 'Single room — modern bathroom' },
   ],
   Twin: [
     { src: BASE + '/room-twin.jpg', alt: 'Twin room — two beds' },
     { src: BASE + '/twin-1.jpg', alt: 'Twin room — lounge area' },
-    { src: BASE + '/twin-2.jpg', alt: 'Twin room — entrance view' },
+    { src: BASE + '/twin-2.jpg', alt: 'Twin room — mountain view' },
   ],
   Studio: [
-    { src: BASE + '/room-studio.jpg', alt: 'Studio suite — hotel exterior' },
-    { src: BASE + '/studio-1.jpg', alt: 'Studio — two-bed setup' },
-    { src: BASE + '/studio-2.jpg', alt: 'Studio — room interior' },
+    { src: BASE + '/studio-1.jpg', alt: 'Studio suite — spacious setup' },
+    { src: BASE + '/studio-2.jpg', alt: 'Studio suite — panoramic view' },
   ],
 };
 
