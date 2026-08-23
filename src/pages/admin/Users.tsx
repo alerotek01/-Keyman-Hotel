@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logImpersonationStart } from '@/lib/audit';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,23 +125,42 @@ export default function AdminUsers() {
     },
   });
 
-  const handleImpersonateGuest = (guest: any) => {
+  const handleImpersonateGuest = async (guest: any) => {
     if (!confirm(`Act as guest ${guest.name}? You'll see their dashboard.`)) return;
+    const guestEmail = guest.email || `${guest.name.toLowerCase().replace(/\s+/g, '.')}@guest.local`;
+    const auditLogId = await logImpersonationStart({
+      adminId: user?.id || '',
+      adminEmail: user?.email || '',
+      targetUserId: guest.user_id || guest.id,
+      targetName: guest.name,
+      targetRole: 'guest',
+      targetEmail: guestEmail,
+    });
     localStorage.setItem('impersonate', JSON.stringify({
       targetUser: {
         id: guest.user_id || guest.id,
-        email: guest.email || `${guest.name.toLowerCase().replace(/\s+/g, '.')}@guest.local`,
+        email: guestEmail,
         full_name: guest.name,
         role: 'guest',
       },
       adminId: user?.id,
+      adminEmail: user?.email,
+      auditLogId,
       startedAt: new Date().toISOString(),
     }));
     window.location.href = '/guest';
   };
 
-  const handleImpersonateCustomer = (customer: any) => {
+  const handleImpersonateCustomer = async (customer: any) => {
     if (!confirm(`Act as customer ${customer.full_name || customer.email}? You'll see their café dashboard.`)) return;
+    const auditLogId = await logImpersonationStart({
+      adminId: user?.id || '',
+      adminEmail: user?.email || '',
+      targetUserId: customer.id,
+      targetName: customer.full_name || customer.email,
+      targetRole: 'external_customer',
+      targetEmail: customer.email,
+    });
     localStorage.setItem('impersonate', JSON.stringify({
       targetUser: {
         id: customer.id,
@@ -149,6 +169,8 @@ export default function AdminUsers() {
         role: 'external_customer',
       },
       adminId: user?.id,
+      adminEmail: user?.email,
+      auditLogId,
       startedAt: new Date().toISOString(),
     }));
     window.location.href = '/external';
@@ -178,8 +200,16 @@ export default function AdminUsers() {
     updateUser.mutate({ id: user.id, is_active: false });
   };
 
-  const handleImpersonate = (targetUser: any) => {
+  const handleImpersonate = async (targetUser: any) => {
     if (!confirm(`Act as ${targetUser.full_name} (${targetUser.role})? You'll see their dashboard.`)) return;
+    const auditLogId = await logImpersonationStart({
+      adminId: user?.id || '',
+      adminEmail: user?.email || '',
+      targetUserId: targetUser.id,
+      targetName: targetUser.full_name || targetUser.email,
+      targetRole: targetUser.role,
+      targetEmail: targetUser.email,
+    });
     localStorage.setItem('impersonate', JSON.stringify({
       targetUser: {
         id: targetUser.id,
@@ -188,6 +218,8 @@ export default function AdminUsers() {
         role: targetUser.role,
       },
       adminId: user?.id,
+      adminEmail: user?.email,
+      auditLogId,
       startedAt: new Date().toISOString(),
     }));
     // Route to the correct dashboard

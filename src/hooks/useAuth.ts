@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logImpersonationEnd } from '@/lib/audit';
 import type { User } from '@supabase/supabase-js';
 import type { AppRole } from '@/lib/types';
 
@@ -163,6 +164,20 @@ export function useAuth() {
   };
 
   const stopImpersonating = () => {
+    // Log impersonation end to audit_logs
+    if (impersonateData) {
+      const adminId = impersonateData.adminId || user?.id || '';
+      const adminEmail = user?.email || '';
+      logImpersonationEnd({
+        adminId,
+        adminEmail,
+        auditLogId: impersonateData.auditLogId || '',
+        targetUserId: impersonateData.targetUser?.id || '',
+        targetName: impersonateData.targetUser?.full_name || impersonateData.targetUser?.email || '',
+        targetRole: impersonateData.targetUser?.role || '',
+        startedAt: impersonateData.startedAt || new Date().toISOString(),
+      }).catch(() => {}); // fire-and-forget
+    }
     localStorage.removeItem('impersonate');
     window.location.reload();
   };

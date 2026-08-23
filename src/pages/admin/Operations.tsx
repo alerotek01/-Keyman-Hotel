@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { logImpersonationStart } from '@/lib/audit';
 import { formatDate } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -124,12 +125,22 @@ export default function Operations() {
     setImpersonateDialog(true);
   };
 
-  const confirmImpersonate = () => {
+  const confirmImpersonate = async () => {
     if (!selectedStaff) return;
+    const auditLogId = await logImpersonationStart({
+      adminId: user?.id || '',
+      adminEmail: user?.email || '',
+      targetUserId: selectedStaff.id,
+      targetName: selectedStaff.full_name || selectedStaff.email,
+      targetRole: selectedStaff.role,
+      targetEmail: selectedStaff.email,
+    });
     // Store impersonation session
     localStorage.setItem('impersonate', JSON.stringify({
       targetUser: selectedStaff,
-      adminUser: user,
+      adminId: user?.id,
+      adminEmail: user?.email,
+      auditLogId,
       startedAt: new Date().toISOString(),
     }));
     setImpersonateDialog(false);
