@@ -321,3 +321,111 @@ export async function sendDailyReport(to: string, report: {
     `),
   });
 }
+
+// ═══════════════════════════════════════════
+// CONFERENCE QUOTE REQUEST → Manager
+// ═══════════════════════════════════════════
+
+interface ConferenceQuoteData {
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string;
+  companyName?: string;
+  roomName: string;
+  eventType: string;
+  date: string;
+  time: string;
+  duration: string;
+  guestCount: string;
+  amenities: string[];
+  catering: string[];
+  specialRequirements?: string;
+}
+
+export async function sendConferenceQuoteRequest(data: ConferenceQuoteData) {
+  const managerEmail = 'manager@alerotek.co.ke';
+  const eventTypeLabels: Record<string, string> = {
+    meeting: 'Business Meeting', workshop: 'Workshop / Training', conference: 'Conference / Seminar',
+    corporate_event: 'Corporate Event', product_launch: 'Product Launch', interview: 'Interview Panel',
+    celebration: 'Celebration / Party', other: 'Other',
+  };
+
+  return sendEmail({
+    to: managerEmail,
+    subject: `🏢 New Conference Quote Request — ${data.roomName} (${data.date})`,
+    replyTo: data.contactEmail,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">🏢 New Conference Quote Request</h2>
+      <p style="color:#999;margin:0 0 20px;">Action required — prepare an official quote and reply to the client.</p>
+      
+      <div style="background:#f5f5f5;border-radius:8px;padding:16px;margin-bottom:16px;">
+        <h3 style="color:#1a2744;margin:0 0 12px;font-size:16px;">Event Details</h3>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#555;width:120px;">Contact</td><td style="padding:4px 0;color:#1a2744;font-weight:bold;">${data.contactName}${data.companyName ? ` (${data.companyName})` : ''}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Email</td><td style="padding:4px 0;color:#1a2744;"><a href="mailto:${data.contactEmail}">${data.contactEmail}</a></td></tr>
+          ${data.contactPhone ? `<tr><td style="padding:4px 0;color:#555;">Phone</td><td style="padding:4px 0;color:#1a2744;"><a href="tel:${data.contactPhone}">${data.contactPhone}</a></td></tr>` : ''}
+          <tr><td style="padding:4px 0;color:#555;">Venue</td><td style="padding:4px 0;color:#1a2744;font-weight:bold;">${data.roomName}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Event Type</td><td style="padding:4px 0;color:#1a2744;">${eventTypeLabels[data.eventType] || data.eventType}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Date</td><td style="padding:4px 0;color:#1a2744;">${data.date}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Time</td><td style="padding:4px 0;color:#1a2744;">${data.time} (${data.duration} hours)</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Guests</td><td style="padding:4px 0;color:#1a2744;">${data.guestCount}</td></tr>
+        </table>
+      </div>
+      
+      ${data.amenities.length > 0 ? `
+      <div style="background:#fff;border:1px solid #eee;border-radius:8px;padding:16px;margin-bottom:16px;">
+        <h3 style="color:#1a2744;margin:0 0 8px;font-size:14px;">AV & Equipment</h3>
+        <p style="color:#555;margin:0;">${data.amenities.join(', ')}</p>
+      </div>` : ''}
+      
+      ${data.catering.length > 0 ? `
+      <div style="background:#fff;border:1px solid #eee;border-radius:8px;padding:16px;margin-bottom:16px;">
+        <h3 style="color:#1a2744;margin:0 0 8px;font-size:14px;">Catering</h3>
+        <p style="color:#555;margin:0;">${data.catering.join(', ')}</p>
+      </div>` : ''}
+      
+      ${data.specialRequirements ? `
+      <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:16px;margin-bottom:16px;">
+        <h3 style="color:#856404;margin:0 0 8px;font-size:14px;">⚠️ Special Requirements</h3>
+        <p style="color:#856404;margin:0;">${data.specialRequirements}</p>
+      </div>` : ''}
+      
+      <div style="background:#e8f5e9;border-radius:8px;padding:16px;text-align:center;">
+        <p style="color:#2e7d32;margin:0;font-size:14px;">📋 <strong>Next Step:</strong> Prepare an official quote and reply to ${data.contactEmail}</p>
+      </div>
+    `),
+  });
+}
+
+// ═══════════════════════════════════════════
+// CONFERENCE CONFIRMATION → Guest
+// ═══════════════════════════════════════════
+
+export async function sendConferenceConfirmation(to: string, data: {
+  guestName: string;
+  roomName: string;
+  date: string;
+  time: string;
+  duration: string;
+}) {
+  return sendEmail({
+    to,
+    subject: `✅ Conference Request Received — Keyman Hotel`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">✅ Request Received!</h2>
+      <p style="color:#555;margin:0 0 20px;">Dear ${data.guestName},</p>
+      <p style="color:#555;margin:0 0 20px;">Thank you for your conference request at Keyman Hotel. Here's a summary:</p>
+      
+      <div style="background:#f5f5f5;border-radius:8px;padding:16px;margin-bottom:20px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#555;width:100px;">Venue</td><td style="padding:4px 0;color:#1a2744;font-weight:bold;">${data.roomName}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Date</td><td style="padding:4px 0;color:#1a2744;">${data.date}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Time</td><td style="padding:4px 0;color:#1a2744;">${data.time} (${data.duration}h)</td></tr>
+        </table>
+      </div>
+      
+      <p style="color:#555;margin:0 0 12px;">Our events team is preparing your quote. You'll receive an official proposal within <strong>24 hours</strong>.</p>
+      <p style="color:#999;margin:0;">If you have any questions, reply to this email or call us.</p>
+    `),
+  });
+}
