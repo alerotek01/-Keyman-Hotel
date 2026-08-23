@@ -11,7 +11,7 @@ import {
   Loader2, LogOut, Home, LayoutDashboard, BedDouble, CalendarCheck, UtensilsCrossed,
   ChefHat, Sparkles, ClipboardCheck, ClipboardList, Receipt, CreditCard, Clock,
   MessageSquare, Bell, BarChart3, DollarSign, Users, Activity, Settings, Package,
-  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet
+  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet, Coffee
 } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
