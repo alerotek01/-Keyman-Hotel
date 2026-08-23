@@ -4,16 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-// ===== Receipts = payments (for hotel charges) + folio_transactions (for restaurant charges) =====
+// ===== Receipts = folio_payments (consolidated) + folio_transactions =====
 export function useReceipts() {
   return useQuery({
     queryKey: ['receipts'],
     queryFn: async () => {
-      // Combine payments and folio transactions as "receipts"
       const [paymentsRes, transactionsRes] = await Promise.all([
         sb
-          .from('payments')
-          .select('*, folio_id, order_id, recorded_by, verified_by')
+          .from('folio_payments')
+          .select('*, folio_id, order_id, recorded_by, verified_by, guest_folios(reservation_id, guests(name, email))')
           .order('created_at', { ascending: false }),
         sb
           .from('folio_transactions')
@@ -55,7 +54,6 @@ export function useUploadReceipt() {
       payment_id: string;
       file: File;
     }) => {
-      // Upload file to storage
       const fileName = `receipts/${receiptData.payment_id}/${Date.now()}_${receiptData.file.name}`;
       const { error: uploadError } = await sb.storage
         .from('rooms')
@@ -63,14 +61,12 @@ export function useUploadReceipt() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: urlData } = sb.storage
         .from('rooms')
         .getPublicUrl(fileName);
 
-      // Update payment with receipt URL
       const { data: result, error } = await sb
-        .from('payments')
+        .from('folio_payments')
         .update({ receipt_image_url: urlData.publicUrl })
         .eq('id', receiptData.payment_id)
         .select()

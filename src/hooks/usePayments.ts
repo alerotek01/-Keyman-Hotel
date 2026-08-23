@@ -4,14 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-// ===== Payments =====
+// ===== All Payments (now from folio_payments — consolidated) =====
 export function usePayments() {
   return useQuery({
     queryKey: ['payments'],
     queryFn: async () => {
       const { data, error } = await sb
-        .from('payments')
-        .select('*, restaurant_orders(order_number, guest_name), guest_folios(id, reservation_id), users_recorded:recorded_by(full_name)')
+        .from('folio_payments')
+        .select('*, guest_folios(id, reservation_id, guests(name, email))')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -19,7 +19,7 @@ export function usePayments() {
   });
 }
 
-// ===== Record Payment (SAFE via DB function — validates amounts, prevents duplicates) =====
+// ===== Record Payment (SAFE via DB function) =====
 export function useRecordPayment() {
   const qc = useQueryClient();
   return useMutation({
@@ -31,7 +31,6 @@ export function useRecordPayment() {
       notes?: string;
       receiptFile?: File | null;
     }) => {
-      // Call safe DB function — validates amount, checks M-Pesa duplicates
       const { data: result, error } = await sb.rpc('record_payment_safe', {
         p_reservation_id: data.reservation_id,
         p_method: data.method,
@@ -45,24 +44,16 @@ export function useRecordPayment() {
       if (data.receiptFile && result) {
         try {
           const ext = data.receiptFile.name.split('.').pop() || 'jpg';
-          const fileName = `receipts/folio/${result}/${Date.now()}.${ext}`;
+          const fileName = `receipts/folio/${result.payment_id}/${Date.now()}.${ext}`;
           const { error: uploadErr } = await sb.storage
             .from('rooms')
             .upload(fileName, data.receiptFile, { contentType: data.receiptFile.type });
           if (!uploadErr) {
             const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
-            // Update the latest payment for this reservation
-            const { data: payments } = await sb
+            await sb
               .from('folio_payments')
-              .select('id')
-              .order('created_at', { ascending: false })
-              .limit(1);
-            if (payments?.[0]) {
-              await sb
-                .from('folio_payments')
-                .update({ receipt_image_url: urlData.publicUrl })
-                .eq('id', payments[0].id);
-            }
+              .update({ receipt_image_url: urlData.publicUrl })
+              .eq('id', result.payment_id);
           }
         } catch (e) {
           console.warn('Receipt upload failed (payment still recorded):', e);
@@ -79,12 +70,13 @@ export function useRecordPayment() {
   });
 }
 
-// ===== Record Order Payment (for restaurant orders — still uses direct insert with server validation) =====
+// ===== Record Order Payment (restaurant orders — uses folio_payments) =====
 export function useRecordOrderPayment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
       order_id: string;
+      folio_id?: string;
       amount: number;
       method: string;
       mpesa_transaction_id?: string;
@@ -92,14 +84,15 @@ export function useRecordOrderPayment() {
       receiptFile?: File | null;
     }) => {
       const { data: payment, error } = await sb
-        .from('payments')
+        .from('folio_payments')
         .insert({
           order_id: data.order_id,
+          folio_id: data.folio_id || null,
           amount: data.amount,
           method: data.method,
           mpesa_transaction_id: data.mpesa_transaction_id || null,
           recorded_by: data.recorded_by,
-          status: 'pending',
+          status: 'completed',
         })
         .select()
         .single();
@@ -116,7 +109,7 @@ export function useRecordOrderPayment() {
           if (!uploadErr) {
             const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
             await sb
-              .from('payments')
+              .from('folio_payments')
               .update({ receipt_image_url: urlData.publicUrl })
               .eq('id', payment.id);
           }
@@ -142,13 +135,14 @@ export function useRecordOrderPayment() {
   });
 }
 
+// ===== Verify Payment =====
 export function useVerifyPayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ paymentId, status, verifiedBy }: { paymentId: string; status: string; verifiedBy: string }) => {
+    mutationFn: async ({ paymentId, verified, verifiedBy }: { paymentId: string; verified: boolean; verifiedBy: string }) => {
       const { data, error } = await sb
-        .from('payments')
-        .update({ status, verified_by: verifiedBy })
+        .from('folio_payments')
+        .update({ verified, verified_by: verifiedBy })
         .eq('id', paymentId)
         .select()
         .single();
@@ -290,7 +284,6 @@ export function useSubmitReconciliation() {
         .single();
       if (error) throw error;
 
-      // Update shift status
       await sb
         .from('staff_shifts')
         .update({ status: 'submitted' })
@@ -321,7 +314,6 @@ export function useApproveReconciliation() {
         .single();
       if (error) throw error;
 
-      // Update shift status
       if (data.shift_id) {
         await sb
           .from('staff_shifts')
@@ -343,7 +335,6 @@ export function useShiftSummary(shiftId: string) {
   return useQuery({
     queryKey: ['shift-summary', shiftId],
     queryFn: async () => {
-      // Get shift info
       const { data: shift } = await sb
         .from('staff_shifts')
         .select('*')
@@ -359,16 +350,16 @@ export function useShiftSummary(shiftId: string) {
         .gte('created_at', shift.start_time || shift.shift_date)
         .lte('created_at', shift.end_time || new Date().toISOString());
 
-      // Get payments during shift
+      // Get payments during shift (now from folio_payments)
       const { data: payments } = await sb
-        .from('payments')
+        .from('folio_payments')
         .select('id, amount, method, status')
         .gte('created_at', shift.start_time || shift.shift_date)
         .lte('created_at', shift.end_time || new Date().toISOString());
 
       const salesTotal = orders?.reduce((sum: number, o: any) => sum + Number(o.total), 0) || 0;
-      const cashPayments = payments?.filter((p: any) => p.method === 'cash' && p.status !== 'rejected') || [];
-      const mpesaPayments = payments?.filter((p: any) => p.method === 'mpesa' && p.status !== 'rejected') || [];
+      const cashPayments = payments?.filter((p: any) => p.method === 'cash') || [];
+      const mpesaPayments = payments?.filter((p: any) => p.method === 'mpesa') || [];
       const cashTotal = cashPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       const mpesaTotal = mpesaPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
 
