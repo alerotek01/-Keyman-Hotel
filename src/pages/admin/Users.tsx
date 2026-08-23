@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { sendWelcomeEmail } from '@/lib/email';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Pencil, Trash2 } from 'lucide-react';
@@ -74,6 +75,9 @@ export default function AdminUsers() {
           is_active: true,
         });
       if (insertError) throw insertError;
+
+      // Send welcome email
+      await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
 
       return authData.user;
     },
