@@ -3,13 +3,19 @@ import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import NotificationBell from '@/components/NotificationBell';
+import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { differenceInDays } from 'date-fns';
 import {
   Loader2, LogOut, Home, LayoutDashboard, BedDouble, CalendarCheck, UtensilsCrossed,
   ChefHat, Sparkles, ClipboardCheck, ClipboardList, Receipt, CreditCard, Clock,
   MessageSquare, Bell, BarChart3, DollarSign, Users, Activity, Settings, Package,
-  Shield, Wrench, ScrollText, Globe, UserCog, Building2
+  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet
 } from 'lucide-react';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sb = supabase as any;
 
 const DESKTOP_BREAKPOINT = 768;
 
@@ -182,11 +188,12 @@ const GUEST_MORE_ITEMS = [
 // DESKTOP SIDEBAR LAYOUT
 // ═══════════════════════════════════════════════
 
-function DesktopSidebar({ basePath, navItems, displayName, displayRole, onSignOut }: {
+function DesktopSidebar({ basePath, navItems, displayName, displayRole, userId, onSignOut }: {
   basePath: string;
   navItems: NavItem[];
   displayName: string;
   displayRole: string;
+  userId?: string;
   onSignOut: () => void;
 }) {
   const location = useLocation();
@@ -228,6 +235,7 @@ function DesktopSidebar({ basePath, navItems, displayName, displayRole, onSignOu
         <div className="mb-4 px-3">
           <p className="text-sm font-semibold text-primary-foreground truncate">{displayName}</p>
           <p className="text-[10px] text-brass uppercase tracking-wide">{displayRole}</p>
+          {basePath === '/guest' && userId && <GuestStayInfo userId={userId} />}
         </div>
         <Button
           variant="ghost"
@@ -243,14 +251,135 @@ function DesktopSidebar({ basePath, navItems, displayName, displayRole, onSignOu
 }
 
 // ═══════════════════════════════════════════════
+// GUEST STAY INFO — dynamic subtitle in PDA header
+// ═══════════════════════════════════════════════
+
+function GuestStayInfo({ userId }: { userId: string }) {
+  const [info, setInfo] = useState<{
+    roomNumber: number | null;
+    roomType: string | null;
+    nightsRemaining: number | null;
+    balanceDue: number | null;
+    status: string | null;
+    checkOut: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let mounted = true;
+
+    const load = async () => {
+      try {
+        // Get guest record
+        const { data: guest } = await sb
+          .from('guests')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (!guest || !mounted) return;
+
+        // Get active reservation
+        const { data: res } = await sb
+          .from('reservations')
+          .select('id, room_number, check_in, check_out, status, rooms(room_types(name))')
+          .eq('guest_id', guest.id)
+          .in('status', ['confirmed', 'checked_in'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!res || !mounted) return;
+
+        // Get folio balance
+        let balanceDue = 0;
+        const { data: folio } = await sb
+          .from('guest_folios')
+          .select('id')
+          .eq('reservation_id', res.id)
+          .maybeSingle();
+        if (folio) {
+          const { data: txns } = await sb
+            .from('folio_transactions')
+            .select('amount, type')
+            .eq('folio_id', folio.id);
+          const { data: pays } = await sb
+            .from('folio_payments')
+            .select('amount')
+            .eq('folio_id', folio.id);
+          const totalCharges = (txns || []).filter((t: any) => t.type !== 'refund').reduce((s: number, t: any) => s + Number(t.amount), 0);
+          const totalPaid = (pays || []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+          balanceDue = totalCharges - totalPaid;
+        }
+
+        const now = new Date();
+        const checkOutDate = new Date(res.check_out);
+        const nightsRemaining = res.status === 'checked_in'
+          ? Math.max(0, differenceInDays(checkOutDate, now))
+          : null;
+
+        if (mounted) {
+          setInfo({
+            roomNumber: res.room_number,
+            roomType: res.rooms?.room_types?.name || null,
+            nightsRemaining,
+            balanceDue,
+            status: res.status,
+            checkOut: res.check_out,
+          });
+        }
+      } catch (e) { console.error('GuestStayInfo:', e); }
+    };
+
+    load();
+    return () => { mounted = false; };
+  }, [userId]);
+
+  if (!info) return null;
+
+  return (
+    <div className="mt-2.5 flex flex-wrap gap-2">
+      {info.roomNumber && (
+        <span className="inline-flex items-center gap-1 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-full text-[11px] text-white/90">
+          <BedDouble className="h-3 w-3 text-brass" />
+          Room {info.roomNumber}{info.roomType ? ` · ${info.roomType}` : ''}
+        </span>
+      )}
+      {info.nightsRemaining !== null && (
+        <span className="inline-flex items-center gap-1 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-full text-[11px] text-white/90">
+          <Moon className="h-3 w-3 text-brass" />
+          {info.nightsRemaining} night{info.nightsRemaining !== 1 ? 's' : ''} left
+        </span>
+      )}
+      {info.status === 'confirmed' && info.checkOut && (
+        <span className="inline-flex items-center gap-1 bg-blue-400/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-[11px] text-blue-200">
+          <CalendarCheck className="h-3 w-3" />
+          Check-in today
+        </span>
+      )}
+      {info.balanceDue !== null && info.balanceDue > 0 && (
+        <span className="inline-flex items-center gap-1 bg-amber-400/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-[11px] text-amber-200">
+          <Wallet className="h-3 w-3" />
+          Balance: {formatCurrency(info.balanceDue)}
+        </span>
+      )}
+      {info.balanceDue !== null && info.balanceDue <= 0 && info.status === 'checked_in' && (
+        <span className="inline-flex items-center gap-1 bg-emerald-400/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-[11px] text-emerald-200">
+          ✅ Settled
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
 // MOBILE PDA LAYOUT
 // ═══════════════════════════════════════════════
 
-function MobilePdaLayout({ role, tabs, displayName, displayRole, onSignOut, showMore, setShowMore, moreItems }: {
+function MobilePdaLayout({ role, tabs, displayName, displayRole, userId, onSignOut, showMore, setShowMore, moreItems }: {
   role: string;
   tabs: TabConfig[];
   displayName: string;
   displayRole: string;
+  userId?: string;
   onSignOut: () => void;
   showMore: boolean;
   setShowMore: (v: boolean) => void;
@@ -275,6 +404,7 @@ function MobilePdaLayout({ role, tabs, displayName, displayRole, onSignOut, show
             <span className="inline-block mt-2 bg-brass text-navy px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
               {ROLE_ICONS[role] || '👤'} {ROLE_LABELS[role] || 'Staff'}
             </span>
+            {role === 'guest' && userId && <GuestStayInfo userId={userId} />}
           </div>
           <div className="flex items-center gap-2 mt-1">
             <Link to="/" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 hover:text-white transition-colors" title="Visit Website">
@@ -423,6 +553,7 @@ export default function ResponsiveLayout({ basePath, allowedRoles }: ResponsiveL
           navItems={navConfig}
           displayName={displayName || ''}
           displayRole={displayRole || ''}
+          userId={user?.id}
           onSignOut={signOut}
         />
         <div className="flex-1 flex flex-col min-w-0">
@@ -444,6 +575,7 @@ export default function ResponsiveLayout({ basePath, allowedRoles }: ResponsiveL
       tabs={mobileTabs}
       displayName={displayName || ''}
       displayRole={displayRole || ''}
+      userId={user?.id}
       onSignOut={signOut}
       showMore={showMore}
       setShowMore={setShowMore}
