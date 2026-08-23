@@ -16,6 +16,9 @@ import GuestFolio from "./pages/guest/GuestFolio";
 import GuestOrder from "./pages/guest/GuestOrder";
 import GuestChat from "./pages/guest/GuestChat";
 import BookingFlow from "./pages/guest/BookingFlow";
+import ConferenceBooking from "./pages/guest/ConferenceBooking";
+import ExternalOrder from "./pages/guest/ExternalOrder";
+import ExternalLogin from "./pages/external/ExternalLogin";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminRooms from "./pages/admin/Rooms";
 import AdminBookings from "./pages/admin/Bookings";
@@ -29,6 +32,7 @@ import AdminSiteContent from "./pages/admin/SiteContent";
 import AdminFolios from "./pages/admin/FolioManagement";
 import AdminBookingSettings from "./pages/admin/BookingSettings";
 import PaymentVerification from "./pages/admin/PaymentVerification";
+import ConferenceManagement from "./pages/admin/ConferenceManagement";
 import AdminUsers from "./pages/admin/Users";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerReports from "./pages/admin/Reports";
@@ -75,6 +79,11 @@ const App = () => (
           <Route path="/guest/order" element={<GuestOrder />} />
           <Route path="/guest/chat" element={<GuestChat />} />
           <Route path="/guest/booking" element={<BookingFlow />} />
+          <Route path="/guest/conference" element={<ConferenceBooking />} />
+
+          {/* External Customer Routes */}
+          <Route path="/external/login" element={<ExternalLogin />} />
+          <Route path="/external/order" element={<ExternalOrder />} />
 
           {/* Admin Routes (Responsive) */}
           <Route path="/admin" element={<ResponsiveLayout basePath="/admin" />}>
@@ -90,6 +99,7 @@ const App = () => (
             <Route path="operations" element={<AdminOperations />} />
             <Route path="booking-settings" element={<AdminBookingSettings />} />
             <Route path="payments-verify" element={<PaymentVerification />} />
+            <Route path="conference" element={<ConferenceManagement />} />
             <Route path="messages" element={<MessagePage />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>

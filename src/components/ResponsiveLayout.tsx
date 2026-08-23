@@ -8,7 +8,7 @@ import {
   Loader2, LogOut, Home, LayoutDashboard, BedDouble, CalendarCheck, UtensilsCrossed,
   ChefHat, Sparkles, ClipboardCheck, ClipboardList, Receipt, CreditCard, Clock,
   MessageSquare, Bell, BarChart3, DollarSign, Users, Activity, Settings, Package,
-  Shield, Wrench, ScrollText, Globe, UserCog
+  Shield, Wrench, ScrollText, Globe, UserCog, Building2
 } from 'lucide-react';
 
 const DESKTOP_BREAKPOINT = 768;
@@ -48,6 +48,7 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/admin/reports', label: 'Reports', icon: ScrollText },
     { path: '/admin/audit', label: 'Audit Logs', icon: Shield },
     { path: '/admin/operations', label: 'Operations', icon: Activity },
+    { path: '/admin/conference', label: 'Conference', icon: Building2 },
     { path: '/admin/booking-settings', label: 'Booking Rules', icon: Settings },
     { path: '/admin/payments-verify', label: 'Verify Payments', icon: CreditCard },
     { path: '/admin/messages', label: 'Messages', icon: MessageSquare },

@@ -5,6 +5,7 @@ import { useKitchenOrders, useUpdateOrderStatus } from '@/hooks/useRestaurantOrd
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2, ChefHat, ArrowRight, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,10 @@ export default function KitchenTablet() {
   const handleMarkReady = async (orderId: string) => {
     try {
       await updateStatus.mutateAsync({ orderId, status: 'ready' });
+      // Auto-assign rider for delivery orders
+      try {
+        await (supabase as any).rpc('assign_delivery_rider', { p_order_id: orderId });
+      } catch (e) { /* not a delivery order or no riders */ }
       toast.success('Order ready for pickup!');
     } catch (error: any) {
       toast.error(error.message);
@@ -111,6 +116,16 @@ export default function KitchenTablet() {
                       <p className="text-sm text-gray-300 mb-2">{order.guest_name}</p>
                     )}
 
+                    {order.delivery_type && (
+                      <div className="mb-2">
+                        {order.delivery_type === 'delivery' ? (
+                          <Badge className="bg-orange-500/20 text-orange-400 text-xs">🚴 DELIVERY — {order.delivery_address || 'No address'}</Badge>
+                        ) : (
+                          <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">🍽️ PICKUP</Badge>
+                        )}
+                      </div>
+                    )}
+
                     <div className="space-y-1 mb-3">
                       {order.restaurant_order_items?.map((item: any) => (
                         <div key={item.id} className="flex justify-between text-sm">
@@ -160,7 +175,13 @@ export default function KitchenTablet() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-mono text-lg font-bold text-blue-400">#{order.order_number}</span>
                       {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
+                      {order.delivery_type === 'delivery' && <Badge className="bg-orange-500/20 text-orange-400 text-xs">🚴 Delivery</Badge>}
+                      {order.delivery_type === 'pickup' && <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">🍽️ Pickup</Badge>}
                     </div>
+
+                    {order.delivery_type === 'delivery' && order.delivery_address && (
+                      <p className="text-xs text-orange-400 mb-2">📍 {order.delivery_address}</p>
+                    )}
 
                     <div className="space-y-1 mb-3">
                       {order.restaurant_order_items?.map((item: any) => (
@@ -209,6 +230,7 @@ export default function KitchenTablet() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-mono text-lg font-bold text-emerald-400">#{order.order_number}</span>
                       {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
+                      {order.delivery_type === 'delivery' && <Badge className="bg-orange-500/20 text-orange-400 text-xs">🚴 Delivery</Badge>}
                     </div>
 
                     <div className="space-y-1">

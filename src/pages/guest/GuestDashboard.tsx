@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Loader2, BedDouble, Receipt, UtensilsCrossed, MessageSquare, LogOut, Calendar, CreditCard, Clock, Plus, Wifi } from 'lucide-react';
+import { Loader2, BedDouble, Receipt, UtensilsCrossed, MessageSquare, LogOut, Calendar, CreditCard, Clock, Plus, Wifi, Building2, Coffee } from 'lucide-react';
 import { format } from 'date-fns';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,18 +112,24 @@ export default function GuestDashboard() {
 
       <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-4">
         {/* Quick Actions */}
-        <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
           <Link to="/guest/booking">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><Plus className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Book</p></CardContent></Card>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><BedDouble className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Room</p></CardContent></Card>
           </Link>
-          <Link to="/guest/folio">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><Receipt className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Folio</p></CardContent></Card>
+          <Link to="/guest/conference">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><Building2 className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Conference</p></CardContent></Card>
           </Link>
           <Link to="/guest/order">
             <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><UtensilsCrossed className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Food</p></CardContent></Card>
           </Link>
+          <Link to="/guest/folio">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><Receipt className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Folio</p></CardContent></Card>
+          </Link>
           <Link to="/guest/chat">
             <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><MessageSquare className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Chat</p></CardContent></Card>
+          </Link>
+          <Link to="/external/order">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-brass"><CardContent className="p-3 text-center"><Coffee className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Café Order</p></CardContent></Card>
           </Link>
         </div>
 
