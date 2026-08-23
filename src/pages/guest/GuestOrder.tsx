@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Loader2, ArrowLeft, Plus, Minus, Send, Clock, CheckCircle2, UtensilsCrossed } from 'lucide-react';
+import { Loader2, Plus, Minus, Send, Clock, UtensilsCrossed } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -99,21 +99,10 @@ export default function GuestOrder() {
   const filtered = activeCategory === 'all' ? menuItems : menuItems.filter(i => i.category_id === activeCategory);
   const cartTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-navy text-white px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/guest"><ArrowLeft className="h-5 w-5" /></Link>
-            <h1 className="font-display text-xl font-bold">Order Food</h1>
-          </div>
-          {roomNumber && <Badge className="bg-brass/20 text-brass">Room {roomNumber}</Badge>}
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
+    <div className="p-4 space-y-4">
         {/* My Orders */}
         {orders.length > 0 && (
           <Card>
@@ -197,7 +186,6 @@ export default function GuestOrder() {
             </CardContent>
           </Card>
         )}
-      </div>
     </div>
   );
 }

@@ -191,31 +191,10 @@ export default function ExternalOrder() {
     return true;
   });
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-navy text-white px-6 py-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-xl font-bold">🍽️ Keyman Café</h1>
-              <p className="text-white/60 text-sm">Order • Track • Enjoy</p>
-            </div>
-            <div className="relative">
-              <ShoppingCart className="h-6 w-6" />
-              {cart.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-brass text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                  {cart.reduce((s, c) => s + c.qty, 0)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto p-4 pb-20">
+    <div className="p-4 pb-20">
         {/* Tab Bar */}
         <div className="flex gap-1 mb-4 bg-white rounded-lg p-1 shadow-sm">
           {(['menu', 'cart', 'orders'] as const).map(t => (
@@ -455,7 +434,6 @@ export default function ExternalOrder() {
             )}
           </>
         )}
-      </div>
     </div>
   );
 }

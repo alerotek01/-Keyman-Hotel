@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
-import { Loader2, ArrowLeft, Receipt, BedDouble, UtensilsCrossed, CreditCard } from 'lucide-react';
+import { Loader2, Receipt, BedDouble, UtensilsCrossed, CreditCard } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -55,7 +55,7 @@ export default function GuestFolio() {
     setLoading(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
 
   const totalCharges = charges.filter(c => c.type !== 'refund').reduce((s, c) => s + Number(c.amount), 0);
   const totalPayments = payments.reduce((s, p) => s + Number(p.amount), 0);
@@ -68,15 +68,7 @@ export default function GuestFolio() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-navy text-white px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link to="/guest"><ArrowLeft className="h-5 w-5" /></Link>
-          <h1 className="font-display text-xl font-bold">My Folio</h1>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-4">
+    <div className="p-4 md:p-6 space-y-4">
         {/* Summary */}
         <Card className="bg-gradient-to-r from-navy to-navy/80 text-white">
           <CardContent className="p-4">
@@ -149,7 +141,6 @@ export default function GuestFolio() {
             </CardContent>
           </Card>
         )}
-      </div>
     </div>
   );
 }

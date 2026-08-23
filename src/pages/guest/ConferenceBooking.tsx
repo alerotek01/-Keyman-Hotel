@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { sendConferenceQuoteRequest, sendConferenceConfirmation } from '@/lib/email';
 import { toast } from 'sonner';
-import { Loader2, Calendar, Clock, Users, Building2, ArrowLeft, CheckCircle2, ClipboardList, Coffee, Monitor, Mic, Wifi, FileText } from 'lucide-react';
+import { Loader2, Calendar, Clock, Users, Building2, CheckCircle2, ClipboardList, Coffee, Monitor, Mic, Wifi, FileText } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -185,21 +185,10 @@ export default function ConferenceBooking() {
     setSubmitting(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-navy text-white px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link to="/guest"><ArrowLeft className="h-5 w-5" /></Link>
-          <div>
-            <h1 className="font-display text-xl font-bold">Conference & Events</h1>
-            <p className="text-white/60 text-sm">Request a quote for your event</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
+    <div className="p-4 space-y-4">
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-2 mb-2">
           {(['details', 'amenities', 'review'] as const).map((s, i) => (
@@ -502,7 +491,6 @@ export default function ConferenceBooking() {
             </CardContent>
           </Card>
         )}
-      </div>
     </div>
   );
 }

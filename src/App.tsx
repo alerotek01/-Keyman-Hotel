@@ -74,16 +74,20 @@ const App = () => (
 
           {/* Guest Routes (Responsive — mobile PDA ↔ desktop sidebar) */}
           <Route path="/guest/login" element={<GuestLogin />} />
-          <Route path="/guest" element={<GuestDashboard />} />
-          <Route path="/guest/folio" element={<GuestFolio />} />
-          <Route path="/guest/order" element={<GuestOrder />} />
-          <Route path="/guest/chat" element={<GuestChat />} />
-          <Route path="/guest/booking" element={<BookingFlow />} />
-          <Route path="/guest/conference" element={<ConferenceBooking />} />
+          <Route path="/guest" element={<ResponsiveLayout basePath="/guest" />}>
+            <Route index element={<GuestDashboard />} />
+            <Route path="folio" element={<GuestFolio />} />
+            <Route path="order" element={<GuestOrder />} />
+            <Route path="chat" element={<GuestChat />} />
+            <Route path="booking" element={<BookingFlow />} />
+            <Route path="conference" element={<ConferenceBooking />} />
+          </Route>
 
           {/* External Customer Routes */}
           <Route path="/external/login" element={<ExternalLogin />} />
-          <Route path="/external/order" element={<ExternalOrder />} />
+          <Route path="/external" element={<ResponsiveLayout basePath="/external" allowedRoles={["external_customer", "guest", "admin", "manager"]} />}>
+            <Route path="order" element={<ExternalOrder />} />
+          </Route>
 
           {/* Admin Routes (Responsive) */}
           <Route path="/admin" element={<ResponsiveLayout basePath="/admin" />}>

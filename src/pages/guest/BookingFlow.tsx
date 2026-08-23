@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Loader2, Calendar, CreditCard, ArrowLeft, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { Loader2, Calendar, CreditCard, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -134,21 +134,13 @@ export default function BookingFlow() {
     setSubmitting(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
 
   const rt = roomTypes.find((r: any) => r.id === selectedRoomType);
   const total = rt ? Number(rt.base_rate) * Math.max(1, Math.ceil((new Date(checkOut || Date.now()).getTime() - new Date(checkIn || Date.now()).getTime()) / 86400000)) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-navy text-white px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link to="/guest"><ArrowLeft className="h-5 w-5" /></Link>
-          <h1 className="font-display text-xl font-bold">Book a Room</h1>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
+    <div className="p-4 space-y-4">
         {step === 'dates' && (
           <>
             <Card>
@@ -278,7 +270,6 @@ export default function BookingFlow() {
             </CardContent>
           </Card>
         )}
-      </div>
     </div>
   );
 }

@@ -7,14 +7,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Loader2, BedDouble, Receipt, UtensilsCrossed, MessageSquare, LogOut, Calendar, CreditCard, Clock, Plus, Wifi, Building2, Coffee, Globe } from 'lucide-react';
+import { Loader2, BedDouble, Receipt, UtensilsCrossed, MessageSquare, Calendar, CreditCard, Clock, Plus, Coffee, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
 export default function GuestDashboard() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [guest, setGuest] = useState<any>(null);
   const [reservations, setReservations] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -90,32 +90,13 @@ export default function GuestDashboard() {
     setLoading(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
 
   const upcoming = reservations.filter(r => r.status === 'confirmed' || r.status === 'checked_in');
   const past = reservations.filter(r => r.status === 'checked_out' || r.status === 'cancelled');
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-navy text-white px-6 py-4">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <div>
-            <h1 className="font-display text-xl font-bold">Hi {guest?.name || user?.email?.split('@')[0]} 👋</h1>
-            <p className="text-white/60 text-sm">{format(new Date(), 'EEEE, MMMM d')}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link to="/" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 hover:text-white transition-colors" title="Visit Website">
-              <Globe className="h-4 w-4" />
-            </Link>
-            <Button variant="ghost" size="sm" className="text-white/60 hover:text-white" onClick={signOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-4">
+    <div className="p-4 md:p-6 space-y-4">
         {/* Quick Actions */}
         <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
           <Link to="/guest/booking">
@@ -223,7 +204,6 @@ export default function GuestDashboard() {
             ))}
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

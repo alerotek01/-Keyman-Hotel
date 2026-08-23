@@ -69,6 +69,18 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/staff/messages', label: 'Messages', icon: MessageSquare },
     { path: '/staff/notification-settings', label: 'Notifications', icon: Bell },
   ],
+  guest: [
+    { path: '/guest', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { path: '/guest/booking', label: 'Book Room', icon: BedDouble },
+    { path: '/guest/conference', label: 'Conference', icon: Building2 },
+    { path: '/guest/order', label: 'Order Food', icon: UtensilsCrossed },
+    { path: '/guest/folio', label: 'My Folio', icon: Receipt },
+    { path: '/guest/chat', label: 'Messages', icon: MessageSquare },
+    { path: '/external/order', label: 'Café Order', icon: Coffee },
+  ],
+  external: [
+    { path: '/external/order', label: 'Order Food', icon: UtensilsCrossed, exact: true },
+  ],
 };
 
 // ═══════════════════════════════════════════════
@@ -83,6 +95,14 @@ interface TabConfig {
 }
 
 const ROLE_TABS: Record<string, TabConfig[]> = {
+  guest: [
+    { path: '/guest', label: 'Home', icon: '🏠', centerAction: false },
+    { path: '/guest/booking', label: 'Book', icon: '🛏️' },
+    { path: '/guest', label: 'More', icon: '➕', centerAction: true },
+    { path: '/guest/order', label: 'Food', icon: '🍽️' },
+    { path: '/guest/chat', label: 'Chat', icon: '💬' },
+    { path: '/guest/folio', label: 'Folio', icon: '📋' },
+  ],
   manager: [
     { path: '/manager', label: 'Home', icon: '🏠', centerAction: false },
     { path: '/manager/bookings', label: 'Bookings', icon: '📅' },
@@ -123,6 +143,14 @@ const ROLE_TABS: Record<string, TabConfig[]> = {
     { path: '/staff/messages', label: 'Chat', icon: '💬' },
     { path: '/staff/shift', label: 'Shift', icon: '⏰' },
   ],
+  external_customer: [
+    { path: '/external/order', label: 'Menu', icon: '🍽️', centerAction: false },
+    { path: '/external/order', label: 'Orders', icon: '📦' },
+    { path: '/external/order', label: 'Track', icon: '🔍', centerAction: true },
+    { path: '/', label: 'Home', icon: '🏠' },
+    { path: '/guest/chat', label: 'Help', icon: '💬' },
+    { path: '/guest/folio', label: 'History', icon: '📋' },
+  ],
 };
 
 // Manager "More" overlay items
@@ -139,6 +167,17 @@ const MANAGER_MORE_ITEMS = [
   { icon: '🔔', label: 'Alerts', path: '/manager/notification-settings' },
 ];
 
+// Guest "More" overlay items
+const GUEST_MORE_ITEMS = [
+  { icon: '🏠', label: 'Dashboard', path: '/guest' },
+  { icon: '🛏️', label: 'Book Room', path: '/guest/booking' },
+  { icon: '🏢', label: 'Conference', path: '/guest/conference' },
+  { icon: '🍽️', label: 'Order Food', path: '/guest/order' },
+  { icon: '📋', label: 'My Folio', path: '/guest/folio' },
+  { icon: '💬', label: 'Messages', path: '/guest/chat' },
+  { icon: '☕', label: 'Café Order', path: '/external/order' },
+];
+
 // ═══════════════════════════════════════════════
 // DESKTOP SIDEBAR LAYOUT
 // ═══════════════════════════════════════════════
@@ -151,7 +190,7 @@ function DesktopSidebar({ basePath, navItems, displayName, displayRole, onSignOu
   onSignOut: () => void;
 }) {
   const location = useLocation();
-  const panelLabel = basePath === '/manager' ? 'Manager Panel' : basePath === '/admin' ? 'Admin Panel' : 'Staff Panel';
+  const panelLabel = basePath === '/manager' ? 'Manager Panel' : basePath === '/admin' ? 'Admin Panel' : basePath === '/guest' ? 'Guest Portal' : 'Staff Panel';
 
   return (
     <aside className="w-64 bg-navy text-primary-foreground flex flex-col shrink-0 h-screen sticky top-0">
@@ -220,8 +259,8 @@ function MobilePdaLayout({ role, tabs, displayName, displayRole, onSignOut, show
   const location = useLocation();
   const today = new Date();
   const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const ROLE_LABELS: Record<string, string> = { admin: 'Administrator', manager: 'Manager', receptionist: 'Receptionist', chef: 'Chef', waiter: 'Waiter', housekeeper: 'Housekeeper', accountant: 'Accountant' };
-  const ROLE_ICONS: Record<string, string> = { admin: '👑', manager: '📊', receptionist: '🔑', chef: '👨‍🍳', waiter: '🍽️', housekeeper: '🧹', accountant: '💰' };
+  const ROLE_LABELS: Record<string, string> = { admin: 'Administrator', manager: 'Manager', receptionist: 'Receptionist', chef: 'Chef', waiter: 'Waiter', housekeeper: 'Housekeeper', accountant: 'Accountant', guest: 'Guest', external_customer: 'Customer' };
+  const ROLE_ICONS: Record<string, string> = { admin: '👑', manager: '📊', receptionist: '🔑', chef: '👨‍🍳', waiter: '🍽️', housekeeper: '🧹', accountant: '💰', guest: '🛏️', external_customer: '☕' };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
@@ -366,8 +405,10 @@ export default function ResponsiveLayout({ basePath, allowedRoles }: ResponsiveL
   }
 
   // Determine nav config based on basePath
-  const navConfig = basePath === '/manager' ? NAV_CONFIGS.manager
+  const navConfig = basePath === '/guest' ? NAV_CONFIGS.guest
+    : basePath === '/manager' ? NAV_CONFIGS.manager
     : basePath === '/admin' ? NAV_CONFIGS.admin
+    : basePath === '/external' ? NAV_CONFIGS.external
     : NAV_CONFIGS.staff;
 
   // Determine mobile tabs
@@ -406,7 +447,7 @@ export default function ResponsiveLayout({ basePath, allowedRoles }: ResponsiveL
       onSignOut={signOut}
       showMore={showMore}
       setShowMore={setShowMore}
-      moreItems={basePath === '/manager' ? MANAGER_MORE_ITEMS : undefined}
+      moreItems={basePath === '/manager' ? MANAGER_MORE_ITEMS : basePath === '/guest' ? GUEST_MORE_ITEMS : undefined}
     />
   );
 }

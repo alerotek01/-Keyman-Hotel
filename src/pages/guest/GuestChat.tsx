@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Send, Hash, MessageSquare } from 'lucide-react';
+import { Send, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -93,19 +93,10 @@ export default function GuestChat() {
     return { label: name, icon: '💬', color: 'bg-gray-100 text-gray-800' };
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-brass border-t-transparent" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-brass border-t-transparent" /></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-navy text-white px-6 py-4 shrink-0">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link to="/guest"><ArrowLeft className="h-5 w-5" /></Link>
-          <h1 className="font-display text-xl font-bold">Messages</h1>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col">
+    <div className="flex flex-col h-full">
         {/* Channel Tabs */}
         <div className="flex gap-2 p-3 overflow-x-auto shrink-0">
           {channels.map(ch => {
@@ -169,7 +160,6 @@ export default function GuestChat() {
             </Button>
           </div>
         </div>
-      </div>
     </div>
   );
 }
