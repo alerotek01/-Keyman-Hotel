@@ -477,13 +477,14 @@ function ChannelMembersPanel({ channelId, onClose }: { channelId: string; onClos
 // Helper hook to get unread counts for all channels
 function useUnreadCounts() {
   const { data: channels } = useChannels();
-  const { data: { user } } = useQuery({
+  const { data: authData } = useQuery({
     queryKey: ['current-user'],
     queryFn: async () => {
       const { data } = await sb.auth.getUser();
       return data;
     },
   });
+  const user = authData?.user;
 
   const [counts, setCounts] = useState<Record<string, number>>({});
 
