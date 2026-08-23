@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sendWelcomeEmail } from '@/lib/email';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Pencil, Trash2, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/lib/types';
 
@@ -133,6 +133,27 @@ export default function AdminUsers() {
   const handleSuspend = (user: any) => {
     if (!confirm(`Suspend ${user.full_name}? They won't be able to log in.`)) return;
     updateUser.mutate({ id: user.id, is_active: false });
+  };
+
+  const handleImpersonate = (targetUser: any) => {
+    if (!confirm(`Act as ${targetUser.full_name} (${targetUser.role})? You'll see their dashboard.`)) return;
+    localStorage.setItem('impersonate', JSON.stringify({
+      targetUser: {
+        id: targetUser.id,
+        email: targetUser.email,
+        full_name: targetUser.full_name,
+        role: targetUser.role,
+      },
+      adminId: user?.id,
+      startedAt: new Date().toISOString(),
+    }));
+    // Route to the correct dashboard
+    const ROLE_PATHS: Record<string, string> = {
+      admin: '/admin', manager: '/manager', receptionist: '/staff',
+      waiter: '/staff', chef: '/staff', housekeeper: '/staff',
+      accountant: '/admin', guest: '/guest', external_customer: '/external/order',
+    };
+    window.location.href = ROLE_PATHS[targetUser.role] || '/staff';
   };
 
   const handleApprove = (user: any) => {
@@ -280,6 +301,9 @@ export default function AdminUsers() {
                     </span>
                     <Button variant="outline" size="sm" onClick={() => handleSuspend(user)}>
                       <UserX className="h-4 w-4 text-amber-600" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleImpersonate(user)} title="Act as this user">
+                      <Eye className="h-4 w-4 text-blue-600" />
                     </Button>
                   </div>
                 </CardContent>

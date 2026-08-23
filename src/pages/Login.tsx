@@ -24,6 +24,8 @@ export default function Login() {
 
     if (role === 'admin') navigate('/admin', { replace: true });
     else if (role === 'manager') navigate('/manager', { replace: true });
+    else if (role === 'guest') navigate('/guest', { replace: true });
+    else if (role === 'external_customer') navigate('/external/order', { replace: true });
     else navigate('/staff', { replace: true });
   }, [user, role, authLoading, navigate]);
 

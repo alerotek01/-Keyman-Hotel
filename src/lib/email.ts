@@ -130,12 +130,31 @@ export async function sendPasswordReset(to: string, resetLink: string, userName:
  * Welcome email when admin creates a user
  */
 export async function sendWelcomeEmail(to: string, userName: string, role: string, temporaryPassword?: string) {
+  // Role-specific dashboard links
+  const ROLE_DASHBOARDS: Record<string, string> = {
+    admin: '/admin',
+    manager: '/manager',
+    receptionist: '/staff',
+    waiter: '/staff',
+    chef: '/staff',
+    housekeeper: '/staff',
+    accountant: '/admin',
+    guest: '/guest',
+    external_customer: '/external/order',
+  };
+  const dashboardPath = ROLE_DASHBOARDS[role] || '/staff';
+  const dashboardUrl = `${HOTEL_URL}${dashboardPath}`;
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ');
+
   return sendEmail({
     to,
-    subject: `Welcome to ${HOTEL_NAME} — Your Account is Ready`,
+    subject: `Welcome to ${HOTEL_NAME} — Your ${roleLabel} Account is Ready`,
     html: baseTemplate(`
       <h2 style="color:#1a2744;margin-bottom:16px;">Welcome, ${userName}! 👋</h2>
-      <p style="color:#555;line-height:1.6;">Your <strong>${role}</strong> account has been created on the ${HOTEL_NAME} management system.</p>
+      <p style="color:#555;line-height:1.6;">Your <strong>${roleLabel}</strong> account has been created on the ${HOTEL_NAME} management system.</p>
+      <div style="background:#e8f5e9;border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
+        <p style="color:#2e7d32;margin:0;font-size:14px;">🎯 Your Role: <strong>${roleLabel}</strong></p>
+      </div>
       ${temporaryPassword ? `
         <div style="background:#f5f5f5;border-radius:8px;padding:20px;margin:20px 0;">
           <p style="color:#555;margin:0 0 8px;">Your login credentials:</p>
@@ -145,8 +164,9 @@ export async function sendWelcomeEmail(to: string, userName: string, role: strin
         <p style="color:#e74c3c;font-size:13px;">⚠️ Please change your password after first login.</p>
       ` : ''}
       <div style="text-align:center;margin:24px 0;">
-        <a href="${HOTEL_URL}/login" style="background:#c8a951;color:#1a2744;text-decoration:none;padding:12px 32px;border-radius:6px;font-weight:bold;display:inline-block;">Login to Dashboard</a>
+        <a href="${dashboardUrl}" style="background:#c8a951;color:#1a2744;text-decoration:none;padding:12px 32px;border-radius:6px;font-weight:bold;display:inline-block;">Open ${roleLabel} Dashboard</a>
       </div>
+      <p style="color:#999;font-size:12px;text-align:center;margin-top:12px;">Direct link: <a href="${dashboardUrl}" style="color:#c8a951;">${dashboardUrl}</a></p>
     `),
   });
 }
@@ -318,6 +338,127 @@ export async function sendDailyReport(to: string, report: {
         <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">Pending Payments</td><td style="padding:8px;border-bottom:1px solid #eee;color:${report.pendingPayments > 0 ? '#e74c3c' : '#27ae60'};text-align:right;font-weight:bold;">${report.pendingPayments}</td></tr>
         <tr><td style="padding:8px;color:#555;">Rooms (Occupied/Available)</td><td style="padding:8px;color:#1a2744;text-align:right;">${report.roomsOccupied} / ${report.roomsAvailable}</td></tr>
       </table>
+    `),
+  });
+}
+
+// ═══════════════════════════════════════════
+// SHIFT LIFECYCLE EMAILS
+// ═══════════════════════════════════════════
+
+/**
+ * Notify staff when a shift is assigned
+ */
+export async function sendShiftAssignment(to: string, staffName: string, shiftName: string, shiftDate: string, startTime?: string) {
+  return sendEmail({
+    to,
+    subject: `📋 Shift Assigned — ${shiftName} on ${shiftDate}`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">📋 Shift Assigned</h2>
+      <p style="color:#555;line-height:1.6;">Hi ${staffName},</p>
+      <p style="color:#555;line-height:1.6;">You have been assigned a new shift:</p>
+      <div style="background:#f5f5f5;border-radius:8px;padding:20px;margin:20px 0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:8px 0;color:#999;">Shift</td><td style="padding:8px 0;color:#1a2744;font-weight:bold;">${shiftName.charAt(0).toUpperCase() + shiftName.slice(1)}</td></tr>
+          <tr><td style="padding:8px 0;color:#999;">Date</td><td style="padding:8px 0;color:#1a2744;">${shiftDate}</td></tr>
+          ${startTime ? `<tr><td style="padding:8px 0;color:#999;">Start Time</td><td style="padding:8px 0;color:#1a2744;">${startTime}</td></tr>` : ''}
+        </table>
+      </div>
+      <p style="color:#555;line-height:1.6;">Please be ready to start your shift on time. Remember to check in when you arrive.</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${HOTEL_URL}/staff" style="background:#c8a951;color:#1a2744;text-decoration:none;padding:12px 32px;border-radius:6px;font-weight:bold;display:inline-block;">Open Staff Dashboard</a>
+      </div>
+    `),
+  });
+}
+
+/**
+ * Notify manager/admin when a shift starts (check-in)
+ */
+export async function sendShiftCheckIn(managerEmails: string[], staffName: string, shiftName: string, checkInTime: string) {
+  return sendEmail({
+    to: managerEmails,
+    subject: `✅ Shift Check-In — ${staffName} (${shiftName})`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">✅ Staff Checked In</h2>
+      <div style="background:#e8f5e9;border-radius:8px;padding:16px;margin:16px 0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#555;">Staff</td><td style="padding:4px 0;color:#1a2744;font-weight:bold;">${staffName}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Shift</td><td style="padding:4px 0;color:#1a2744;">${shiftName}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Check-in Time</td><td style="padding:4px 0;color:#27ae60;font-weight:bold;">${checkInTime}</td></tr>
+        </table>
+      </div>
+    `),
+  });
+}
+
+/**
+ * Notify manager/admin when a shift ends (check-out)
+ */
+export async function sendShiftCheckOut(managerEmails: string[], staffName: string, shiftName: string, startTime: string, endTime: string) {
+  const duration = Math.round((new Date(endTime).getTime() - new Date(startTime).getTime()) / 3600000 * 10) / 10;
+  return sendEmail({
+    to: managerEmails,
+    subject: `⏹️ Shift Ended — ${staffName} (${shiftName})`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">⏹️ Shift Ended</h2>
+      <div style="background:#fff3e0;border-radius:8px;padding:16px;margin:16px 0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#555;">Staff</td><td style="padding:4px 0;color:#1a2744;font-weight:bold;">${staffName}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Shift</td><td style="padding:4px 0;color:#1a2744;">${shiftName}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Duration</td><td style="padding:4px 0;color:#1a2744;">${duration} hours</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Status</td><td style="padding:4px 0;color:#e67e22;font-weight:bold;">Pending Reconciliation</td></tr>
+        </table>
+      </div>
+    `),
+  });
+}
+
+/**
+ * Notify manager when reconciliation is submitted
+ */
+export async function sendReconciliationSubmitted(managerEmails: string[], staffName: string, shiftName: string, data: { salesTotal: number; cashTotal: number; mpesaTotal: number; variance: number; notes?: string }) {
+  const hasVariance = Math.abs(data.variance) > 0;
+  return sendEmail({
+    to: managerEmails,
+    subject: `${hasVariance ? '⚠️' : '📊'} Reconciliation Submitted — ${staffName} (${shiftName})`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">📊 Reconciliation Submitted</h2>
+      <div style="background:#f5f5f5;border-radius:8px;padding:16px;margin:16px 0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#555;">Staff</td><td style="padding:4px 0;color:#1a2744;font-weight:bold;">${staffName}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Shift</td><td style="padding:4px 0;color:#1a2744;">${shiftName}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Sales Total</td><td style="padding:4px 0;color:#1a2744;">KES ${data.salesTotal.toLocaleString()}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">Cash Collected</td><td style="padding:4px 0;color:#1a2744;">KES ${data.cashTotal.toLocaleString()}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;">M-Pesa</td><td style="padding:4px 0;color:#1a2744;">KES ${data.mpesaTotal.toLocaleString()}</td></tr>
+          <tr><td style="padding:4px 0;color:#555;font-weight:bold;">Variance</td><td style="padding:4px 0;color:${hasVariance ? '#e74c3c' : '#27ae60'};font-weight:bold;">${data.variance >= 0 ? '+' : ''}KES ${data.variance.toLocaleString()}</td></tr>
+        </table>
+      </div>
+      ${data.notes ? `<div style="background:#fff3cd;border-radius:8px;padding:12px;margin:12px 0;"><p style="color:#856404;margin:0;font-size:13px;">📝 Notes: ${data.notes}</p></div>` : ''}
+      ${hasVariance ? `<div style="background:#fce4ec;border-radius:8px;padding:12px;margin:12px 0;text-align:center;"><p style="color:#c62828;margin:0;font-weight:bold;">⚠️ Variance detected — please review and approve or flag</p></div>` : ''}
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${HOTEL_URL}/manager/reconciliation" style="background:#c8a951;color:#1a2744;text-decoration:none;padding:12px 32px;border-radius:6px;font-weight:bold;display:inline-block;">Review Reconciliation</a>
+      </div>
+    `),
+  });
+}
+
+/**
+ * Notify staff when their reconciliation is approved or flagged
+ */
+export async function sendReconciliationResult(to: string, staffName: string, status: 'approved' | 'flagged', managerNotes?: string) {
+  const isApproved = status === 'approved';
+  return sendEmail({
+    to,
+    subject: `${isApproved ? '✅' : '⚠️'} Reconciliation ${status.charAt(0).toUpperCase() + status.slice(1)} — ${HOTEL_NAME}`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">${isApproved ? '✅' : '⚠️'} Reconciliation ${status.charAt(0).toUpperCase() + status.slice(1)}</h2>
+      <p style="color:#555;line-height:1.6;">Hi ${staffName},</p>
+      <p style="color:#555;line-height:1.6;">Your shift reconciliation has been <strong>${status}</strong> by the manager.</p>
+      ${managerNotes ? `<div style="background:#f5f5f5;border-radius:8px;padding:12px;margin:16px 0;"><p style="color:#555;margin:0;font-size:13px;">Manager notes: ${managerNotes}</p></div>` : ''}
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${HOTEL_URL}/staff" style="background:#c8a951;color:#1a2744;text-decoration:none;padding:12px 32px;border-radius:6px;font-weight:bold;display:inline-block;">View Dashboard</a>
+      </div>
     `),
   });
 }

@@ -40,8 +40,12 @@ export default function Reconciliation() {
   };
 
   const handleReject = async (reconId: string) => {
+    if (!rejectionNotes.trim()) {
+      toast.error('Please provide a reason for flagging');
+      return;
+    }
     try {
-      await approveRecon.mutateAsync({ reconciliationId: reconId, managerId: user?.id || '', status: 'flagged' });
+      await approveRecon.mutateAsync({ reconciliationId: reconId, managerId: user?.id || '', status: 'flagged', notes: rejectionNotes });
       setSelectedRecon(null);
       setRejectionNotes('');
       toast.error('Reconciliation flagged for review');

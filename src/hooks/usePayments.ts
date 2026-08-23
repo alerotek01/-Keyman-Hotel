@@ -139,10 +139,15 @@ export function useRecordOrderPayment() {
 export function useVerifyPayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ paymentId, verified, verifiedBy }: { paymentId: string; verified: boolean; verifiedBy: string }) => {
+    mutationFn: async ({ paymentId, status, verifiedBy }: { paymentId: string; status: string; verifiedBy: string }) => {
+      const verified = status === 'verified';
       const { data, error } = await sb
         .from('folio_payments')
-        .update({ verified, verified_by: verifiedBy })
+        .update({
+          verified,
+          verified_by: verifiedBy,
+          status: verified ? 'verified' : 'rejected',
+        })
         .eq('id', paymentId)
         .select()
         .single();
@@ -210,9 +215,27 @@ export function useStartShift() {
           start_time: new Date().toISOString(),
           status: 'active',
         })
-        .select()
+        .select('*, users(full_name, email)')
         .single();
       if (error) throw error;
+
+      // Send shift check-in notification to manager/admin emails
+      try {
+        const { sendShiftCheckIn } = await import('@/lib/email');
+        const { data: managers } = await sb.from('users').select('email').in('role', ['admin', 'manager']).eq('is_active', true);
+        if (managers?.length && shift?.users) {
+          const managerEmails = managers.map((m: any) => m.email).filter(Boolean);
+          await sendShiftCheckIn(managerEmails, shift.users.full_name || 'Staff', shift.shift_name, new Date().toLocaleString());
+        }
+        // In-app notification
+        await sb.rpc('fire_notification', {
+          p_user_id: data.user_id,
+          p_title: `Shift Started — ${data.shift_name}`,
+          p_body: `You checked in for the ${data.shift_name} shift.`,
+          p_type: 'shift',
+        });
+      } catch (e) { console.warn('Email/notification failed:', e); }
+
       return shift;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff-shifts'] }),
@@ -223,17 +246,35 @@ export function useEndShift() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ shiftId }: { shiftId: string }) => {
-      const { data, error } = await sb
+      const { data: shift, error } = await sb
         .from('staff_shifts')
         .update({
           end_time: new Date().toISOString(),
           status: 'ended',
         })
         .eq('id', shiftId)
-        .select()
+        .select('*, users(full_name, email)')
         .single();
       if (error) throw error;
-      return data;
+
+      // Send shift end notification to manager/admin
+      try {
+        const { sendShiftCheckOut } = await import('@/lib/email');
+        const { data: managers } = await sb.from('users').select('email').in('role', ['admin', 'manager']).eq('is_active', true);
+        if (managers?.length && shift?.users && shift.start_time) {
+          const managerEmails = managers.map((m: any) => m.email).filter(Boolean);
+          await sendShiftCheckOut(managerEmails, shift.users.full_name || 'Staff', shift.shift_name, shift.start_time, new Date().toISOString());
+        }
+        // In-app notification to staff
+        await sb.rpc('fire_notification', {
+          p_user_id: shift.user_id,
+          p_title: `Shift Ended — ${shift.shift_name}`,
+          p_body: `Your ${shift.shift_name} shift has ended. Please submit your reconciliation.`,
+          p_type: 'shift',
+        });
+      } catch (e) { console.warn('Email/notification failed:', e); }
+
+      return shift;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff-shifts'] }),
   });
@@ -280,7 +321,7 @@ export function useSubmitReconciliation() {
           variance,
           status: 'submitted',
         })
-        .select()
+        .select('*, staff_shifts(shift_name, users(full_name, email))')
         .single();
       if (error) throw error;
 
@@ -288,6 +329,23 @@ export function useSubmitReconciliation() {
         .from('staff_shifts')
         .update({ status: 'submitted' })
         .eq('id', data.shift_id);
+
+      // Send reconciliation email to manager/admin
+      try {
+        const { sendReconciliationSubmitted } = await import('@/lib/email');
+        const { data: managers } = await sb.from('users').select('email').in('role', ['admin', 'manager']).eq('is_active', true);
+        if (managers?.length && rec?.staff_shifts) {
+          const managerEmails = managers.map((m: any) => m.email).filter(Boolean);
+          const staffName = rec.staff_shifts?.users?.full_name || 'Staff';
+          await sendReconciliationSubmitted(managerEmails, staffName, rec.staff_shifts?.shift_name || '', {
+            salesTotal: data.sales_total,
+            cashTotal: data.cash_total,
+            mpesaTotal: data.mpesa_total,
+            variance,
+            notes: data.notes,
+          });
+        }
+      } catch (e) { console.warn('Reconciliation email failed:', e); }
 
       return rec;
     },
@@ -301,14 +359,20 @@ export function useSubmitReconciliation() {
 export function useApproveReconciliation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ reconciliationId, managerId, status }: { reconciliationId: string; managerId: string; status: string }) => {
+    mutationFn: async ({ reconciliationId, managerId, status, notes }: { reconciliationId: string; managerId: string; status: string; notes?: string }) => {
+      const updateData: any = {
+        status,
+        manager_id: managerId,
+        reconciled_at: new Date().toISOString(),
+      };
+      // Save manager notes (abnormality notes when flagging)
+      if (notes) {
+        updateData.manager_notes = notes;
+      }
+
       const { data, error } = await sb
         .from('shift_reconciliations')
-        .update({
-          status,
-          manager_id: managerId,
-          reconciled_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', reconciliationId)
         .select()
         .single();

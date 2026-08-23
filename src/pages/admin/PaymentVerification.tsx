@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle2, XCircle, Search, Clock, CreditCard, Phone, Filter } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Search, Clock, CreditCard, Phone, Filter, Camera } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,6 +22,9 @@ export default function PaymentVerification() {
   const [confirmDialog, setConfirmDialog] = useState<any>(null);
   const [rejectDialog, setRejectDialog] = useState<any>(null);
   const [confirmAmount, setConfirmAmount] = useState('');
+  const [confirmMpesaCode, setConfirmMpesaCode] = useState('');
+  const [confirmReceipt, setConfirmReceipt] = useState<File | null>(null);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   // Fetch booking payments with reservation info
@@ -45,16 +48,34 @@ export default function PaymentVerification() {
 
   // Confirm payment mutation
   const confirmMutation = useMutation({
-    mutationFn: async ({ paymentId, amount }: { paymentId: string; amount: number }) => {
+    mutationFn: async ({ paymentId, amount, mpesaCode, receiptFile }: { paymentId: string; amount: number; mpesaCode?: string; receiptFile?: File | null }) => {
+      const updateData: any = {
+        status: 'confirmed',
+        confirmed_amount: amount,
+        confirmed_at: new Date().toISOString(),
+      };
+      if (mpesaCode) updateData.mpesa_receipt = mpesaCode;
+
       const { error } = await sb
         .from('booking_payments')
-        .update({
-          status: 'confirmed',
-          confirmed_amount: amount,
-          confirmed_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', paymentId);
       if (error) throw error;
+
+      // Upload receipt image if provided
+      if (receiptFile) {
+        try {
+          const ext = receiptFile.name.split('.').pop() || 'jpg';
+          const fileName = `receipts/booking/${paymentId}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await sb.storage
+            .from('rooms')
+            .upload(fileName, receiptFile, { contentType: receiptFile.type });
+          if (!uploadErr) {
+            const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
+            await sb.from('booking_payments').update({ receipt_image_url: urlData.publicUrl }).eq('id', paymentId);
+          }
+        } catch (e) { console.warn('Receipt upload failed:', e); }
+      }
 
       // Also update reservation deposit status if it's a deposit
       const payment = payments?.find((p: any) => p.id === paymentId);
@@ -69,6 +90,8 @@ export default function PaymentVerification() {
       qc.invalidateQueries({ queryKey: ['booking-payments'] });
       toast.success('Payment confirmed');
       setConfirmDialog(null);
+      setConfirmMpesaCode('');
+      setConfirmReceipt(null);
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -295,12 +318,34 @@ export default function PaymentVerification() {
                 <p className="text-xs text-muted-foreground">Original: {formatCurrency(confirmDialog.amount)}</p>
               </div>
 
+              <div className="space-y-2">
+                <Label>M-Pesa Transaction Code</Label>
+                <Input
+                  value={confirmMpesaCode}
+                  onChange={e => setConfirmMpesaCode(e.target.value)}
+                  placeholder="e.g. QHK7B4C9DE"
+                />
+                <p className="text-xs text-muted-foreground">Enter the M-Pesa confirmation code from the customer's phone</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Receipt Photo (optional)</Label>
+                <input
+                  ref={receiptInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="w-full text-sm text-muted-foreground file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 file:cursor-pointer"
+                  onChange={(e) => setConfirmReceipt(e.target.files?.[0] || null)}
+                />
+                {confirmReceipt && <p className="text-xs text-green-600 flex items-center gap-1">✅ {confirmReceipt.name}</p>}
+              </div>
+
               <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancel</Button>
+                <Button variant="outline" onClick={() => { setConfirmDialog(null); setConfirmMpesaCode(''); setConfirmReceipt(null); }}>Cancel</Button>
                 <Button
                   variant="default"
                   className="bg-emerald-600 hover:bg-emerald-700"
-                  onClick={() => confirmMutation.mutate({ paymentId: confirmDialog.id, amount: parseFloat(confirmAmount) })}
+                  onClick={() => confirmMutation.mutate({ paymentId: confirmDialog.id, amount: parseFloat(confirmAmount), mpesaCode: confirmMpesaCode || undefined, receiptFile: confirmReceipt })}
                   disabled={confirmMutation.isPending}
                 >
                   {confirmMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
