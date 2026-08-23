@@ -41,9 +41,9 @@ export default function ShiftManagement() {
     return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-brass" /></div>;
   }
 
-  // Group by open/close status
-  const openShifts = (shifts || []).filter((s: any) => s.status === 'open');
-  const closedShifts = (shifts || []).filter((s: any) => s.status === 'closed');
+  // Group by status (enum: not_started, active, ended, submitted, reconciled, closed)
+  const activeShifts = (shifts || []).filter((s: any) => s.status === 'active' || s.status === 'not_started');
+  const endedShifts = (shifts || []).filter((s: any) => s.status === 'ended' || s.status === 'closed' || s.status === 'submitted' || s.status === 'reconciled');
 
   return (
     <div className="p-6 space-y-6">
@@ -59,13 +59,13 @@ export default function ShiftManagement() {
       <div className="grid grid-cols-3 gap-4">
         <Card className="bg-brass/5 border-brass/20">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-brass">{openShifts.length}</p>
+            <p className="text-2xl font-bold text-brass">{activeShifts.length}</p>
             <p className="text-xs text-muted-foreground">Open Shifts</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{closedShifts.length}</p>
+            <p className="text-2xl font-bold">{endedShifts.length}</p>
             <p className="text-xs text-muted-foreground">Closed Today</p>
           </CardContent>
         </Card>
@@ -82,15 +82,15 @@ export default function ShiftManagement() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <span className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-            Currently On Shift ({openShifts.length})
+            Currently On Shift ({activeShifts.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {openShifts.length === 0 ? (
+          {activeShifts.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No staff currently on shift</p>
           ) : (
             <div className="space-y-2">
-              {openShifts.map((s: any) => (
+              {activeShifts.map((s: any) => (
                 <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 border border-emerald-200">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -123,11 +123,11 @@ export default function ShiftManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {closedShifts.length === 0 ? (
+          {endedShifts.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No closed shifts yet</p>
           ) : (
             <div className="space-y-2">
-              {closedShifts.slice(0, 15).map((s: any) => (
+              {endedShifts.slice(0, 15).map((s: any) => (
                 <div key={s.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
