@@ -9,6 +9,11 @@ import Conference from "./pages/Conference";
 import Cafeteria from "./pages/Cafeteria";
 import CafeteriaMenu from "./pages/CafeteriaMenu";
 import Login from "./pages/Login";
+import GuestLogin from "./pages/guest/GuestLogin";
+import GuestDashboard from "./pages/guest/GuestDashboard";
+import GuestFolio from "./pages/guest/GuestFolio";
+import GuestOrder from "./pages/guest/GuestOrder";
+import GuestChat from "./pages/guest/GuestChat";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminRooms from "./pages/admin/Rooms";
@@ -59,6 +64,11 @@ const App = () => (
           <Route path="/cafeteria" element={<Cafeteria />} />
           <Route path="/cafeteria/:mealId" element={<CafeteriaMenu />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/guest/login" element={<GuestLogin />} />
+          <Route path="/guest" element={<GuestDashboard />} />
+          <Route path="/guest/folio" element={<GuestFolio />} />
+          <Route path="/guest/order" element={<GuestOrder />} />
+          <Route path="/guest/chat" element={<GuestChat />} />
           
           {/* Admin Routes (Mobile PDA for mobile, desktop sidebar for large screens) */}
           <Route path="/admin" element={<AdminLayout />}>
