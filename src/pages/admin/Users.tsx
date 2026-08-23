@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sendWelcomeEmail } from '@/lib/email';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Pencil, Trash2, Eye, BedDouble } from 'lucide-react';
+import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Pencil, Trash2, Eye, BedDouble, Coffee } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/lib/types';
 
@@ -139,6 +139,21 @@ export default function AdminUsers() {
     window.location.href = '/guest';
   };
 
+  const handleImpersonateCustomer = (customer: any) => {
+    if (!confirm(`Act as customer ${customer.full_name || customer.email}? You'll see their café dashboard.`)) return;
+    localStorage.setItem('impersonate', JSON.stringify({
+      targetUser: {
+        id: customer.id,
+        email: customer.email,
+        full_name: customer.full_name || customer.email,
+        role: 'external_customer',
+      },
+      adminId: user?.id,
+      startedAt: new Date().toISOString(),
+    }));
+    window.location.href = '/external';
+  };
+
   // Delete user
   const deleteUser = useMutation({
     mutationFn: async (id: string) => {
@@ -202,8 +217,10 @@ export default function AdminUsers() {
     );
   }
 
-  const activeUsers = users?.filter((u: any) => u.is_active) || [];
-  const suspendedUsers = users?.filter((u: any) => !u.is_active) || [];
+  const STAFF_ROLES = ['admin', 'manager', 'receptionist', 'waiter', 'chef', 'housekeeper', 'accountant'];
+  const activeUsers = users?.filter((u: any) => u.is_active && STAFF_ROLES.includes(u.role)) || [];
+  const suspendedUsers = users?.filter((u: any) => !u.is_active && STAFF_ROLES.includes(u.role)) || [];
+  const customers = users?.filter((u: any) => u.role === 'external_customer') || [];
 
   return (
     <div className="p-8">
@@ -260,7 +277,7 @@ export default function AdminUsers() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-5 gap-4 mb-8">
         <Card>
           <CardContent className="pt-4 pb-3">
             <p className="text-2xl font-bold">{users?.length || 0}</p>
@@ -270,19 +287,25 @@ export default function AdminUsers() {
         <Card>
           <CardContent className="pt-4 pb-3">
             <p className="text-2xl font-bold text-emerald-600">{activeUsers.length}</p>
-            <p className="text-xs text-muted-foreground">Active</p>
+            <p className="text-xs text-muted-foreground">Staff</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-2xl font-bold text-pink-600">{guests?.length || 0}</p>
+            <p className="text-xs text-muted-foreground">Guests</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-2xl font-bold text-amber-600">{customers.length}</p>
+            <p className="text-xs text-muted-foreground">Customers</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3">
             <p className="text-2xl font-bold text-red-600">{suspendedUsers.length}</p>
             <p className="text-xs text-muted-foreground">Suspended</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-2xl font-bold text-blue-600">{ROLES.length}</p>
-            <p className="text-xs text-muted-foreground">Roles</p>
           </CardContent>
         </Card>
       </div>
@@ -293,6 +316,7 @@ export default function AdminUsers() {
           <TabsTrigger value="active">Staff ({activeUsers.length})</TabsTrigger>
           <TabsTrigger value="suspended">Suspended ({suspendedUsers.length})</TabsTrigger>
           <TabsTrigger value="guests">Guests ({guests?.length || 0})</TabsTrigger>
+          <TabsTrigger value="customers">Customers ({customers.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="space-y-3 mt-4">
@@ -407,6 +431,43 @@ export default function AdminUsers() {
           ))}
           {(!guests || guests.length === 0) && (
             <p className="text-muted-foreground text-center py-8">No guests registered</p>
+          )}
+        </TabsContent>
+        <TabsContent value="customers" className="space-y-3 mt-4">
+          {customers.length === 0 ? (
+            <div className="text-center py-12">
+              <Coffee className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+              <p className="text-muted-foreground">No external customers yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Customers register via the Café login page</p>
+            </div>
+          ) : (
+            customers.map((customer: any) => (
+              <Card key={customer.id}>
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Coffee className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{customer.full_name || customer.email?.split('@')[0]}</p>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{customer.email}</span>
+                        {customer.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{customer.phone}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge className="bg-amber-100 text-amber-800">Customer</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {customer.created_at ? format(new Date(customer.created_at), 'MMM d, yyyy') : ''}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={() => handleImpersonateCustomer(customer)} title="Act as this customer">
+                      <Eye className="h-4 w-4 text-blue-600" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           )}
         </TabsContent>
       </Tabs>
