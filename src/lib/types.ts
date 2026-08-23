@@ -1,5 +1,5 @@
 // ===== New Schema Types (Stage 0) =====
-export type AppRole = 'admin' | 'manager' | 'receptionist' | 'waiter' | 'chef' | 'housekeeper' | 'storekeeper' | 'maintenance' | 'accountant';
+export type AppRole = 'admin' | 'manager' | 'receptionist' | 'waiter' | 'chef' | 'housekeeper' | 'storekeeper' | 'maintenance' | 'accountant' | 'guest' | 'external_customer';
 export type ReservationStatus = 'inquiry' | 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show';
 export type BookingSource = 'direct' | 'website' | 'phone' | 'walk_in' | 'ota';
 export type RoomStatus = 'available' | 'reserved' | 'occupied' | 'dirty' | 'cleaning' | 'inspected' | 'out_of_order' | 'maintenance';

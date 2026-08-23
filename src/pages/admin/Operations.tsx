@@ -43,7 +43,7 @@ const TABLE_COLORS: Record<string, string> = {
 };
 
 export default function Operations() {
-  const { user, isImpersonating, impersonatedName, stopImpersonating } = useAuth();
+  const { user, isImpersonating, impersonatedName, displayRole, displayEmail, stopImpersonating } = useAuth();
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [tableFilter, setTableFilter] = useState('all');
@@ -146,8 +146,8 @@ export default function Operations() {
           <div className="flex items-center gap-3">
             <Shield className="h-5 w-5" />
             <span className="font-semibold">
-              You are acting as {impersonatedName || impersonateData?.targetUser?.email}
-              <span className="text-amber-100 ml-2">({impersonateData?.targetUser?.role})</span>
+              You are acting as {impersonatedName || displayEmail}
+              <span className="text-amber-100 ml-2">({displayRole})</span>
             </span>
           </div>
           <Button variant="outline" size="sm" className="text-white border-white hover:bg-white/20" onClick={stopImpersonating}>
