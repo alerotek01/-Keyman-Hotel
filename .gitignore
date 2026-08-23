@@ -35,3 +35,4 @@ supabase/fix_images_v2.py
 supabase/update_images.py
 supabase/setup_schema.py
 .freebuff/
+test-results/
