@@ -53,6 +53,15 @@ export default function GuestLogin() {
             otp_verified_at: new Date().toISOString(),
           });
         }
+        // Also ensure a guest record exists for bookings
+        const { data: guestRec } = await sb.from('guests').select('id').eq('user_id', user.id).single();
+        if (!guestRec) {
+          await sb.from('guests').insert({
+            name: user.email?.split('@')[0] || 'Guest',
+            email: user.email,
+            user_id: user.id,
+          });
+        }
       }
 
       toast.success('Welcome to Keyman Hotel!');

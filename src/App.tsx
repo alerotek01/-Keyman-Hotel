@@ -14,6 +14,7 @@ import GuestDashboard from "./pages/guest/GuestDashboard";
 import GuestFolio from "./pages/guest/GuestFolio";
 import GuestOrder from "./pages/guest/GuestOrder";
 import GuestChat from "./pages/guest/GuestChat";
+import BookingFlow from "./pages/guest/BookingFlow";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminRooms from "./pages/admin/Rooms";
@@ -26,6 +27,8 @@ import AdminReports from "./pages/admin/Reports";
 import AdminMenu from "./pages/admin/Menu";
 import AdminSiteContent from "./pages/admin/SiteContent";
 import AdminFolios from "./pages/admin/FolioManagement";
+import AdminBookingSettings from "./pages/admin/BookingSettings";
+import PaymentVerification from "./pages/admin/PaymentVerification";
 import AdminUsers from "./pages/admin/Users";
 import ManagerLayout from "./pages/manager/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
@@ -69,6 +72,7 @@ const App = () => (
           <Route path="/guest/folio" element={<GuestFolio />} />
           <Route path="/guest/order" element={<GuestOrder />} />
           <Route path="/guest/chat" element={<GuestChat />} />
+          <Route path="/guest/booking" element={<BookingFlow />} />
           
           {/* Admin Routes (Mobile PDA for mobile, desktop sidebar for large screens) */}
           <Route path="/admin" element={<AdminLayout />}>
@@ -82,6 +86,8 @@ const App = () => (
             <Route path="reports" element={<AdminReports />} />
             <Route path="audit" element={<AdminAudit />} />
             <Route path="operations" element={<AdminOperations />} />
+            <Route path="booking-settings" element={<AdminBookingSettings />} />
+            <Route path="payments-verify" element={<PaymentVerification />} />
             <Route path="messages" element={<MessagePage />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>

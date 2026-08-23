@@ -21,6 +21,8 @@ const navItems = [
   { path: '/admin/reports', label: 'Reports', icon: ScrollText },
   { path: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
   { path: '/admin/operations', label: 'Operations', icon: Activity },
+  { path: '/admin/booking-settings', label: 'Booking Rules', icon: Bell },
+  { path: '/admin/payments-verify', label: 'Verify Payments', icon: Receipt },
   { path: '/admin/messages', label: 'Messages', icon: MessageSquare },
   { path: '/admin/notification-settings', label: 'Notifications', icon: Bell },
 ];
