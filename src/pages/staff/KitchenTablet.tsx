@@ -1,19 +1,31 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useKitchenOrders, useUpdateOrderStatus } from '@/hooks/useRestaurantOrders';
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, ChefHat, ArrowRight, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2, ChefHat, CheckCircle2, Clock, X } from 'lucide-react';
 
-type QueueFilter = 'new' | 'preparing' | 'ready' | 'all';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sb = supabase as any;
+
+interface RiderModal {
+  orderId: string;
+  orderNumber: number;
+  riderName: string;
+  riderPhone: string;
+}
 
 export default function KitchenTablet() {
   const { data: orders, isLoading } = useKitchenOrders();
   const updateStatus = useUpdateOrderStatus();
+  const [riderModal, setRiderModal] = useState<RiderModal | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const handleAccept = async (orderId: string) => {
     try {
@@ -32,17 +44,52 @@ export default function KitchenTablet() {
     }
   };
 
-  const handleMarkReady = async (orderId: string) => {
+  // For delivery orders → open rider input modal first, then mark ready
+  const handleMarkReady = async (orderId: string, isDelivery: boolean) => {
+    if (isDelivery) {
+      const order = orders?.find(o => o.id === orderId);
+      setRiderModal({
+        orderId,
+        orderNumber: order?.order_number || 0,
+        riderName: '',
+        riderPhone: '',
+      });
+      return;
+    }
+    // Pickup orders → mark ready directly
     try {
       await updateStatus.mutateAsync({ orderId, status: 'ready' });
-      // Auto-assign rider for delivery orders
-      try {
-        await (supabase as any).rpc('assign_delivery_rider', { p_order_id: orderId });
-      } catch (e) { /* not a delivery order or no riders */ }
       toast.success('Order ready for pickup!');
     } catch (error: any) {
       toast.error(error.message);
     }
+  };
+
+  // Save rider info and mark order ready
+  const handleSaveRiderAndReady = async () => {
+    if (!riderModal) return;
+    if (!riderModal.riderName.trim() || !riderModal.riderPhone.trim()) {
+      toast.error('Enter rider name and phone number');
+      return;
+    }
+    setSaving(true);
+    try {
+      // Mark order ready
+      await updateStatus.mutateAsync({ orderId: riderModal.orderId, status: 'ready' });
+
+      // Save rider info to order
+      await sb.from('restaurant_orders').update({
+        rider_name: riderModal.riderName.trim(),
+        rider_contact: riderModal.riderPhone.trim(),
+        updated_at: new Date().toISOString(),
+      }).eq('id', riderModal.orderId);
+
+      toast.success(`Order #${riderModal.orderNumber} ready — Rider: ${riderModal.riderName}`);
+      setRiderModal(null);
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+    setSaving(false);
   };
 
   const newOrders = orders?.filter(o => o.status === 'new' || o.status === 'accepted') || [];
@@ -59,6 +106,59 @@ export default function KitchenTablet() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6">
+      {/* Rider Assignment Modal */}
+      {riderModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <Card className="bg-gray-900 border-amber-500/50 w-full max-w-md mx-4">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-lg font-bold text-amber-400">
+                  🚴 Assign Rider — Order #{riderModal.orderNumber}
+                </h3>
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white" onClick={() => setRiderModal(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-400">Enter the rider details for this delivery order. This will be shared with the customer.</p>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Rider Name *</Label>
+                  <Input
+                    value={riderModal.riderName}
+                    onChange={e => setRiderModal({ ...riderModal, riderName: e.target.value })}
+                    placeholder="e.g., John Kamau"
+                    className="bg-gray-800 border-gray-700 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Phone Number *</Label>
+                  <Input
+                    type="tel"
+                    value={riderModal.riderPhone}
+                    onChange={e => setRiderModal({ ...riderModal, riderPhone: e.target.value })}
+                    placeholder="e.g., 0712345678"
+                    className="bg-gray-800 border-gray-700 text-white"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1 border-gray-700 text-gray-400" onClick={() => setRiderModal(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={handleSaveRiderAndReady}
+                  disabled={saving || !riderModal.riderName.trim() || !riderModal.riderPhone.trim()}
+                >
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  Assign & Mark Ready
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -174,9 +274,11 @@ export default function KitchenTablet() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-mono text-lg font-bold text-blue-400">#{order.order_number}</span>
-                      {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
-                      {order.delivery_type === 'delivery' && <Badge className="bg-orange-500/20 text-orange-400 text-xs">🚴 Delivery</Badge>}
-                      {order.delivery_type === 'pickup' && <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">🍽️ Pickup</Badge>}
+                      <div className="flex items-center gap-2">
+                        {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
+                        {order.delivery_type === 'delivery' && <Badge className="bg-orange-500/20 text-orange-400 text-xs">🚴 Delivery</Badge>}
+                        {order.delivery_type === 'pickup' && <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">🍽️ Pickup</Badge>}
+                      </div>
                     </div>
 
                     {order.delivery_type === 'delivery' && order.delivery_address && (
@@ -199,9 +301,10 @@ export default function KitchenTablet() {
                     <Button
                       size="sm"
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => handleMarkReady(order.id)}
+                      onClick={() => handleMarkReady(order.id, order.delivery_type === 'delivery')}
                     >
-                      <CheckCircle2 className="h-4 w-4 mr-1" /> Mark Ready
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> 
+                      {order.delivery_type === 'delivery' ? '🚴 Assign Rider & Ready' : 'Mark Ready'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -210,7 +313,7 @@ export default function KitchenTablet() {
           </div>
         </div>
 
-        {/* READY FOR PICKUP */}
+        {/* READY FOR PICKUP / OUT FOR DELIVERY */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-3">
             <CheckCircle2 className="h-5 w-5 text-emerald-400" />
@@ -229,8 +332,11 @@ export default function KitchenTablet() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-mono text-lg font-bold text-emerald-400">#{order.order_number}</span>
-                      {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
-                      {order.delivery_type === 'delivery' && <Badge className="bg-orange-500/20 text-orange-400 text-xs">🚴 Delivery</Badge>}
+                      <div className="flex items-center gap-2">
+                        {order.room_number && <Badge className="bg-gray-700 text-gray-300 text-xs">Rm {order.room_number}</Badge>}
+                        {order.delivery_type === 'delivery' && <Badge className="bg-orange-500/20 text-orange-400 text-xs">🚴 Delivery</Badge>}
+                        {order.delivery_type === 'pickup' && <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">🍽️ Pickup</Badge>}
+                      </div>
                     </div>
 
                     <div className="space-y-1">
@@ -242,7 +348,17 @@ export default function KitchenTablet() {
                       ))}
                     </div>
 
-                    <p className="text-xs text-emerald-400/70 mt-3 text-center">🔔 Waiting for pickup</p>
+                    {/* Show rider info for delivery orders */}
+                    {order.delivery_type === 'delivery' && order.rider_name && (
+                      <div className="mt-3 p-2 rounded bg-orange-500/10 border border-orange-500/30">
+                        <p className="text-xs text-orange-400 font-medium">🚴 Rider: {order.rider_name}</p>
+                        <p className="text-xs text-orange-300">📞 {order.rider_contact}</p>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-emerald-400/70 mt-3 text-center">
+                      {order.delivery_type === 'delivery' ? '🚴 Out for delivery' : '🔔 Waiting for pickup'}
+                    </p>
                   </CardContent>
                 </Card>
               ))

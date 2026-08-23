@@ -423,11 +423,20 @@ export default function ExternalOrder() {
                       <p className="text-sm text-muted-foreground mb-2">{order.notes}</p>
                       <div className="flex justify-between items-center">
                         <span className="font-bold">{formatCurrency(order.total)}</span>
-                        {order.delivery_type === 'delivery' && order.rider_contact && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3" /> Rider: {order.rider_contact}
+                      {order.delivery_type === 'delivery' && (order.rider_name || order.rider_contact) && (
+                        <div className="mt-2 p-2 rounded-lg bg-orange-50 border border-orange-200">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-orange-700">🚴 Rider:</span>
+                            {order.rider_name && <span className="text-xs font-bold text-orange-800">{order.rider_name}</span>}
                           </div>
-                        )}
+                          {order.rider_contact && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Phone className="h-3 w-3 text-orange-600" />
+                              <a href={`tel:${order.rider_contact}`} className="text-xs text-orange-600 underline">{order.rider_contact}</a>
+                            </div>
+                          )}
+                        </div>
+                      )}
                         {order.delivery_type === 'delivery' && (
                           <div className="flex items-center gap-1 text-xs">
                             <MapPin className="h-3 w-3" /> {order.delivery_address}
