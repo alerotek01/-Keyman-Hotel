@@ -85,7 +85,8 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/external/order', label: 'Café Order', icon: Coffee },
   ],
   external: [
-    { path: '/external/order', label: 'Order Food', icon: UtensilsCrossed, exact: true },
+    { path: '/external', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { path: '/external/order', label: 'Order Food', icon: UtensilsCrossed },
   ],
 };
 
@@ -150,12 +151,10 @@ const ROLE_TABS: Record<string, TabConfig[]> = {
     { path: '/staff/shift', label: 'Shift', icon: '⏰' },
   ],
   external_customer: [
-    { path: '/external/order', label: 'Menu', icon: '🍽️', centerAction: false },
-    { path: '/external/order', label: 'Orders', icon: '📦' },
-    { path: '/external/order', label: 'Track', icon: '🔍', centerAction: true },
-    { path: '/', label: 'Home', icon: '🏠' },
-    { path: '/guest/chat', label: 'Help', icon: '💬' },
-    { path: '/guest/folio', label: 'History', icon: '📋' },
+    { path: '/external', label: 'Home', icon: '🏠', centerAction: false },
+    { path: '/external/order', label: 'Menu', icon: '🍽️' },
+    { path: '/external', label: 'Track', icon: '📦', centerAction: true },
+    { path: '/', label: 'Website', icon: '🌐' },
   ],
 };
 

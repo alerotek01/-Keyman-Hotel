@@ -19,6 +19,7 @@ import BookingFlow from "./pages/guest/BookingFlow";
 import ConferenceBooking from "./pages/guest/ConferenceBooking";
 import ExternalOrder from "./pages/guest/ExternalOrder";
 import ExternalLogin from "./pages/external/ExternalLogin";
+import ExternalDashboard from "./pages/external/ExternalDashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminRooms from "./pages/admin/Rooms";
 import AdminBookings from "./pages/admin/Bookings";
@@ -86,6 +87,7 @@ const App = () => (
           {/* External Customer Routes */}
           <Route path="/external/login" element={<ExternalLogin />} />
           <Route path="/external" element={<ResponsiveLayout basePath="/external" allowedRoles={["external_customer", "guest", "admin", "manager"]} />}>
+            <Route index element={<ExternalDashboard />} />
             <Route path="order" element={<ExternalOrder />} />
           </Route>
 
