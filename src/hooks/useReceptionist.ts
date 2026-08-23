@@ -92,11 +92,13 @@ export function useCheckOut() {
       paymentMethod = 'cash',
       paymentAmount = 0,
       paymentReference,
+      receiptFile,
     }: {
       reservationId: string;
       paymentMethod?: string;
       paymentAmount?: number;
       paymentReference?: string;
+      receiptFile?: File | null;
     }) => {
       // Call safe DB function — validates reservation status, records payment, creates housekeeping task
       const { data: result, error } = await sb.rpc('check_out_guest_safe', {
@@ -106,6 +108,38 @@ export function useCheckOut() {
         p_payment_reference: paymentReference || null,
       });
       if (error) throw error;
+
+      // Upload receipt file if provided (after checkout succeeds)
+      if (receiptFile && result) {
+        try {
+          // Find the payment record we just created via checkout
+          const { data: payments } = await sb
+            .from('folio_payments')
+            .select('id')
+            .eq('folio_id', result.folio_id || result)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          const paymentRecord = payments?.[0];
+          if (paymentRecord) {
+            const ext = receiptFile.name.split('.').pop() || 'jpg';
+            const fileName = `receipts/checkout/${paymentRecord.id}/${Date.now()}.${ext}`;
+            const { error: uploadErr } = await sb.storage
+              .from('rooms')
+              .upload(fileName, receiptFile, { contentType: receiptFile.type });
+            if (!uploadErr) {
+              const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
+              await sb
+                .from('folio_payments')
+                .update({ receipt_image_url: urlData.publicUrl })
+                .eq('id', paymentRecord.id);
+            }
+          }
+        } catch (uploadErr) {
+          console.warn('Receipt upload failed (payment still recorded):', uploadErr);
+        }
+      }
+
       return result;
     },
     onSuccess: () => {
@@ -113,6 +147,8 @@ export function useCheckOut() {
       qc.invalidateQueries({ queryKey: ['reservations'] });
       qc.invalidateQueries({ queryKey: ['rooms'] });
       qc.invalidateQueries({ queryKey: ['housekeeping-tasks'] });
+      qc.invalidateQueries({ queryKey: ['folio'] });
+      qc.invalidateQueries({ queryKey: ['payments'] });
     },
   });
 }

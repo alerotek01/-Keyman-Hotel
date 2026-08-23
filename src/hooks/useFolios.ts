@@ -136,18 +136,20 @@ export function usePostRestaurantCharge() {
   });
 }
 
-// ===== Post Payment to Folio =====
+// ===== Post Payment to Folio (with optional receipt upload) =====
 export function usePostFolioPayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ folioId, amount, method, reference, recordedBy }: {
+    mutationFn: async ({ folioId, amount, method, reference, recordedBy, receiptFile }: {
       folioId: string;
       amount: number;
       method: string;
       reference?: string;
       recordedBy?: string;
+      receiptFile?: File | null;
     }) => {
-      const { data, error } = await sb
+      // Insert payment record first
+      const { data: payment, error } = await sb
         .from('folio_payments')
         .insert({
           folio_id: folioId,
@@ -159,9 +161,30 @@ export function usePostFolioPayment() {
         .select()
         .single();
       if (error) throw error;
-      return data;
+
+      // Upload receipt file if provided
+      if (receiptFile && payment) {
+        const ext = receiptFile.name.split('.').pop() || 'jpg';
+        const fileName = `receipts/folio/${payment.id}/${Date.now()}.${ext}`;
+        const { error: uploadErr } = await sb.storage
+          .from('rooms')
+          .upload(fileName, receiptFile, { contentType: receiptFile.type });
+        if (!uploadErr) {
+          const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
+          await sb
+            .from('folio_payments')
+            .update({ receipt_image_url: urlData.publicUrl })
+            .eq('id', payment.id);
+          payment.receipt_image_url = urlData.publicUrl;
+        }
+      }
+
+      return payment;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['folio'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['folio'] });
+      qc.invalidateQueries({ queryKey: ['payments'] });
+    },
   });
 }
 

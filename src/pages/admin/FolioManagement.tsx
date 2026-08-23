@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { generateFolioReceipt } from '@/lib/receipt';
 import { useSiteSettings } from '@/hooks/useCms';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Loader2, Search, Receipt, DollarSign, Plus, X, BedDouble, UtensilsCrossed, CreditCard, CheckCircle2, AlertCircle, Printer, User } from 'lucide-react';
+import { Loader2, Search, Receipt, DollarSign, Plus, X, BedDouble, UtensilsCrossed, CreditCard, CheckCircle2, AlertCircle, Printer, User, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function FolioManagement() {
@@ -25,6 +25,9 @@ export default function FolioManagement() {
   const [chargeType, setChargeType] = useState<'room' | 'restaurant'>('room');
   const [paymentDialog, setPaymentDialog] = useState(false);
   const [closeDialog, setCloseDialog] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   const { data: folios, isLoading: foliosLoading } = useAllFolios(statusFilter);
   const { data: folio, isLoading: folioLoading } = useFolio(selectedFolioId || undefined);
@@ -93,7 +96,7 @@ export default function FolioManagement() {
     const form = e.currentTarget;
     const formData = new FormData(form);
     const amount = parseFloat(formData.get('amount') as string);
-    const method = formData.get('method') as string;
+    const method = paymentMethod;
     const reference = formData.get('reference') as string;
 
     if (!amount || amount <= 0) {
@@ -106,6 +109,11 @@ export default function FolioManagement() {
       return;
     }
 
+    if (method === 'cash' && !receiptFile) {
+      toast.error('Receipt photo is required for cash payments');
+      return;
+    }
+
     try {
       await postPayment.mutateAsync({
         folioId: selectedFolioId!,
@@ -113,8 +121,10 @@ export default function FolioManagement() {
         method,
         reference: reference || undefined,
         recordedBy: user?.id,
+        receiptFile: receiptFile || undefined,
       });
       setPaymentDialog(false);
+      setReceiptFile(null);
       toast.success('Payment recorded');
       form.reset();
     } catch (error: any) {
@@ -525,7 +535,7 @@ export default function FolioManagement() {
               </div>
               <div>
                 <Label htmlFor="pay-method">Method</Label>
-                <Select name="method" defaultValue="cash">
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                   <SelectTrigger id="pay-method">
                     <SelectValue />
                   </SelectTrigger>
@@ -542,8 +552,27 @@ export default function FolioManagement() {
               <Label htmlFor="pay-reference">Transaction Reference (required for M-Pesa)</Label>
               <Input id="pay-reference" name="reference" placeholder="e.g. QHK7B4R9XZ" />
             </div>
+            <div className="space-y-2">
+              <Label>
+                Receipt Photo
+                <span className="text-red-500 ml-1">* Required for cash</span>
+              </Label>
+              <input
+                ref={receiptInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                className="w-full text-sm text-muted-foreground file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brass/10 file:text-brass hover:file:bg-brass/20 file:cursor-pointer"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+              />
+              {receiptFile && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  ✅ {receiptFile.name}
+                </p>
+              )}
+              <p className="text-xs text-amber-600">📸 Take a photo of the cash receipt for audit trail</p>
+            </div>
             <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => setPaymentDialog(false)}>
+              <Button type="button" variant="outline" onClick={() => { setPaymentDialog(false); setReceiptFile(null); }}>
                 Cancel
               </Button>
               <Button type="submit" disabled={postPayment.isPending}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,8 @@ export default function PaymentRecording() {
     mpesa_transaction_id: '',
     notes: '',
   });
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'rejected'>('all');
 
@@ -57,6 +59,11 @@ export default function PaymentRecording() {
       return;
     }
 
+    if (paymentForm.method === 'cash' && !receiptFile) {
+      toast.error('Receipt photo is required for cash payments');
+      return;
+    }
+
     try {
       await recordPayment.mutateAsync({
         order_id: selectedOrder.id,
@@ -68,6 +75,7 @@ export default function PaymentRecording() {
       setRecordDialogOpen(false);
       setSelectedOrder(null);
       setPaymentForm({ method: 'cash', amount: '', mpesa_transaction_id: '', notes: '' });
+      setReceiptFile(null);
       toast.success('Payment recorded');
     } catch (error: any) {
       toast.error(error.message || 'Failed');
@@ -167,6 +175,27 @@ export default function PaymentRecording() {
                   <p className="text-xs text-muted-foreground">Required for M-Pesa payments — prevents duplicates</p>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label>
+                  Receipt Photo
+                  {paymentForm.method === 'cash' && <span className="text-red-500 ml-1">* Required for cash</span>}
+                  {paymentForm.method === 'mpesa' && <span className="text-muted-foreground ml-1">(optional)</span>}
+                </Label>
+                <input
+                  ref={receiptInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="w-full text-sm text-muted-foreground file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brass/10 file:text-brass hover:file:bg-brass/20 file:cursor-pointer"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                />
+                {receiptFile && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">✅ {receiptFile.name}</p>
+                )}
+                {paymentForm.method === 'cash' && !receiptFile && (
+                  <p className="text-xs text-amber-600">📸 Take a photo of the cash receipt for audit trail</p>
+                )}
+              </div>
 
               <Button variant="brass" className="w-full" onClick={handleRecordPayment} disabled={recordPayment.isPending}>
                 {recordPayment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

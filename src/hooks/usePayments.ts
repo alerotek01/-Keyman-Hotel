@@ -29,6 +29,7 @@ export function useRecordPayment() {
       amount: number;
       mpesa_transaction_id?: string;
       notes?: string;
+      receiptFile?: File | null;
     }) => {
       // Call safe DB function — validates amount, checks M-Pesa duplicates
       const { data: result, error } = await sb.rpc('record_payment_safe', {
@@ -39,11 +40,41 @@ export function useRecordPayment() {
         p_notes: data.notes || null,
       });
       if (error) throw error;
+
+      // Upload receipt file if provided
+      if (data.receiptFile && result) {
+        try {
+          const ext = data.receiptFile.name.split('.').pop() || 'jpg';
+          const fileName = `receipts/folio/${result}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await sb.storage
+            .from('rooms')
+            .upload(fileName, data.receiptFile, { contentType: data.receiptFile.type });
+          if (!uploadErr) {
+            const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
+            // Update the latest payment for this reservation
+            const { data: payments } = await sb
+              .from('folio_payments')
+              .select('id')
+              .order('created_at', { ascending: false })
+              .limit(1);
+            if (payments?.[0]) {
+              await sb
+                .from('folio_payments')
+                .update({ receipt_image_url: urlData.publicUrl })
+                .eq('id', payments[0].id);
+            }
+          }
+        } catch (e) {
+          console.warn('Receipt upload failed (payment still recorded):', e);
+        }
+      }
+
       return result;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['payments'] });
       qc.invalidateQueries({ queryKey: ['restaurant-orders'] });
+      qc.invalidateQueries({ queryKey: ['folio'] });
     },
   });
 }
@@ -58,6 +89,7 @@ export function useRecordOrderPayment() {
       method: string;
       mpesa_transaction_id?: string;
       recorded_by: string;
+      receiptFile?: File | null;
     }) => {
       const { data: payment, error } = await sb
         .from('payments')
@@ -72,6 +104,26 @@ export function useRecordOrderPayment() {
         .select()
         .single();
       if (error) throw error;
+
+      // Upload receipt file if provided
+      if (data.receiptFile && payment) {
+        try {
+          const ext = data.receiptFile.name.split('.').pop() || 'jpg';
+          const fileName = `receipts/order/${payment.id}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await sb.storage
+            .from('rooms')
+            .upload(fileName, data.receiptFile, { contentType: data.receiptFile.type });
+          if (!uploadErr) {
+            const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
+            await sb
+              .from('payments')
+              .update({ receipt_image_url: urlData.publicUrl })
+              .eq('id', payment.id);
+          }
+        } catch (e) {
+          console.warn('Receipt upload failed (payment still recorded):', e);
+        }
+      }
 
       // Update order status via state machine
       if (data.order_id) {

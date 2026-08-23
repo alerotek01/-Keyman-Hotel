@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +48,8 @@ export default function ReceptionistPda() {
   const [paymentForm, setPaymentForm] = useState({
     method: 'cash', amount: '', reference: '',
   });
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   // Available rooms for assignment
   const { data: availableRooms } = useAvailableRooms(selectedReservation?.room_type_id || walkInForm.room_type_id || undefined);
@@ -96,6 +98,10 @@ export default function ReceptionistPda() {
 
   const handlePayment = async () => {
     if (!folio || !selectedReservation) return;
+    if (paymentForm.method === 'cash' && !receiptFile) {
+      toast.error('Receipt photo is required for cash payments');
+      return;
+    }
     try {
       // Complete check-out (payment + folio close + housekeeping task — all atomic)
       await checkOut.mutateAsync({
@@ -103,10 +109,12 @@ export default function ReceptionistPda() {
         paymentMethod: paymentForm.method,
         paymentAmount: parseFloat(paymentForm.amount) || balanceDue,
         paymentReference: paymentForm.reference || undefined,
+        receiptFile: receiptFile || undefined,
       });
 
       setPaymentDialog(false);
       setSelectedReservation(null);
+      setReceiptFile(null);
       toast.success('Guest checked out! Payment recorded.');
     } catch (error: any) {
       toast.error(error.message || 'Check-out failed');
@@ -386,8 +394,31 @@ export default function ReceptionistPda() {
               </div>
             )}
 
+            <div className="space-y-2">
+              <Label>
+                Receipt Photo
+                {paymentForm.method === 'cash' && <span className="text-red-500 ml-1">* Required for cash</span>}
+                {paymentForm.method === 'mpesa' && <span className="text-muted-foreground ml-1">(optional)</span>}
+              </Label>
+              <input
+                ref={receiptInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                className="w-full text-sm text-muted-foreground file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brass/10 file:text-brass hover:file:bg-brass/20 file:cursor-pointer"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+              />
+              {receiptFile && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  ✅ {receiptFile.name}
+                </p>
+              )}
+              {paymentForm.method === 'cash' && !receiptFile && (
+                <p className="text-xs text-amber-600">📸 Take a photo of the cash receipt for audit trail</p>
+              )}
+            </div>
+
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setPaymentDialog(false)}>Cancel</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setPaymentDialog(false); setReceiptFile(null); }}>Cancel</Button>
               <Button variant="brass" className="flex-1" onClick={handlePayment} disabled={postPayment.isPending || checkOut.isPending}>
                 {(postPayment.isPending || checkOut.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Confirm Payment
