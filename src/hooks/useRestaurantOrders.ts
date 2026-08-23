@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffect } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -28,8 +29,33 @@ export function useRestaurantOrders(statusFilter?: string[]) {
   });
 }
 
-// ===== Kitchen Orders (specific statuses) =====
+// ===== Kitchen Orders (with real-time) =====
 export function useKitchenOrders() {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('kitchen-orders-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'restaurant_orders' },
+        () => {
+          qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+          qc.invalidateQueries({ queryKey: ['restaurant-orders'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'restaurant_order_items' },
+        () => {
+          qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+
   return useQuery({
     queryKey: ['kitchen-orders'],
     queryFn: async () => {
@@ -41,7 +67,6 @@ export function useKitchenOrders() {
       if (error) throw error;
       return data || [];
     },
-    refetchInterval: 5000, // Poll every 5 seconds for kitchen
   });
 }
 
@@ -80,12 +105,12 @@ export function useCreateOrder() {
       notes?: string;
       items: { menu_item_id: string; quantity: number; notes?: string }[];
     }) => {
-      // Call the rate-limited safe DB function — validates prices + limits to 10 orders/min per source
       const { data: result, error } = await sb.rpc('create_order_rate_limited', {
         p_source: data.source,
         p_guest_id: data.guest_id || null,
         p_room_number: data.room_number || null,
         p_staff_id: data.waiter_id || null,
+        p_guest_name: data.guest_name || null,
         p_items: data.items.map(item => ({
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
@@ -108,10 +133,10 @@ export function useUpdateOrderStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ orderId, status, notes }: { orderId: string; status: OrderStatus; notes?: string }) => {
-      // Call the state machine DB function — validates transitions
       const { data: result, error } = await sb.rpc('update_order_status_sm', {
         p_order_id: orderId,
         p_new_status: status,
+        p_notes: notes || null,
       });
 
       if (error) throw error;
@@ -121,6 +146,8 @@ export function useUpdateOrderStatus() {
       qc.invalidateQueries({ queryKey: ['restaurant-orders'] });
       qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
       qc.invalidateQueries({ queryKey: ['waiter-orders'] });
+      qc.invalidateQueries({ queryKey: ['folio'] });
+      qc.invalidateQueries({ queryKey: ['payments'] });
     },
   });
 }
