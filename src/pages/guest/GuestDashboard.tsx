@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
-import { Loader2, BedDouble, Receipt, UtensilsCrossed, MessageSquare, LogOut, Calendar, CreditCard, Clock, Plus } from 'lucide-react';
+import { toast } from 'sonner';
+import { Loader2, BedDouble, Receipt, UtensilsCrossed, MessageSquare, LogOut, Calendar, CreditCard, Clock, Plus, Wifi } from 'lucide-react';
 import { format } from 'date-fns';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,6 +22,35 @@ export default function GuestDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { if (user) loadData(); }, [user]);
+
+  // Real-time booking status updates
+  useEffect(() => {
+    if (!guest) return;
+    const channel = supabase
+      .channel('guest-booking-updates')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'reservations',
+        filter: `guest_id=eq.${guest.id}`,
+      }, (payload) => {
+        const old = payload.old as any;
+        const NEW = payload.new as any;
+        if (old?.status !== NEW?.status) {
+          const statusLabels: Record<string, string> = {
+            confirmed: '✅ Your booking is confirmed!',
+            checked_in: '🔑 You are checked in!',
+            checked_out: '👋 Check-out complete',
+            cancelled: '❌ Booking cancelled',
+          };
+          toast.success(statusLabels[NEW.status] || `Booking updated: ${NEW.status}`);
+          loadData();
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [guest?.id]);
 
   const loadData = async () => {
     setLoading(true);
@@ -69,7 +99,7 @@ export default function GuestDashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-navy text-white px-6 py-4">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div>
             <h1 className="font-display text-xl font-bold">Hi {guest?.name || user?.email?.split('@')[0]} 👋</h1>
             <p className="text-white/60 text-sm">{format(new Date(), 'EEEE, MMMM d')}</p>
@@ -80,9 +110,9 @@ export default function GuestDashboard() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto p-4 space-y-4">
+      <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-4">
         {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
           <Link to="/guest/booking">
             <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><Plus className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Book</p></CardContent></Card>
           </Link>
@@ -147,7 +177,7 @@ export default function GuestDashboard() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Past Stays</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {past.slice(0, 5).map((r: any) => (
+              {past.slice(0, 10).map((r: any) => (
                 <div key={r.id} className="flex items-center justify-between p-2 rounded-lg text-sm">
                   <div>
                     <p className="font-medium">Room {r.rooms?.room_number}</p>

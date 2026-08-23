@@ -70,13 +70,13 @@ export default function GuestFolio() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-navy text-white px-6 py-4">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
           <Link to="/guest"><ArrowLeft className="h-5 w-5" /></Link>
           <h1 className="font-display text-xl font-bold">My Folio</h1>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto p-4 space-y-4">
+      <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-4">
         {/* Summary */}
         <Card className="bg-gradient-to-r from-navy to-navy/80 text-white">
           <CardContent className="p-4">

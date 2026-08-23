@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ResponsiveLayout from "./components/ResponsiveLayout";
 import Index from "./pages/Index";
 import Rooms from "./pages/Rooms";
 import Conference from "./pages/Conference";
@@ -15,7 +16,6 @@ import GuestFolio from "./pages/guest/GuestFolio";
 import GuestOrder from "./pages/guest/GuestOrder";
 import GuestChat from "./pages/guest/GuestChat";
 import BookingFlow from "./pages/guest/BookingFlow";
-import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminRooms from "./pages/admin/Rooms";
 import AdminBookings from "./pages/admin/Bookings";
@@ -30,25 +30,24 @@ import AdminFolios from "./pages/admin/FolioManagement";
 import AdminBookingSettings from "./pages/admin/BookingSettings";
 import PaymentVerification from "./pages/admin/PaymentVerification";
 import AdminUsers from "./pages/admin/Users";
-import ManagerLayout from "./pages/manager/ManagerLayout";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerReports from "./pages/admin/Reports";
 import ManagerBookings from "./pages/admin/Bookings";
 import ManagerStaff from "./pages/manager/Staff";
-import StaffLayout from "./pages/staff/StaffLayout";
-import StaffPdaLayout from "./components/StaffPdaLayout";
-import RoleAwareLayout from "./components/RoleAwareLayout";
+import ShiftManagement from "./pages/manager/ShiftManagement";
+import InventoryComingSoon from "./pages/manager/InventoryComingSoon";
+import ManagerOperations from "./pages/manager/ManagerOperations";
 import StaffDashboard from "./pages/staff/Dashboard";
 import StaffBookings from "./pages/staff/Bookings";
 import StaffRequests from "./pages/staff/GuestRequests";
 import StaffReceipts from "./pages/staff/Receipts";
-import HousekeeperPda from "./pages/staff/HousekeeperPda";
-import HousekeepingSupervisor from "./pages/staff/HousekeepingSupervisor";
 import ReceptionistPda from "./pages/staff/ReceptionistPda";
 import WaiterPda from "./pages/staff/WaiterPda";
 import KitchenTablet from "./pages/staff/KitchenTablet";
 import PaymentRecording from "./pages/staff/PaymentRecording";
 import ShiftManager from "./pages/staff/ShiftManager";
+import HousekeeperPda from "./pages/staff/HousekeeperPda";
+import HousekeepingSupervisor from "./pages/staff/HousekeepingSupervisor";
 import Reconciliation from "./pages/manager/Reconciliation";
 import NotFound from "./pages/NotFound";
 
@@ -61,21 +60,24 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/rooms" element={<Rooms />} />
           <Route path="/conference" element={<Conference />} />
           <Route path="/cafeteria" element={<Cafeteria />} />
           <Route path="/cafeteria/:mealId" element={<CafeteriaMenu />} />
           <Route path="/login" element={<Login />} />
+
+          {/* Guest Routes (Responsive — mobile PDA ↔ desktop sidebar) */}
           <Route path="/guest/login" element={<GuestLogin />} />
           <Route path="/guest" element={<GuestDashboard />} />
           <Route path="/guest/folio" element={<GuestFolio />} />
           <Route path="/guest/order" element={<GuestOrder />} />
           <Route path="/guest/chat" element={<GuestChat />} />
           <Route path="/guest/booking" element={<BookingFlow />} />
-          
-          {/* Admin Routes (Mobile PDA for mobile, desktop sidebar for large screens) */}
-          <Route path="/admin" element={<AdminLayout />}>
+
+          {/* Admin Routes (Responsive) */}
+          <Route path="/admin" element={<ResponsiveLayout basePath="/admin" />}>
             <Route index element={<AdminDashboard />} />
             <Route path="rooms" element={<AdminRooms />} />
             <Route path="menu" element={<AdminMenu />} />
@@ -91,20 +93,23 @@ const App = () => (
             <Route path="messages" element={<MessagePage />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>
-          
-          {/* Manager Routes (Mobile PDA) */}
-          <Route path="/manager" element={<StaffPdaLayout />}>
+
+          {/* Manager Routes (Responsive) */}
+          <Route path="/manager" element={<ResponsiveLayout basePath="/manager" />}>
             <Route index element={<ManagerDashboard />} />
             <Route path="reports" element={<ManagerReports />} />
             <Route path="bookings" element={<ManagerBookings />} />
             <Route path="reconciliation" element={<Reconciliation />} />
             <Route path="staff" element={<ManagerStaff />} />
+            <Route path="shift" element={<ShiftManagement />} />
+            <Route path="inventory" element={<InventoryComingSoon />} />
+            <Route path="operations" element={<ManagerOperations />} />
             <Route path="messages" element={<MessagePage />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>
-          
-          {/* Staff Routes (Role-aware: desktop for waiter/chef, PDA for others) */}
-          <Route path="/staff" element={<RoleAwareLayout />}>
+
+          {/* Staff Routes (Responsive) */}
+          <Route path="/staff" element={<ResponsiveLayout basePath="/staff" />}>
             <Route index element={<StaffDashboard />} />
             <Route path="bookings" element={<StaffBookings />} />
             <Route path="reception" element={<ReceptionistPda />} />
@@ -119,7 +124,7 @@ const App = () => (
             <Route path="messages" element={<MessagePage />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
           </Route>
-          
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

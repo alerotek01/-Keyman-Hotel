@@ -99,13 +99,13 @@ export default function GuestChat() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <div className="bg-navy text-white px-6 py-4 shrink-0">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
           <Link to="/guest"><ArrowLeft className="h-5 w-5" /></Link>
           <h1 className="font-display text-xl font-bold">Messages</h1>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto w-full flex-1 flex flex-col">
+      <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col">
         {/* Channel Tabs */}
         <div className="flex gap-2 p-3 overflow-x-auto shrink-0">
           {channels.map(ch => {
