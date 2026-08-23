@@ -5,20 +5,21 @@ import { Layout } from '@/components/Layout';
 import { BookingModal } from '@/components/BookingModal';
 import { Button } from '@/components/ui/button';
 import { useRoomAvailability } from '@/hooks/useRooms';
+import { useHeroSlides } from '@/hooks/useCms';
 import { ArrowRight, ChevronLeft, ChevronRight, Bed, Presentation, UtensilsCrossed, Car } from 'lucide-react';
 import type { RoomWithAvailability } from '@/lib/types';
 
 const BASE = 'https://uuojiyehhnhjcakgpsjd.supabase.co/storage/v1/object/public/rooms';
 
-// Hero carousel — real hotel photos (WebP)
-const heroSlides = [
-  { src: `${BASE}/hero-night.webp`, alt: 'Keyman Hotel at night with colorful lights', caption: 'Evening ambiance' },
-  { src: `${BASE}/hero-entrance.webp`, alt: 'Hotel entrance and front view', caption: 'Welcome' },
-  { src: `${BASE}/hero-arrival.webp`, alt: 'Arrival and parking area', caption: 'Arrival' },
-  { src: `${BASE}/hero-lounge.webp`, alt: 'Guest lounge with comfortable seating', caption: 'Guest lounge' },
-  { src: `${BASE}/hero-single.webp`, alt: 'Comfortable single room interior', caption: 'Our rooms' },
-  { src: `${BASE}/hero-twin.webp`, alt: 'Twin room with two beds', caption: 'Twin rooms' },
-  { src: `${BASE}/hero-front-view.webp`, alt: 'Keyman Hotel front view', caption: 'Front view' },
+// Fallback hero slides (used when DB has no active slides)
+const fallbackHeroSlides = [
+  { image_url: `${BASE}/hero-night.webp`, alt_text: 'Keyman Hotel at night with colorful lights', caption: 'Evening ambiance' },
+  { image_url: `${BASE}/hero-entrance.webp`, alt_text: 'Hotel entrance and front view', caption: 'Welcome' },
+  { image_url: `${BASE}/hero-arrival.webp`, alt_text: 'Arrival and parking area', caption: 'Arrival' },
+  { image_url: `${BASE}/hero-lounge.webp`, alt_text: 'Guest lounge with comfortable seating', caption: 'Guest lounge' },
+  { image_url: `${BASE}/hero-single.webp`, alt_text: 'Comfortable single room interior', caption: 'Our rooms' },
+  { image_url: `${BASE}/hero-twin.webp`, alt_text: 'Twin room with two beds', caption: 'Twin rooms' },
+  { image_url: `${BASE}/hero-front-view.webp`, alt_text: 'Keyman Hotel front view', caption: 'Front view' },
 ];
 
 // Amenity carousel data
@@ -144,6 +145,16 @@ export default function Index() {
   const slideInterval = useRef<ReturnType<typeof setInterval>>();
 
   const { data: rooms, isLoading } = useRoomAvailability(null, null);
+  const { data: dbSlides } = useHeroSlides();
+
+  // Use DB slides if available, otherwise fallback to hardcoded
+  const heroSlides = (dbSlides && dbSlides.length > 0)
+    ? dbSlides.filter((s: any) => s.is_active !== false).map((s: any) => ({
+        src: s.image_url,
+        alt: s.alt_text || s.caption || 'Hotel image',
+        caption: s.caption || '',
+      }))
+    : fallbackHeroSlides.map(s => ({ src: s.image_url, alt: s.alt_text, caption: s.caption }));
 
   // Auto-advance hero carousel
   useEffect(() => {

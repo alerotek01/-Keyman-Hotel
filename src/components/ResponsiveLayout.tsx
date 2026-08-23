@@ -238,6 +238,9 @@ function MobilePdaLayout({ role, tabs, displayName, displayRole, onSignOut, show
             </span>
           </div>
           <div className="flex items-center gap-2 mt-1">
+            <Link to="/" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 hover:text-white transition-colors" title="Visit Website">
+              <Globe className="h-4 w-4" />
+            </Link>
             <NotificationBell />
           </div>
         </div>

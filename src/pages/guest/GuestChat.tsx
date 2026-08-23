@@ -54,7 +54,7 @@ export default function GuestChat() {
         .from('channel_members')
         .select('channel_id, message_channels(id, name, type, description)')
         .eq('user_id', user?.id);
-      const chs = (data || []).filter((m: any) => m.message_channels?.type === 'direct' && m.message_channels?.name?.startsWith('guest-'));
+      const chs = (data || []).filter((m: any) => m.message_channels && (m.message_channels?.name?.includes('guest') || m.message_channels?.name?.includes('reception')));
       setChannels(chs.map((m: any) => m.message_channels));
       if (chs.length > 0 && !selectedChannel) setSelectedChannel(chs[0].message_channels.id);
     } catch (e) { console.error(e); }

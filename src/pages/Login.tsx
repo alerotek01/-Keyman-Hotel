@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -180,9 +180,14 @@ export default function Login() {
           </div>
 
           {/* Note */}
-          <p className="text-center text-xs text-charcoal/30 leading-relaxed">
-            After creating an account, admin access must be granted by an existing administrator.
-          </p>
+          <div className="text-center space-y-2">
+            <p className="text-xs text-charcoal/30 leading-relaxed">
+              After creating an account, admin access must be granted by an existing administrator.
+            </p>
+            <Link to="/" className="text-xs text-brass hover:text-brass-dark transition-colors">
+              ← Back to Website
+            </Link>
+          </div>
         </div>
       </div>
     </Layout>

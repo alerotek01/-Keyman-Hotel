@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Loader2, BedDouble, Receipt, UtensilsCrossed, MessageSquare, LogOut, Calendar, CreditCard, Clock, Plus, Wifi, Building2, Coffee } from 'lucide-react';
+import { Loader2, BedDouble, Receipt, UtensilsCrossed, MessageSquare, LogOut, Calendar, CreditCard, Clock, Plus, Wifi, Building2, Coffee, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,9 +104,14 @@ export default function GuestDashboard() {
             <h1 className="font-display text-xl font-bold">Hi {guest?.name || user?.email?.split('@')[0]} 👋</h1>
             <p className="text-white/60 text-sm">{format(new Date(), 'EEEE, MMMM d')}</p>
           </div>
-          <Button variant="ghost" size="sm" className="text-white/60 hover:text-white" onClick={signOut}>
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 hover:text-white transition-colors" title="Visit Website">
+              <Globe className="h-4 w-4" />
+            </Link>
+            <Button variant="ghost" size="sm" className="text-white/60 hover:text-white" onClick={signOut}>
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
