@@ -312,18 +312,53 @@ export function useSubmitReconciliation() {
       expected_cash: number;
       actual_cash: number;
       notes?: string;
+      variance_explanation?: string;
+      variance_proof_type?: 'mpesa_message' | 'receipt' | 'both';
+      proofFile?: File | null;
     }) => {
       const variance = data.actual_cash - data.expected_cash;
+      const hasVariance = variance !== 0;
       const { data: rec, error } = await sb
         .from('shift_reconciliations')
         .insert({
-          ...data,
+          shift_id: data.shift_id,
+          submitted_by: data.submitted_by,
+          sales_total: data.sales_total,
+          cash_total: data.cash_total,
+          mpesa_total: data.mpesa_total,
+          room_charges_total: data.room_charges_total,
+          expected_cash: data.expected_cash,
+          actual_cash: data.actual_cash,
           variance,
+          notes: data.notes,
           status: 'submitted',
+          variance_status: hasVariance ? 'open' : 'none',
+          variance_explanation: hasVariance ? data.variance_explanation : null,
+          variance_proof_type: hasVariance ? data.variance_proof_type : null,
         })
         .select('*, staff_shifts(shift_name, users(full_name, email))')
         .single();
       if (error) throw error;
+
+      // Upload proof file if provided
+      if (data.proofFile && rec) {
+        try {
+          const ext = data.proofFile.name.split('.').pop() || 'jpg';
+          const fileName = `receipts/variance/${rec.id}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await sb.storage
+            .from('rooms')
+            .upload(fileName, data.proofFile, { contentType: data.proofFile.type });
+          if (!uploadErr) {
+            const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
+            await sb
+              .from('shift_reconciliations')
+              .update({ variance_proof_url: urlData.publicUrl })
+              .eq('id', rec.id);
+          }
+        } catch (e) {
+          console.warn('Proof upload failed (reconciliation still submitted):', e);
+        }
+      }
 
       await sb
         .from('staff_shifts')
@@ -345,7 +380,16 @@ export function useSubmitReconciliation() {
             notes: data.notes,
           });
         }
-      } catch (e) { console.warn('Reconciliation email failed:', e); }
+        // In-app notification to manager/admin
+        await sb.rpc('fire_notification', {
+          p_title: `Reconciliation Submitted — ${rec?.staff_shifts?.shift_name || 'Shift'}`,
+          p_body: hasVariance
+            ? `Variance of KES ${variance} reported. Staff explanation: ${data.variance_explanation || 'None'}`
+            : `Reconciliation submitted with no variance.`,
+          p_type: 'reconciliation',
+          p_roles: JSON.stringify(['admin', 'manager']),
+        });
+      } catch (e) { console.warn('Email/notification failed:', e); }
 
       return rec;
     },
@@ -418,16 +462,26 @@ export function useShiftSummary(shiftId: string) {
         .gte('created_at', shift.start_time || shift.shift_date)
         .lte('created_at', shift.end_time || new Date().toISOString());
 
-      // Get payments during shift (now from folio_payments)
+      // Get payments during shift (now from folio_payments) — with full detail for reconciliation
       const { data: payments } = await sb
         .from('folio_payments')
-        .select('id, amount, method, status')
+        .select('id, amount, method, mpesa_transaction_id, receipt_image_url, status, recorded_by, created_at')
         .gte('created_at', shift.start_time || shift.shift_date)
         .lte('created_at', shift.end_time || new Date().toISOString());
 
+      // Also get waiter-recorded payments (from payments table)
+      const { data: waiterPayments } = await sb
+        .from('payments')
+        .select('id, amount, method, mpesa_transaction_id, receipt_image_url, status, recorded_by, created_at, order_id')
+        .eq('recorded_by', shift.user_id)
+        .gte('created_at', shift.start_time || shift.shift_date)
+        .lte('created_at', shift.end_time || new Date().toISOString());
+
+      const allPayments = [...(payments || []), ...(waiterPayments || [])];
       const salesTotal = orders?.reduce((sum: number, o: any) => sum + Number(o.total), 0) || 0;
-      const cashPayments = payments?.filter((p: any) => p.method === 'cash') || [];
-      const mpesaPayments = payments?.filter((p: any) => p.method === 'mpesa') || [];
+      const cashPayments = allPayments.filter((p: any) => p.method === 'cash');
+      const mpesaPayments = allPayments.filter((p: any) => p.method === 'mpesa');
+      const cardPayments = allPayments.filter((p: any) => p.method === 'card');
       const cashTotal = cashPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       const mpesaTotal = mpesaPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
 
@@ -437,7 +491,11 @@ export function useShiftSummary(shiftId: string) {
         cashTotal,
         mpesaTotal,
         ordersCount: orders?.length || 0,
-        paymentsCount: payments?.length || 0,
+        paymentsCount: allPayments.length,
+        payments: allPayments,
+        cashPayments,
+        mpesaPayments,
+        cardPayments,
       };
     },
     enabled: !!shiftId,
