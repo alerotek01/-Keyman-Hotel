@@ -85,13 +85,27 @@ export default function Reconciliation() {
           *,
           staff_shifts!shift_id(*, users:user_id(full_name, email, role, id), departments:department_id(name)),
           users_submitted:submitted_by(full_name),
-          users_manager:manager_id(full_name),
-          users_variance_resolved:variance_resolved_by(full_name),
-          users_variance_admin:variance_admin_confirmed_by(full_name)
+          users_manager:manager_id(full_name)
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      // Fetch variance resolution names separately (no FK join needed)
+      const resolvedIds = (data || []).filter((r: any) => r.variance_resolved_by).map((r: any) => r.variance_resolved_by);
+      const adminIds = (data || []).filter((r: any) => r.variance_admin_confirmed_by).map((r: any) => r.variance_admin_confirmed_by);
+      const allUserIds = [...new Set([...resolvedIds, ...adminIds])];
+
+      let userMap: Record<string, string> = {};
+      if (allUserIds.length > 0) {
+        const { data: users } = await sb.from('users').select('id, full_name').in('id', allUserIds);
+        (users || []).forEach((u: any) => { userMap[u.id] = u.full_name; });
+      }
+
+      return (data || []).map((r: any) => ({
+        ...r,
+        users_variance_resolved: r.variance_resolved_by ? { full_name: userMap[r.variance_resolved_by] || 'Unknown' } : null,
+        users_variance_admin: r.variance_admin_confirmed_by ? { full_name: userMap[r.variance_admin_confirmed_by] || 'Unknown' } : null,
+      }));
     },
   });
 
