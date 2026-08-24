@@ -215,7 +215,7 @@ export function useStartShift() {
           start_time: new Date().toISOString(),
           status: 'active',
         })
-        .select('*, users(full_name, email)')
+        .select('id, user_id, department_id, shift_date, shift_name, start_time, end_time, status, created_at, users:user_id(full_name, email)')
         .single();
       if (error) throw error;
 
@@ -253,7 +253,7 @@ export function useEndShift() {
           status: 'ended',
         })
         .eq('id', shiftId)
-        .select('*, users(full_name, email)')
+        .select('id, user_id, department_id, shift_date, shift_name, start_time, end_time, status, created_at, users:user_id(full_name, email)')
         .single();
       if (error) throw error;
 

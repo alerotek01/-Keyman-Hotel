@@ -154,7 +154,7 @@ async function testGuestLifecycle() {
   // 1b. Find a truly available room (no overlapping reservations)
   const farFutureCheckIn = new Date(Date.now() + 500 * 3600000).toISOString().split('T')[0]; // ~21 days out
   const farFutureCheckOut = new Date(Date.now() + 548 * 3600000).toISOString().split('T')[0];
-  const cleanRoom = row(await q(`SELECT id, room_number FROM rooms WHERE status='available' AND id NOT IN (SELECT room_id FROM reservations WHERE room_id IS NOT NULL AND status NOT IN ('cancelled','no_show') AND check_in < '${farFutureCheckOut}' AND check_out > '${farFutureCheckIn}') LIMIT 1`));
+  const cleanRoom = row(await q(`SELECT id, room_number FROM rooms WHERE status='available' AND id NOT IN (SELECT room_id FROM reservations WHERE room_id IS NOT NULL AND status IN ('confirmed','checked_in','reserved') AND check_in < '${farFutureCheckOut}' AND check_out > '${farFutureCheckIn}') LIMIT 1`));
   if (cleanRoom) state.roomId = cleanRoom.id;
   log('INFO', `Available room: ${cleanRoom?.room_number || state.roomId}`);
 
@@ -162,14 +162,16 @@ async function testGuestLifecycle() {
   const checkIn = farFutureCheckIn;
   const checkOut = farFutureCheckOut;
 
-  const resRec = row(await q(`INSERT INTO reservations (
+  const resResult = await q(`INSERT INTO reservations (
     guest_id, guest_user_id, room_id, room_type_id, check_in, check_out,
     num_adults, num_children, rate, status, payment_type, deposit_amount, deposit_paid
   ) VALUES (
     '${state.guestId}', '${state.guestUserId}', '${state.roomId}',
     (SELECT id FROM room_types WHERE is_active=true LIMIT 1),
     '${checkIn}', '${checkOut}', 2, 0, 5000, 'confirmed', 'pay_on_arrival', 0, false
-  ) RETURNING id`));
+  ) RETURNING id`);
+  if (resResult?.message) log('WARN', `Reservation insert error: ${resResult.message}`);
+  const resRec = row(resResult);
   state.reservationId = resRec?.id;
   assert(!!state.reservationId, '1.3 Reservation created (2 nights, pay on arrival)');
 
@@ -251,7 +253,7 @@ async function testWalkInOnboarding() {
   // 2a. Get a truly available room (no overlapping reservations)
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-  const walkInRoom = row(await q(`SELECT id, room_number FROM rooms WHERE status='available' AND id NOT IN (SELECT room_id FROM reservations WHERE room_id IS NOT NULL AND status NOT IN ('cancelled','no_show') AND check_in < '${tomorrow}' AND check_out > '${today}') AND id != '${state.roomId}' LIMIT 1`));
+  const walkInRoom = row(await q(`SELECT id, room_number FROM rooms WHERE status='available' AND id NOT IN (SELECT room_id FROM reservations WHERE room_id IS NOT NULL AND status IN ('confirmed','checked_in') AND check_in < '${tomorrow}' AND check_out > '${today}') AND id != '${state.roomId}' LIMIT 1`));
   assert(!!walkInRoom, '2.1 Available room for walk-in');
   state.walkInRoomId = walkInRoom?.id;
 
