@@ -22,42 +22,54 @@ interface EmailOptions {
 }
 
 /**
- * Send email via Resend API
+ * Send OTP email via Supabase Edge Function (bypasses CORS)
  */
-export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
-  if (!RESEND_API_KEY) {
-    console.warn('[Email] RESEND_API_KEY not configured — email skipped');
-    return { success: false, error: 'API key not configured' };
+export async function sendOTPEmail(params: {
+  email: string;
+  code: string;
+  purpose: 'guest_signup' | 'password_reset' | 'staff_invite';
+  userName?: string;
+  role?: string;
+}): Promise<{ success: boolean; id?: string; error?: string }> {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!SUPABASE_URL || !ANON_KEY) {
+    console.warn('[Email] Supabase config missing — email skipped');
+    return { success: false, error: 'Supabase not configured' };
   }
 
   try {
-    const response = await fetch(RESEND_ENDPOINT, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-otp-email`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ANON_KEY}`,
       },
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: Array.isArray(options.to) ? options.to : [options.to],
-        subject: options.subject,
-        html: options.html,
-        reply_to: options.replyTo,
-      }),
+      body: JSON.stringify(params),
     });
 
     const data = await response.json();
 
-    if (response.ok) {
+    if (response.ok && data.success) {
       return { success: true, id: data.id };
     } else {
       console.error('[Email] Send failed:', data);
-      return { success: false, error: data.message || 'Unknown error' };
+      return { success: false, error: data.error || 'Email send failed' };
     }
   } catch (err: any) {
     console.error('[Email] Network error:', err.message);
     return { success: false, error: err.message };
   }
+}
+
+/**
+ * Send email via Resend API (direct — for server-side use only)
+ * Kept for backward compatibility but should not be used from browser
+ */
+export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
+  // Redirect to Edge Function for browser usage
+  return { success: false, error: 'Use sendOTPEmail() instead' };
 }
 
 // ═══════════════════════════════════════════════
@@ -92,18 +104,11 @@ function baseTemplate(content: string, footer?: string): string {
  * Guest OTP verification email
  */
 export async function sendOTPVerification(to: string, otpCode: string, guestName: string) {
-  return sendEmail({
-    to,
-    subject: `Your Verification Code — ${HOTEL_NAME}`,
-    html: baseTemplate(`
-      <h2 style="color:#1a2744;margin-bottom:16px;">Welcome, ${guestName}!</h2>
-      <p style="color:#555;line-height:1.6;">Use the code below to verify your email and access your guest dashboard:</p>
-      <div style="background:#f5f5f5;border-radius:8px;padding:24px;text-align:center;margin:24px 0;">
-        <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a2744;margin:0;">${otpCode}</p>
-        <p style="color:#999;font-size:12px;margin-top:8px;">Expires in 1 hour</p>
-      </div>
-      <p style="color:#555;line-height:1.6;">If you didn't request this, please ignore this email.</p>
-    `),
+  return sendOTPEmail({
+    email: to,
+    code: otpCode,
+    purpose: 'guest_signup',
+    userName: guestName,
   });
 }
 
@@ -130,18 +135,10 @@ export async function sendPasswordReset(to: string, resetLink: string, userName:
  * Password reset OTP code email
  */
 export async function sendPasswordResetOTP(to: string, otpCode: string) {
-  return sendEmail({
-    to,
-    subject: `Your Password Reset Code — ${HOTEL_NAME}`,
-    html: baseTemplate(`
-      <h2 style="color:#1a2744;margin-bottom:16px;">Password Reset</h2>
-      <p style="color:#555;line-height:1.6;">We received a request to reset your password. Use the code below:</p>
-      <div style="background:#f5f5f5;border-radius:8px;padding:24px;text-align:center;margin:24px 0;">
-        <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a2744;margin:0;">${otpCode}</p>
-        <p style="color:#999;font-size:12px;margin-top:8px;">Expires in 10 minutes</p>
-      </div>
-      <p style="color:#e74c3c;font-size:12px;line-height:1.6;">If you didn't request this, please ignore this email. Do not share this code with anyone.</p>
-    `),
+  return sendOTPEmail({
+    email: to,
+    code: otpCode,
+    purpose: 'password_reset',
   });
 }
 
@@ -149,22 +146,12 @@ export async function sendPasswordResetOTP(to: string, otpCode: string) {
  * Staff invite OTP code email
  */
 export async function sendStaffInviteOTP(to: string, otpCode: string, userName: string, role: string) {
-  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ');
-  return sendEmail({
-    to,
-    subject: `Welcome to ${HOTEL_NAME} — Your ${roleLabel} Account`,
-    html: baseTemplate(`
-      <h2 style="color:#1a2744;margin-bottom:16px;">Welcome, ${userName}! 👋</h2>
-      <p style="color:#555;line-height:1.6;">Your <strong>${roleLabel}</strong> account has been created. Use the code below to set your password and access your dashboard:</p>
-      <div style="background:#e8f5e9;border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
-        <p style="color:#2e7d32;margin:0;font-size:14px;">🎯 Your Role: <strong>${roleLabel}</strong></p>
-      </div>
-      <div style="background:#f5f5f5;border-radius:8px;padding:24px;text-align:center;margin:24px 0;">
-        <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a2744;margin:0;">${otpCode}</p>
-        <p style="color:#999;font-size:12px;margin-top:8px;">Expires in 10 minutes</p>
-      </div>
-      <p style="color:#e74c3c;font-size:12px;line-height:1.6;">If you didn't expect this email, please ignore it. Do not share this code with anyone.</p>
-    `),
+  return sendOTPEmail({
+    email: to,
+    code: otpCode,
+    purpose: 'staff_invite',
+    userName,
+    role,
   });
 }
 
