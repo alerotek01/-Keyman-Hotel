@@ -61,6 +61,40 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/admin/messages', label: 'Messages', icon: MessageSquare },
     { path: '/admin/notification-settings', label: 'Notifications', icon: Bell },
   ],
+  // Staff nav configs — role-specific
+  receptionist: [
+    { path: '/staff', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { path: '/staff/reception', label: 'Reception', icon: Wrench },
+    { path: '/staff/bookings', label: 'Bookings', icon: CalendarCheck },
+    { path: '/staff/payments', label: 'Payments', icon: CreditCard },
+    { path: '/staff/shift', label: 'My Shift', icon: Clock },
+    { path: '/staff/requests', label: 'Guest Requests', icon: ClipboardList },
+    { path: '/staff/receipts', label: 'Receipts', icon: Receipt },
+    { path: '/staff/messages', label: 'Messages', icon: MessageSquare },
+    { path: '/staff/notification-settings', label: 'Notifications', icon: Bell },
+  ],
+  waiter: [
+    { path: '/staff', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { path: '/staff/waiter', label: 'Orders', icon: UtensilsCrossed },
+    { path: '/staff/payments', label: 'Payments', icon: CreditCard },
+    { path: '/staff/shift', label: 'My Shift', icon: Clock },
+    { path: '/staff/messages', label: 'Messages', icon: MessageSquare },
+    { path: '/staff/notification-settings', label: 'Notifications', icon: Bell },
+  ],
+  chef: [
+    { path: '/staff/kitchen', label: 'Kitchen', icon: ChefHat, exact: true },
+    { path: '/staff/shift', label: 'My Shift', icon: Clock },
+    { path: '/staff/messages', label: 'Messages', icon: MessageSquare },
+    { path: '/staff/notification-settings', label: 'Notifications', icon: Bell },
+  ],
+  housekeeper: [
+    { path: '/staff/housekeeping', label: 'My Rooms', icon: Sparkles, exact: true },
+    { path: '/staff/inspection', label: 'Inspection', icon: ClipboardCheck },
+    { path: '/staff/requests', label: 'Guest Requests', icon: ClipboardList },
+    { path: '/staff/shift', label: 'My Shift', icon: Clock },
+    { path: '/staff/messages', label: 'Messages', icon: MessageSquare },
+    { path: '/staff/notification-settings', label: 'Notifications', icon: Bell },
+  ],
   staff: [
     { path: '/staff', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { path: '/staff/reception', label: 'Reception', icon: Wrench },
@@ -173,6 +207,39 @@ const MANAGER_MORE_ITEMS = [
   { icon: '💬', label: 'Messages', path: '/manager/messages' },
   { icon: '🔔', label: 'Alerts', path: '/manager/notification-settings' },
 ];
+
+// Staff "More" overlay items (shared across staff roles)
+const STAFF_MORE_ITEMS: Record<string, { icon: string; label: string; path: string }[]> = {
+  receptionist: [
+    { icon: '🏠', label: 'Dashboard', path: '/staff' },
+    { icon: '🔑', label: 'Reception', path: '/staff/reception' },
+    { icon: '📅', label: 'Bookings', path: '/staff/bookings' },
+    { icon: '💳', label: 'Payments', path: '/staff/payments' },
+    { icon: '⏰', label: 'My Shift', path: '/staff/shift' },
+    { icon: '📋', label: 'Guest Requests', path: '/staff/requests' },
+    { icon: '🧾', label: 'Receipts', path: '/staff/receipts' },
+    { icon: '💬', label: 'Messages', path: '/staff/messages' },
+  ],
+  waiter: [
+    { icon: '🏠', label: 'Dashboard', path: '/staff' },
+    { icon: '🍽️', label: 'Orders', path: '/staff/waiter' },
+    { icon: '💳', label: 'Payments', path: '/staff/payments' },
+    { icon: '⏰', label: 'My Shift', path: '/staff/shift' },
+    { icon: '💬', label: 'Messages', path: '/staff/messages' },
+  ],
+  chef: [
+    { icon: '👨‍🍳', label: 'Kitchen', path: '/staff/kitchen' },
+    { icon: '⏰', label: 'My Shift', path: '/staff/shift' },
+    { icon: '💬', label: 'Messages', path: '/staff/messages' },
+  ],
+  housekeeper: [
+    { icon: '🏠', label: 'My Rooms', path: '/staff/housekeeping' },
+    { icon: '🔍', label: 'Inspection', path: '/staff/inspection' },
+    { icon: '📋', label: 'Guest Requests', path: '/staff/requests' },
+    { icon: '⏰', label: 'My Shift', path: '/staff/shift' },
+    { icon: '💬', label: 'Messages', path: '/staff/messages' },
+  ],
+};
 
 // Guest "More" overlay items
 const GUEST_MORE_ITEMS = [
@@ -535,12 +602,12 @@ export default function ResponsiveLayout({ basePath, allowedRoles }: ResponsiveL
     );
   }
 
-  // Determine nav config based on basePath
+  // Determine nav config based on basePath AND role for staff
   const navConfig = basePath === '/guest' ? NAV_CONFIGS.guest
     : basePath === '/manager' ? NAV_CONFIGS.manager
     : basePath === '/admin' ? NAV_CONFIGS.admin
     : basePath === '/external' ? NAV_CONFIGS.external
-    : NAV_CONFIGS.staff;
+    : (NAV_CONFIGS[role || ''] || NAV_CONFIGS.staff);
 
   // Determine mobile tabs
   const mobileTabs = ROLE_TABS[role || ''] || ROLE_TABS.receptionist;
@@ -580,7 +647,7 @@ export default function ResponsiveLayout({ basePath, allowedRoles }: ResponsiveL
       onSignOut={signOut}
       showMore={showMore}
       setShowMore={setShowMore}
-      moreItems={basePath === '/manager' ? MANAGER_MORE_ITEMS : basePath === '/guest' ? GUEST_MORE_ITEMS : undefined}
+      moreItems={basePath === '/manager' ? MANAGER_MORE_ITEMS : basePath === '/guest' ? GUEST_MORE_ITEMS : basePath === '/staff' ? (STAFF_MORE_ITEMS[role || ''] || undefined) : undefined}
     />
   );
 }
