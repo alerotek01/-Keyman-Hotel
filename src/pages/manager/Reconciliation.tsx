@@ -129,9 +129,9 @@ export default function Reconciliation() {
     queryFn: async () => {
       if (!expandedRecon || !staffId) return { folioPayments: [], restaurantOrders: [], recordedPayments: [] };
 
-      const timeFilter = shiftStart
-        ? { start: shiftStart, end: shiftEnd || new Date().toISOString() }
-        : { start: new Date().toISOString().split('T')[0], end: new Date().toISOString() };
+      // Filter by shift date (same day) — simpler than time range
+      const shiftDate = expandedShift?.staff_shifts?.shift_date || new Date().toISOString().split('T')[0];
+      const nextDay = new Date(new Date(shiftDate).getTime() + 86400000).toISOString().split('T')[0];
 
       const queries: Promise<any>[] = [];
 
@@ -141,21 +141,21 @@ export default function Reconciliation() {
           sb.from('folio_payments')
             .select('*, guest_folios!folio_id(reservation_id, guest_name)')
             .eq('recorded_by', staffId)
-            .gte('created_at', timeFilter.start)
-            .lte('created_at', timeFilter.end)
+            .gte('created_at', shiftDate)
+            .lt('created_at', nextDay)
             .order('created_at', { ascending: false })
             .then((r: any) => ({ type: 'folio_payments', data: r.data || [] }))
         );
       }
 
-      // Waiter: restaurant_orders where they were waiter + payments they recorded
+      // Waiter/Chef: orders + payments recorded by this staff
       if (['waiter', 'chef'].includes(staffRole)) {
         queries.push(
           sb.from('restaurant_orders')
             .select('*, restaurant_order_items(*)')
             .eq('waiter_id', staffId)
-            .gte('created_at', timeFilter.start)
-            .lte('created_at', timeFilter.end)
+            .gte('created_at', shiftDate)
+            .lt('created_at', nextDay)
             .order('created_at', { ascending: false })
             .then((r: any) => ({ type: 'restaurant_orders', data: r.data || [] }))
         );
@@ -163,8 +163,8 @@ export default function Reconciliation() {
           sb.from('payments')
             .select('*')
             .eq('recorded_by', staffId)
-            .gte('created_at', timeFilter.start)
-            .lte('created_at', timeFilter.end)
+            .gte('created_at', shiftDate)
+            .lt('created_at', nextDay)
             .order('created_at', { ascending: false })
             .then((r: any) => ({ type: 'recorded_payments', data: r.data || [] }))
         );
