@@ -68,17 +68,9 @@ export default function AdminUsers() {
         // Password provided — send welcome email with credentials
         await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
       } else {
-        // No password — send set-password link via Supabase
-        const { data: linkData } = await sb.auth.admin.generateLink({
-          type: 'signup',
-          email: data.email,
-        });
-        // Extract the token from the link and build our set-password URL
-        const supabaseUrl = linkData?.properties?.action_link || '';
-        const urlObj = new URL(supabaseUrl);
-        const token = urlObj.searchParams.get('token') || '';
+        // No password — send set-password link using token from server
+        const token = result.token;
         const setPwdUrl = `${window.location.origin}/set-password?token=${token}&type=signup&email=${encodeURIComponent(data.email)}`;
-        // Send email with set-password link (reuse welcome email with link)
         await sendWelcomeEmail(data.email, data.full_name, data.role, undefined, setPwdUrl);
       }
 

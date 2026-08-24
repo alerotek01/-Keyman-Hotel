@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, Navigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,50 +14,51 @@ const sb = supabase as any;
 export default function SetPassword() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const type = searchParams.get('type'); // 'signup' or 'magiclink' or 'recovery'
   const email = searchParams.get('email');
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [verifying, setVerifying] = useState(true);
   const [tokenValid, setTokenValid] = useState(false);
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   // Verify the token on mount
   useEffect(() => {
-    if (!token || !type || !email) {
+    if (!token || !email) {
       setVerifying(false);
-      setError('Invalid or missing link parameters');
       return;
     }
 
     const verifyToken = async () => {
       try {
-        // Verify the recovery/signup link via Supabase
-        const { error: verifyError } = await sb.auth.verifyOtp({
-          email,
-          token,
-          type: type as any,
+        const { data, error } = await sb.rpc('verify_set_password_token', {
+          p_email: email,
+          p_token: token,
         });
 
-        if (verifyError) {
-          setError('This link has expired or is invalid. Please request a new one.');
+        if (error || !data?.success) {
+          // Token invalid — but try to sign in anyway in case user already set password
+          setTokenValid(false);
+        } else if (data.already_verified) {
+          setAlreadyVerified(true);
+          setTokenValid(true);
         } else {
           setTokenValid(true);
         }
       } catch {
-        setError('Failed to verify link. Please try again.');
+        setTokenValid(false);
       }
       setVerifying(false);
     };
 
     verifyToken();
-  }, [token, type, email]);
+  }, [token, email]);
 
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) return;
     if (password.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
@@ -69,12 +70,32 @@ export default function SetPassword() {
 
     setLoading(true);
     try {
-      // Update password via Supabase
-      const { error } = await sb.auth.updateUser({ password });
+      // Set password via server-side function
+      const { data: result, error } = await sb.rpc('set_user_password', {
+        p_email: email,
+        p_new_password: password,
+      });
+
       if (error) throw error;
+      if (!result?.success) throw new Error(result?.error || 'Failed to set password');
+
+      // Now sign in
+      const { error: signInError } = await sb.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        // Password set but sign-in failed — redirect to login
+        setSuccess(true);
+        return;
+      }
 
       setSuccess(true);
-      toast.success('Password set successfully!');
+      // Redirect to dashboard after 1.5s
+      setTimeout(() => {
+        window.location.href = '/staff';
+      }, 1500);
     } catch (err: any) {
       toast.error(err.message || 'Failed to set password');
     }
@@ -82,7 +103,7 @@ export default function SetPassword() {
   };
 
   // Missing parameters
-  if (!token || !type || !email) {
+  if (!token || !email) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-navy via-navy/95 to-brass/20 flex items-center justify-center p-4">
         <Card className="bg-white/95 backdrop-blur w-full max-w-md">
@@ -118,8 +139,26 @@ export default function SetPassword() {
           <CardContent className="py-12 text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
             <h2 className="font-display text-xl font-bold">Link Expired</h2>
-            <p className="text-muted-foreground text-sm">{error || 'This link has expired or is invalid.'}</p>
-            <p className="text-muted-foreground text-xs">Contact your administrator to get a new invitation link.</p>
+            <p className="text-muted-foreground text-sm">This link has expired or is invalid.</p>
+            <p className="text-muted-foreground text-xs">Contact your administrator to get a new invitation.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Already verified — redirect to login
+  if (alreadyVerified && !success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-navy via-navy/95 to-brass/20 flex items-center justify-center p-4">
+        <Card className="bg-white/95 backdrop-blur w-full max-w-md">
+          <CardContent className="py-12 text-center space-y-4">
+            <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
+            <h2 className="font-display text-xl font-bold">Password Already Set</h2>
+            <p className="text-muted-foreground text-sm">Your password was already configured. You can log in directly.</p>
+            <a href="/login">
+              <Button variant="brass" className="mt-4">Go to Login</Button>
+            </a>
           </CardContent>
         </Card>
       </div>
@@ -134,10 +173,8 @@ export default function SetPassword() {
           <CardContent className="py-12 text-center space-y-4">
             <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
             <h2 className="font-display text-xl font-bold">Password Set!</h2>
-            <p className="text-muted-foreground text-sm">Your password has been set. You can now log in.</p>
-            <a href="/login">
-              <Button variant="brass" className="mt-4">Go to Login</Button>
-            </a>
+            <p className="text-muted-foreground text-sm">Redirecting to your dashboard...</p>
+            <Loader2 className="h-4 w-4 animate-spin text-brass mx-auto" />
           </CardContent>
         </Card>
       </div>
@@ -159,7 +196,7 @@ export default function SetPassword() {
           <CardHeader className="text-center">
             <CardTitle className="font-display text-xl">Welcome aboard! 👋</CardTitle>
             <CardDescription>
-              Set your password to access the {type === 'signup' ? 'system' : 'dashboard'}.
+              Set your password to access the system.
               <br />
               <span className="text-xs text-muted-foreground">{email}</span>
             </CardDescription>

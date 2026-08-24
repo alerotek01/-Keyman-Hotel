@@ -65,13 +65,7 @@ export default function StaffManagement() {
       if (data.password) {
         await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
       } else {
-        const { data: linkData } = await sb.auth.admin.generateLink({
-          type: 'signup',
-          email: data.email,
-        });
-        const supabaseUrl = linkData?.properties?.action_link || '';
-        const urlObj = new URL(supabaseUrl);
-        const token = urlObj.searchParams.get('token') || '';
+        const token = result.token;
         const setPwdUrl = `${window.location.origin}/set-password?token=${token}&type=signup&email=${encodeURIComponent(data.email)}`;
         await sendWelcomeEmail(data.email, data.full_name, data.role, undefined, setPwdUrl);
       }
