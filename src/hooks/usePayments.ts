@@ -363,8 +363,11 @@ export function useApproveReconciliation() {
       const updateData: any = {
         status,
         manager_id: managerId,
-        reconciled_at: new Date().toISOString(),
       };
+      // Only set reconciled_at when status is 'reconciled' (final close), not on 'approved'
+      if (status === 'reconciled') {
+        updateData.reconciled_at = new Date().toISOString();
+      }
       // Save manager notes (abnormality notes when flagging)
       if (notes) {
         updateData.manager_notes = notes;
@@ -378,6 +381,7 @@ export function useApproveReconciliation() {
         .single();
       if (error) throw error;
 
+      // Update shift status: 'reconciled' when approved, 'closed' when fully reconciled
       if (data.shift_id) {
         await sb
           .from('staff_shifts')

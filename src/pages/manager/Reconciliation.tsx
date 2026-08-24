@@ -150,7 +150,20 @@ export default function Reconciliation() {
         managerId: user?.id || '',
         status: 'approved',
       });
-      toast.success('Reconciliation approved — shift closed');
+      toast.success('Reconciliation approved — shift reconciled');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed');
+    }
+  };
+
+  const handleClose = async (reconId: string) => {
+    try {
+      await approveRecon.mutateAsync({
+        reconciliationId: reconId,
+        managerId: user?.id || '',
+        status: 'reconciled',
+      });
+      toast.success('Shift fully closed and reconciled');
     } catch (error: any) {
       toast.error(error.message || 'Failed');
     }
@@ -413,14 +426,23 @@ export default function Reconciliation() {
                     disabled={approveRecon.isPending}
                   >
                     {approveRecon.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                    Approve & Close Shift
+                    Approve
+                  </Button>
+                  <Button
+                    variant="default"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => handleClose(recon.id)}
+                    disabled={approveRecon.isPending}
+                  >
+                    {approveRecon.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                    Close Shift
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
                     onClick={() => { setSelectedRecon(recon); setFlagDialog(true); }}
                   >
-                    <Ban className="mr-2 h-4 w-4" /> Flag
+                    <Ban className="h-4 w-4" />
                   </Button>
                 </div>
               )}
