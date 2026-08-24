@@ -4,18 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useApproveReconciliation } from '@/hooks/usePayments';
+import { useApproveReconciliation, useResolveVariance, useAdminConfirmVariance } from '@/hooks/usePayments';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format, differenceInMinutes } from 'date-fns';
 import {
   Loader2, CheckCircle2, XCircle, AlertTriangle, DollarSign, Clock,
   Receipt, Smartphone, Camera, Eye, Ban, ChefHat, UtensilsCrossed,
-  BedDouble, Sparkles, LogIn, LogOut, ChevronDown, ChevronRight
+  BedDouble, Sparkles, LogIn, LogOut, ChevronDown, ChevronRight,
+  FileText, ShieldCheck, MessageSquare, Upload, Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +43,15 @@ const RECON_STATUS: Record<string, { color: string; label: string }> = {
   closed: { color: 'bg-gray-100 text-gray-700', label: 'Closed' },
 };
 
+const VARIANCE_STATUS: Record<string, { color: string; label: string; icon: any }> = {
+  none: { color: 'bg-gray-100 text-gray-500', label: 'No Variance', icon: CheckCircle2 },
+  open: { color: 'bg-red-100 text-red-700', label: 'Variance Open', icon: AlertTriangle },
+  staff_explained: { color: 'bg-blue-100 text-blue-700', label: 'Staff Explained', icon: MessageSquare },
+  admin_reviewing: { color: 'bg-amber-100 text-amber-700', label: 'Admin Reviewing', icon: ShieldCheck },
+  resolved: { color: 'bg-emerald-100 text-emerald-700', label: 'Resolved', icon: Check },
+  disputed: { color: 'bg-red-100 text-red-700', label: 'Disputed', icon: Ban },
+};
+
 export default function Reconciliation() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -50,7 +61,16 @@ export default function Reconciliation() {
   const [expandedRecon, setExpandedRecon] = useState<string | null>(null);
   const [receiptDialog, setReceiptDialog] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState('');
+  const [mpesaDialog, setMpesaDialog] = useState(false);
+  const [mpesaCode, setMpesaCode] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(false);
+  const [confirmNotes, setConfirmNotes] = useState('');
+  const [confirmProofType, setConfirmProofType] = useState<'mpesa_message' | 'receipt'>('mpesa_message');
+  const [confirmFile, setConfirmFile] = useState<File | null>(null);
+
   const approveRecon = useApproveReconciliation();
+  const resolveVariance = useResolveVariance();
+  const adminConfirmVariance = useAdminConfirmVariance();
 
   // Fetch all reconciliations with shift + staff info
   const { data: reconciliations, isLoading } = useQuery({
@@ -61,7 +81,10 @@ export default function Reconciliation() {
         .select(`
           *,
           staff_shifts!shift_id(*, users:user_id(full_name, email, role, id), departments:department_id(name)),
-          users_submitted:submitted_by(full_name)
+          users_submitted:submitted_by(full_name),
+          users_manager:manager_id(full_name),
+          users_variance_resolved:variance_resolved_by(full_name),
+          users_variance_admin:variance_admin_confirmed_by(full_name)
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -70,7 +93,11 @@ export default function Reconciliation() {
   });
 
   const pendingRecons = reconciliations?.filter((r: any) => r.status === 'submitted') || [];
-  const reviewedRecons = reconciliations?.filter((r: any) => r.status !== 'submitted') || [];
+  const explainedRecons = reconciliations?.filter((r: any) => r.status === 'explained') || [];
+  const flaggedRecons = reconciliations?.filter((r: any) => r.status === 'flagged') || [];
+  const historyRecons = reconciliations?.filter((r: any) => 
+    !['submitted', 'explained', 'flagged'].includes(r.status)
+  ) || [];
 
   // Fetch transactions for expanded reconciliation
   const expandedShift = expandedRecon ? reconciliations?.find((r: any) => r.id === expandedRecon) : null;
@@ -89,7 +116,6 @@ export default function Reconciliation() {
         ? { start: shiftStart, end: shiftEnd || new Date().toISOString() }
         : { start: new Date().toISOString().split('T')[0], end: new Date().toISOString() };
 
-      // Role-specific queries
       const queries: Promise<any>[] = [];
 
       // Receptionist: folio_payments recorded by this staff
@@ -184,11 +210,110 @@ export default function Reconciliation() {
       setFlagDialog(false);
       setSelectedRecon(null);
       setFlagNotes('');
-      toast.success('Reconciliation flagged — staff must review');
+      toast.success('Reconciliation flagged — staff must review and explain');
     } catch (error: any) {
       toast.error(error.message || 'Failed');
     }
   };
+
+  const handleAdminConfirm = async () => {
+    if (!selectedRecon) return;
+    try {
+      await adminConfirmVariance.mutateAsync({
+        reconciliationId: selectedRecon.id,
+        adminId: user?.id || '',
+        adminNotes: confirmNotes,
+        proofFile: confirmFile,
+        proofType: confirmProofType,
+      });
+      setConfirmDialog(false);
+      setSelectedRecon(null);
+      setConfirmNotes('');
+      setConfirmFile(null);
+      toast.success('Variance confirmed by admin — reconciliation resolved');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed');
+    }
+  };
+
+  const renderPaymentRow = (p: any) => (
+    <div key={p.id} className="flex items-center justify-between p-2 bg-white rounded-lg border text-sm">
+      <div className="flex items-center gap-2">
+        {p.method === 'mpesa' ? (
+          <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
+            <Smartphone className="h-4 w-4 text-emerald-600" />
+          </div>
+        ) : p.method === 'cash' ? (
+          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+            <DollarSign className="h-4 w-4 text-blue-600" />
+          </div>
+        ) : (
+          <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+            <Receipt className="h-4 w-4 text-purple-600" />
+          </div>
+        )}
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <p className="font-medium">{formatCurrency(p.amount)}</p>
+            <Badge variant="outline" className="text-[10px] capitalize">{p.method}</Badge>
+          </div>
+          {p.mpesa_transaction_id && (
+            <button
+              className="flex items-center gap-1 text-[11px] text-emerald-700 font-mono hover:underline mt-0.5"
+              onClick={(e) => { e.stopPropagation(); setMpesaCode(p.mpesa_transaction_id); setMpesaDialog(true); }}
+            >
+              <Smartphone className="h-3 w-3" />
+              M-Pesa: {p.mpesa_transaction_id}
+            </button>
+          )}
+          {p.reference && (
+            <p className="text-[10px] text-muted-foreground">Ref: {p.reference}</p>
+          )}
+          <p className="text-[10px] text-muted-foreground">{format(new Date(p.created_at), 'h:mm a')}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1">
+        {p.receipt_image_url && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2"
+            onClick={(e) => { e.stopPropagation(); setReceiptUrl(p.receipt_image_url); setReceiptDialog(true); }}
+          >
+            <Camera className="h-3 w-3 text-blue-600" />
+          </Button>
+        )}
+        <Badge variant={p.verified ? 'default' : 'outline'} className="text-[10px]">
+          {p.verified ? '✓ Verified' : p.status || 'Pending'}
+        </Badge>
+      </div>
+    </div>
+  );
+
+  const renderOrderRow = (o: any) => (
+    <div key={o.id} className="p-2 bg-white rounded-lg border text-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <UtensilsCrossed className="h-4 w-4 text-orange-600" />
+          <div>
+            <p className="font-medium">#{o.order_number} — {o.guest_name || 'Walk-in'}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {o.status} · {o.restaurant_order_items?.length || 0} items
+              {o.delivery_type === 'delivery' && ' · 🚴 Delivery'}
+            </p>
+          </div>
+        </div>
+        <p className="font-medium">{formatCurrency(o.total)}</p>
+      </div>
+      {o.restaurant_order_items?.length > 0 && (
+        <div className="mt-1.5 pl-6 text-[11px] text-muted-foreground space-y-0.5">
+          {o.restaurant_order_items.map((item: any, i: number) => (
+            <p key={i}>{item.quantity}× {item.menu_item_id?.substring(0, 8)}… — {formatCurrency(item.total)}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   const renderReconCard = (recon: any, isPending: boolean) => {
     const shift = recon.staff_shifts;
@@ -203,8 +328,18 @@ export default function Reconciliation() {
       ? differenceInMinutes(new Date(shift.end_time), new Date(shift.start_time))
       : 0;
 
+    const vStatus = recon.variance_status || 'none';
+    const vCfg = VARIANCE_STATUS[vStatus] || VARIANCE_STATUS.none;
+    const VIcon = vCfg.icon;
+
     return (
-      <Card key={recon.id} className={cn('transition-all', isPending && hasVariance ? 'border-l-4 border-l-amber-500' : isPending ? 'border-l-4 border-l-emerald-500' : '')}>
+      <Card key={recon.id} className={cn(
+        'transition-all',
+        isPending && hasVariance ? 'border-l-4 border-l-amber-500' : 
+        recon.status === 'flagged' ? 'border-l-4 border-l-red-500' :
+        recon.status === 'explained' ? 'border-l-4 border-l-blue-500' :
+        isPending ? 'border-l-4 border-l-emerald-500' : ''
+      )}>
         <CardContent className="p-0">
           {/* Header */}
           <div
@@ -232,10 +367,13 @@ export default function Reconciliation() {
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <Badge className={cfg.color}>{cfg.label}</Badge>
-                {isPending && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {recon.created_at ? format(new Date(recon.created_at), 'h:mm a') : ''}
-                  </p>
+                {hasVariance && (
+                  <div className="flex items-center gap-1 mt-1 justify-end">
+                    <Badge className={vCfg.color} variant="outline">
+                      <VIcon className="h-3 w-3 mr-1" />
+                      {vCfg.label}
+                    </Badge>
+                  </div>
                 )}
               </div>
               {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -244,7 +382,7 @@ export default function Reconciliation() {
 
           {/* Summary Row */}
           <div className="px-4 pb-3">
-            <div className="grid grid-cols-4 gap-3 text-sm">
+            <div className={cn("grid gap-3 text-sm", hasVariance ? "grid-cols-5" : "grid-cols-4")}>
               <div className="p-2 bg-muted rounded">
                 <p className="text-[10px] text-muted-foreground">Sales</p>
                 <p className="font-medium">{formatCurrency(recon.sales_total)}</p>
@@ -263,6 +401,14 @@ export default function Reconciliation() {
                   {recon.variance >= 0 ? '+' : ''}{formatCurrency(recon.variance)}
                 </p>
               </div>
+              {hasVariance && (
+                <div className="p-2 bg-muted rounded">
+                  <p className="text-[10px] text-muted-foreground">Actual vs Expected</p>
+                  <p className="font-medium text-xs">
+                    {formatCurrency(recon.actual_cash)} / {formatCurrency(recon.expected_cash)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -288,104 +434,30 @@ export default function Reconciliation() {
                   {/* Folio Payments (Receptionist) */}
                   {transactions?.folioPayments?.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Room Payments</p>
-                      {transactions.folioPayments.map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between p-2 bg-white rounded-lg border text-sm">
-                          <div className="flex items-center gap-2">
-                            {p.method === 'mpesa' ? (
-                              <Smartphone className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                              <DollarSign className="h-4 w-4 text-blue-600" />
-                            )}
-                            <div>
-                              <p className="font-medium">{formatCurrency(p.amount)} — {p.method}</p>
-                              {p.mpesa_transaction_id && (
-                                <p className="text-[10px] text-muted-foreground">M-Pesa: {p.mpesa_transaction_id}</p>
-                              )}
-                              {p.reference && (
-                                <p className="text-[10px] text-muted-foreground">Ref: {p.reference}</p>
-                              )}
-                              <p className="text-[10px] text-muted-foreground">{format(new Date(p.created_at), 'h:mm a')}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {p.receipt_image_url && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2"
-                                onClick={(e) => { e.stopPropagation(); setReceiptUrl(p.receipt_image_url); setReceiptDialog(true); }}
-                              >
-                                <Camera className="h-3 w-3 text-blue-600" />
-                              </Button>
-                            )}
-                            <Badge variant={p.verified ? 'default' : 'outline'} className="text-[10px]">
-                              {p.verified ? '✓ Verified' : p.status || 'Pending'}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <BedDouble className="h-3 w-3" /> Room Payments
+                      </p>
+                      {transactions.folioPayments.map((p: any) => renderPaymentRow(p))}
                     </div>
                   )}
 
                   {/* Restaurant Orders (Waiter/Chef) */}
                   {transactions?.restaurantOrders?.length > 0 && (
                     <div className="space-y-2 mt-3">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Food Orders</p>
-                      {transactions.restaurantOrders.map((o: any) => (
-                        <div key={o.id} className="flex items-center justify-between p-2 bg-white rounded-lg border text-sm">
-                          <div className="flex items-center gap-2">
-                            <UtensilsCrossed className="h-4 w-4 text-orange-600" />
-                            <div>
-                              <p className="font-medium">#{o.order_number} — {o.guest_name || 'Walk-in'}</p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {o.status} · {o.restaurant_order_items?.length || 0} items
-                                {o.delivery_type === 'delivery' && ' · 🚴 Delivery'}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">{format(new Date(o.created_at), 'h:mm a')}</p>
-                            </div>
-                          </div>
-                          <p className="font-medium">{formatCurrency(o.total)}</p>
-                        </div>
-                      ))}
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <UtensilsCrossed className="h-3 w-3" /> Food Orders
+                      </p>
+                      {transactions.restaurantOrders.map((o: any) => renderOrderRow(o))}
                     </div>
                   )}
 
                   {/* Recorded Payments (Waiter) */}
                   {transactions?.recordedPayments?.length > 0 && (
                     <div className="space-y-2 mt-3">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Payment Records</p>
-                      {transactions.recordedPayments.map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between p-2 bg-white rounded-lg border text-sm">
-                          <div className="flex items-center gap-2">
-                            {p.method === 'mpesa' ? (
-                              <Smartphone className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                              <DollarSign className="h-4 w-4 text-blue-600" />
-                            )}
-                            <div>
-                              <p className="font-medium">{formatCurrency(p.amount)} — {p.method}</p>
-                              {p.mpesa_transaction_id && (
-                                <p className="text-[10px] text-muted-foreground">M-Pesa: {p.mpesa_transaction_id}</p>
-                              )}
-                              <p className="text-[10px] text-muted-foreground">{format(new Date(p.created_at), 'h:mm a')}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {p.receipt_image_url && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2"
-                                onClick={(e) => { e.stopPropagation(); setReceiptUrl(p.receipt_image_url); setReceiptDialog(true); }}
-                              >
-                                <Camera className="h-3 w-3 text-blue-600" />
-                              </Button>
-                            )}
-                            <Badge variant="outline" className="text-[10px]">{p.status}</Badge>
-                          </div>
-                        </div>
-                      ))}
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <DollarSign className="h-3 w-3" /> Payment Records
+                      </p>
+                      {transactions.recordedPayments.map((p: any) => renderPaymentRow(p))}
                     </div>
                   )}
 
@@ -408,15 +480,109 @@ export default function Reconciliation() {
                 </div>
               )}
 
+              {/* VARIANCE RESOLUTION SECTION */}
+              {hasVariance && (
+                <div className="border-t">
+                  {/* Variance Status Banner */}
+                  <div className={cn('px-4 py-3 border-b', 
+                    vStatus === 'open' ? 'bg-red-50' :
+                    vStatus === 'staff_explained' ? 'bg-blue-50' :
+                    vStatus === 'admin_reviewing' ? 'bg-amber-50' :
+                    vStatus === 'resolved' ? 'bg-emerald-50' :
+                    'bg-gray-50'
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <VIcon className="h-4 w-4" />
+                        <span className="text-sm font-semibold">{vCfg.label}</span>
+                        <span className="text-xs text-muted-foreground">
+                          — Variance: {recon.variance >= 0 ? '+' : ''}{formatCurrency(recon.variance)}
+                          {recon.variance < 0 ? ' (short)' : ' (over)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Staff's explanation + proof */}
+                    {recon.variance_explanation && (
+                      <div className="mt-2 p-2 bg-white rounded border">
+                        <div className="flex items-start gap-2">
+                          <MessageSquare className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-blue-700">Staff Explanation:</p>
+                            <p className="text-sm mt-1">{recon.variance_explanation}</p>
+                          </div>
+                        </div>
+                        {recon.variance_proof_type && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px]">
+                              {recon.variance_proof_type === 'mpesa_message' && '📱 M-Pesa Message'}
+                              {recon.variance_proof_type === 'receipt' && '📷 Receipt'}
+                              {recon.variance_proof_type === 'both' && '📱📷 M-Pesa + Receipt'}
+                            </Badge>
+                            {recon.variance_proof_url && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-[10px]"
+                                onClick={() => { setReceiptUrl(recon.variance_proof_url); setReceiptDialog(true); }}
+                              >
+                                <Camera className="h-3 w-3 mr-1" /> View Proof
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                        {recon.users_variance_resolved?.full_name && (
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Submitted by {recon.users_variance_resolved.full_name}
+                            {recon.variance_resolved_at && ` · ${format(new Date(recon.variance_resolved_at), 'MMM d, h:mm a')}`}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Admin's confirmation */}
+                    {recon.variance_admin_confirmed && (
+                      <div className="mt-2 p-2 bg-emerald-50 rounded border border-emerald-200">
+                        <div className="flex items-start gap-2">
+                          <ShieldCheck className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-emerald-700">Admin Confirmed:</p>
+                            {recon.manager_notes && (
+                              <p className="text-sm mt-1">{recon.manager_notes}</p>
+                            )}
+                          </div>
+                        </div>
+                        {recon.variance_admin_proof_url && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-[10px] mt-1"
+                            onClick={() => { setReceiptUrl(recon.variance_admin_proof_url); setReceiptDialog(true); }}
+                          >
+                            <Camera className="h-3 w-3 mr-1" /> Admin Proof
+                          </Button>
+                        )}
+                        {recon.users_variance_admin?.full_name && (
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Confirmed by {recon.users_variance_admin.full_name}
+                            {recon.variance_admin_confirmed_at && ` · ${format(new Date(recon.variance_admin_confirmed_at), 'MMM d, h:mm a')}`}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Manager Notes */}
-              {recon.manager_notes && (
+              {recon.manager_notes && !hasVariance && (
                 <div className="px-4 py-3 bg-red-50 border-t">
                   <p className="text-xs text-muted-foreground mb-1">Manager Notes</p>
                   <p className="text-sm text-red-700 italic">"{recon.manager_notes}"</p>
                 </div>
               )}
 
-              {/* Action Buttons (only for pending) */}
+              {/* Action Buttons */}
               {isPending && (
                 <div className="px-4 py-3 border-t flex gap-2">
                   <Button
@@ -446,6 +612,29 @@ export default function Reconciliation() {
                   </Button>
                 </div>
               )}
+
+              {/* Explained — Manager/Admin can review and confirm variance */}
+              {recon.status === 'explained' && (
+                <div className="px-4 py-3 border-t flex gap-2">
+                  <Button
+                    variant="default"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={() => { setSelectedRecon(recon); setConfirmDialog(true); }}
+                    disabled={adminConfirmVariance.isPending}
+                  >
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Confirm Variance Resolved
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => { setSelectedRecon(recon); setFlagDialog(true); }}
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    Re-Flag
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -457,11 +646,11 @@ export default function Reconciliation() {
     <div className="p-8">
       <div className="mb-6">
         <h1 className="font-display text-3xl font-bold">Reconciliation</h1>
-        <p className="text-muted-foreground">Review transactions and approve shift closings</p>
+        <p className="text-muted-foreground">Review transactions, verify M-Pesa codes & receipts, approve shift closings</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-4 gap-3 mb-6">
         <Card className={pendingRecons.length > 0 ? 'bg-amber-50 border-amber-200' : ''}>
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
@@ -471,22 +660,31 @@ export default function Reconciliation() {
             <p className={cn('text-2xl font-bold mt-1', pendingRecons.length > 0 ? 'text-amber-600' : '')}>{pendingRecons.length}</p>
           </CardContent>
         </Card>
+        <Card className={explainedRecons.length > 0 ? 'bg-blue-50 border-blue-200' : ''}>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-blue-500" />
+              <span className="text-xs text-muted-foreground">Explained</span>
+            </div>
+            <p className={cn('text-2xl font-bold mt-1', explainedRecons.length > 0 ? 'text-blue-600' : '')}>{explainedRecons.length}</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               <span className="text-xs text-muted-foreground">Approved</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-600 mt-1">{reviewedRecons.filter(r => r.status === 'approved').length}</p>
+            <p className="text-2xl font-bold text-emerald-600 mt-1">{historyRecons.filter((r: any) => r.status === 'approved' || r.status === 'reconciled').length}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={flaggedRecons.length > 0 ? 'bg-red-50 border-red-200' : ''}>
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-500" />
               <span className="text-xs text-muted-foreground">Flagged</span>
             </div>
-            <p className="text-2xl font-bold text-red-600 mt-1">{reviewedRecons.filter(r => r.status === 'flagged').length}</p>
+            <p className={cn('text-2xl font-bold mt-1', flaggedRecons.length > 0 ? 'text-red-600' : '')}>{flaggedRecons.length}</p>
           </CardContent>
         </Card>
       </div>
@@ -495,7 +693,9 @@ export default function Reconciliation() {
       <Tabs defaultValue="pending">
         <TabsList>
           <TabsTrigger value="pending">Pending ({pendingRecons.length})</TabsTrigger>
-          <TabsTrigger value="history">History ({reviewedRecons.length})</TabsTrigger>
+          <TabsTrigger value="explained">Explained ({explainedRecons.length})</TabsTrigger>
+          <TabsTrigger value="flagged">Flagged ({flaggedRecons.length})</TabsTrigger>
+          <TabsTrigger value="history">History ({historyRecons.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="mt-4 space-y-3">
@@ -511,11 +711,37 @@ export default function Reconciliation() {
           )}
         </TabsContent>
 
+        <TabsContent value="explained" className="mt-4 space-y-3">
+          {explainedRecons.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <MessageSquare className="h-12 w-12 mx-auto text-blue-200 mb-3" />
+                <p className="text-muted-foreground">No explained variances awaiting admin review</p>
+              </CardContent>
+            </Card>
+          ) : (
+            explainedRecons.map((recon: any) => renderReconCard(recon, false))
+          )}
+        </TabsContent>
+
+        <TabsContent value="flagged" className="mt-4 space-y-3">
+          {flaggedRecons.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-300 mb-3" />
+                <p className="text-muted-foreground">No flagged reconciliations</p>
+              </CardContent>
+            </Card>
+          ) : (
+            flaggedRecons.map((recon: any) => renderReconCard(recon, false))
+          )}
+        </TabsContent>
+
         <TabsContent value="history" className="mt-4 space-y-3">
-          {reviewedRecons.length === 0 ? (
+          {historyRecons.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No reviewed reconciliations</p>
           ) : (
-            reviewedRecons.map((recon: any) => renderReconCard(recon, false))
+            historyRecons.map((recon: any) => renderReconCard(recon, false))
           )}
         </TabsContent>
       </Tabs>
@@ -555,12 +781,105 @@ export default function Reconciliation() {
         </DialogContent>
       </Dialog>
 
+      {/* M-Pesa Code Dialog */}
+      <Dialog open={mpesaDialog} onOpenChange={setMpesaDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5 text-emerald-600" /> M-Pesa Transaction
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-4">
+            <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+              <Smartphone className="h-8 w-8 text-emerald-600" />
+            </div>
+            <p className="text-xs text-muted-foreground">Transaction Code</p>
+            <p className="text-2xl font-mono font-bold text-emerald-700 mt-1">{mpesaCode}</p>
+            <p className="text-xs text-muted-foreground mt-4">
+              Verify this code matches the M-Pesa confirmation message from the customer's phone
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Confirm Variance Dialog */}
+      <Dialog open={confirmDialog} onOpenChange={setConfirmDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <ShieldCheck className="h-5 w-5" /> Confirm Variance Resolution
+            </DialogTitle>
+          </DialogHeader>
+          {selectedRecon && (
+            <div className="space-y-4">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 text-sm">
+                <p><strong>{selectedRecon.staff_shifts?.users?.full_name}</strong> — {selectedRecon.staff_shifts?.shift_name} shift</p>
+                <p className="text-muted-foreground mt-1">Variance: {formatCurrency(selectedRecon.variance)}</p>
+                {selectedRecon.variance_explanation && (
+                  <p className="mt-2 text-xs italic">"{selectedRecon.variance_explanation}"</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Confirmation Method</label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={confirmProofType === 'mpesa_message' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setConfirmProofType('mpesa_message')}
+                  >
+                    <Smartphone className="mr-1 h-3 w-3" /> M-Pesa Message
+                  </Button>
+                  <Button
+                    variant={confirmProofType === 'receipt' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setConfirmProofType('receipt')}
+                  >
+                    <Receipt className="mr-1 h-3 w-3" /> Receipt
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Admin Notes</label>
+                <Textarea
+                  value={confirmNotes}
+                  onChange={(e) => setConfirmNotes(e.target.value)}
+                  placeholder="Confirm the variance explanation — e.g. verified M-Pesa confirmation, receipt matches..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Upload Confirmation Proof</label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setConfirmFile(e.target.files?.[0] || null)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Upload M-Pesa screenshot or receipt as admin verification
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setConfirmDialog(false); setSelectedRecon(null); setConfirmNotes(''); setConfirmFile(null); }}>Cancel</Button>
+                <Button variant="default" className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={handleAdminConfirm} disabled={adminConfirmVariance.isPending}>
+                  {adminConfirmVariance.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                  Confirm Resolved
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Receipt Viewer Dialog */}
       <Dialog open={receiptDialog} onOpenChange={setReceiptDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5" /> Receipt
+              <Camera className="h-5 w-5" /> Proof / Receipt
             </DialogTitle>
           </DialogHeader>
           {receiptUrl && (

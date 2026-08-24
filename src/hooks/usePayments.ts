@@ -443,3 +443,131 @@ export function useShiftSummary(shiftId: string) {
     enabled: !!shiftId,
   });
 }
+
+// ===== Variance Resolution — Staff submits explanation + proof =====
+export function useResolveVariance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      reconciliationId: string;
+      explanation: string;
+      proofType: 'mpesa_message' | 'receipt' | 'both';
+      proofFile?: File | null;
+    }) => {
+      let proofUrl: string | null = null;
+
+      // Upload proof file if provided
+      if (data.proofFile) {
+        try {
+          const ext = data.proofFile.name.split('.').pop() || 'jpg';
+          const fileName = `receipts/variance/${data.reconciliationId}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await sb.storage
+            .from('rooms')
+            .upload(fileName, data.proofFile, { contentType: data.proofFile.type });
+          if (!uploadErr) {
+            const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
+            proofUrl = urlData.publicUrl;
+          }
+        } catch (e) {
+          console.warn('Proof upload failed:', e);
+        }
+      }
+
+      const { data: rec, error } = await sb
+        .from('shift_reconciliations')
+        .update({
+          variance_status: 'staff_explained',
+          variance_explanation: data.explanation,
+          variance_proof_type: data.proofType,
+          variance_proof_url: proofUrl,
+          variance_resolved_at: new Date().toISOString(),
+          status: 'explained',
+        })
+        .eq('id', data.reconciliationId)
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Notify manager
+      try {
+        await sb.rpc('fire_notification', {
+          p_title: 'Variance Explanation Received',
+          p_body: `Staff has submitted an explanation for a variance. Please review.`,
+          p_type: 'reconciliation',
+          p_roles: JSON.stringify(['admin', 'manager']),
+        });
+      } catch (e) { console.warn('Notification failed:', e); }
+
+      return rec;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reconciliations'] });
+    },
+  });
+}
+
+// ===== Admin confirms variance resolution =====
+export function useAdminConfirmVariance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      reconciliationId: string;
+      adminId: string;
+      adminNotes?: string;
+      proofFile?: File | null;
+      proofType?: 'mpesa_message' | 'receipt' | 'both';
+    }) => {
+      let proofUrl: string | null = null;
+
+      // Upload admin's proof if provided
+      if (data.proofFile) {
+        try {
+          const ext = data.proofFile.name.split('.').pop() || 'jpg';
+          const fileName = `receipts/variance-admin/${data.reconciliationId}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await sb.storage
+            .from('rooms')
+            .upload(fileName, data.proofFile, { contentType: data.proofFile.type });
+          if (!uploadErr) {
+            const { data: urlData } = sb.storage.from('rooms').getPublicUrl(fileName);
+            proofUrl = urlData.publicUrl;
+          }
+        } catch (e) {
+          console.warn('Admin proof upload failed:', e);
+        }
+      }
+
+      const { data: rec, error } = await sb
+        .from('shift_reconciliations')
+        .update({
+          variance_status: 'resolved',
+          variance_admin_confirmed: true,
+          variance_admin_proof_url: proofUrl,
+          variance_admin_confirmed_by: data.adminId,
+          variance_admin_confirmed_at: new Date().toISOString(),
+          manager_notes: data.adminNotes || undefined,
+        })
+        .eq('id', data.reconciliationId)
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Notify the staff member
+      try {
+        const staffId = rec.submitted_by;
+        if (staffId) {
+          await sb.rpc('fire_notification', {
+            p_user_id: staffId,
+            p_title: 'Variance Resolved',
+            p_body: `Admin has confirmed your variance explanation. Your shift reconciliation has been resolved.`,
+            p_type: 'reconciliation',
+          });
+        }
+      } catch (e) { console.warn('Notification failed:', e); }
+
+      return rec;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reconciliations'] });
+    },
+  });
+}
