@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useBookings } from '@/hooks/useBookings';
 import { useAllRooms } from '@/hooks/useRooms';
 import { formatCurrency, getRoomTypeLabel } from '@/lib/utils';
@@ -32,6 +34,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReconciliationAnalytics from '@/pages/manager/ReconciliationAnalytics';
+import RoomPerformance from '@/pages/admin/RoomPerformance';
+import MenuAnalytics from '@/pages/admin/MenuAnalytics';
+import TemporalForecasting from '@/pages/admin/TemporalForecasting';
 import {
   BarChart,
   Bar,
@@ -52,6 +57,13 @@ const CHART_COLORS = ['#1E3A5F', '#D4AF37', '#2A5A8A', '#E5C158', '#3B7BB9'];
 export default function Reports() {
   const { data: bookings, isLoading: bookingsLoading } = useBookings();
   const { data: rooms, isLoading: roomsLoading } = useAllRooms();
+  const { data: orders } = useQuery({
+    queryKey: ['report-orders'],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('restaurant_orders').select('id, total, created_at, status');
+      return data || [];
+    },
+  });
   
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfMonth(new Date()),
@@ -184,6 +196,9 @@ export default function Reports() {
           <TabsTrigger value="guests">Guest Insights</TabsTrigger>
           <TabsTrigger value="bookings">Bookings</TabsTrigger>
           <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
+          <TabsTrigger value="rooms">Room Performance</TabsTrigger>
+          <TabsTrigger value="menu">Menu Analytics</TabsTrigger>
+          <TabsTrigger value="forecast">Forecasting</TabsTrigger>
         </TabsList>
 
         <TabsContent value="occupancy" className="space-y-6">
@@ -408,6 +423,18 @@ export default function Reports() {
 
         <TabsContent value="reconciliation" className="space-y-6">
           <ReconciliationAnalytics />
+        </TabsContent>
+
+        <TabsContent value="rooms" className="space-y-6">
+          <RoomPerformance bookings={bookings || []} rooms={rooms || []} />
+        </TabsContent>
+
+        <TabsContent value="menu" className="space-y-6">
+          <MenuAnalytics />
+        </TabsContent>
+
+        <TabsContent value="forecast" className="space-y-6">
+          <TemporalForecasting bookings={bookings || []} orders={orders || []} rooms={rooms || []} />
         </TabsContent>
       </Tabs>
     </div>
