@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import PersonalKpiCard from '@/components/PersonalKpiCard';
 import { cn } from '@/lib/utils';
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
@@ -98,6 +99,7 @@ export default function StaffDashboard() {
 function ReceptionistDashboard({ todayCheckIns, todayCheckOuts, pendingBookings, pendingRequests, availableRooms }: any) {
   return (
     <div className="px-5 py-4 space-y-1">
+      <PersonalKpiCard />
       {/* Stats */}
       <StatsRow>
         <StatCard icon="🔑" number={todayCheckIns.length} label="Check-Ins Today" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
@@ -179,6 +181,7 @@ function WaiterDashboard() {
   // Placeholder — will use restaurant orders data
   return (
     <div className="px-5 py-4 space-y-1">
+      <PersonalKpiCard />
       <StatsRow>
         <StatCard icon="🍽️" number="4" label="Active Orders" color="bg-gradient-to-br from-orange-400 to-pink-500" />
         <StatCard icon="✅" number="12" label="Served Today" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
@@ -206,6 +209,7 @@ function WaiterDashboard() {
 function ChefDashboard() {
   return (
     <div className="px-5 py-4 space-y-1">
+      <PersonalKpiCard />
       <StatsRow>
         <StatCard icon="🔥" number="5" label="In Queue" color="bg-gradient-to-br from-orange-400 to-pink-500" />
         <StatCard icon="✅" number="18" label="Completed" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
@@ -232,6 +236,7 @@ function HousekeeperDashboard({ pendingRequests, inProgressRequests, rooms }: an
 
   return (
     <div className="px-5 py-4 space-y-1">
+      <PersonalKpiCard />
       <StatsRow>
         <StatCard icon="🧹" number={dirtyRooms.length} label="To Clean" color="bg-gradient-to-br from-orange-400 to-pink-500" />
         <StatCard icon="✅" number={cleanRooms.length} label="Clean" color="bg-gradient-to-br from-emerald-400 to-emerald-600" />

@@ -54,6 +54,7 @@ import ShiftManager from "./pages/staff/ShiftManager";
 import HousekeeperPda from "./pages/staff/HousekeeperPda";
 import HousekeepingSupervisor from "./pages/staff/HousekeepingSupervisor";
 import Reconciliation from "./pages/manager/Reconciliation";
+import KpiDashboard from "./pages/manager/KpiDashboard";
 
 import NotFound from "./pages/NotFound";
 
@@ -117,6 +118,7 @@ const App = () => (
             <Route path="reports" element={<ManagerReports />} />
             <Route path="bookings" element={<ManagerBookings />} />
             <Route path="reconciliation" element={<Reconciliation />} />
+            <Route path="kpi" element={<KpiDashboard />} />
             <Route path="staff" element={<ManagerStaff />} />
             <Route path="shift" element={<ShiftManagement />} />
             <Route path="inventory" element={<InventoryComingSoon />} />
