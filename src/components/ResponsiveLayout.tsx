@@ -219,6 +219,7 @@ const STAFF_MORE_ITEMS: Record<string, { icon: string; label: string; path: stri
     { icon: '📋', label: 'Guest Requests', path: '/staff/requests' },
     { icon: '🧾', label: 'Receipts', path: '/staff/receipts' },
     { icon: '💬', label: 'Messages', path: '/staff/messages' },
+    { icon: '🔔', label: 'Notifications', path: '/staff/notification-settings' },
   ],
   waiter: [
     { icon: '🏠', label: 'Dashboard', path: '/staff' },
@@ -226,11 +227,13 @@ const STAFF_MORE_ITEMS: Record<string, { icon: string; label: string; path: stri
     { icon: '💳', label: 'Payments', path: '/staff/payments' },
     { icon: '⏰', label: 'My Shift', path: '/staff/shift' },
     { icon: '💬', label: 'Messages', path: '/staff/messages' },
+    { icon: '🔔', label: 'Notifications', path: '/staff/notification-settings' },
   ],
   chef: [
     { icon: '👨‍🍳', label: 'Kitchen', path: '/staff/kitchen' },
     { icon: '⏰', label: 'My Shift', path: '/staff/shift' },
     { icon: '💬', label: 'Messages', path: '/staff/messages' },
+    { icon: '🔔', label: 'Notifications', path: '/staff/notification-settings' },
   ],
   housekeeper: [
     { icon: '🏠', label: 'My Rooms', path: '/staff/housekeeping' },
@@ -238,6 +241,7 @@ const STAFF_MORE_ITEMS: Record<string, { icon: string; label: string; path: stri
     { icon: '📋', label: 'Guest Requests', path: '/staff/requests' },
     { icon: '⏰', label: 'My Shift', path: '/staff/shift' },
     { icon: '💬', label: 'Messages', path: '/staff/messages' },
+    { icon: '🔔', label: 'Notifications', path: '/staff/notification-settings' },
   ],
 };
 
