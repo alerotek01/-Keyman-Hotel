@@ -188,11 +188,6 @@ export default function ShiftManager() {
       await submitReconciliation.mutateAsync({
         shift_id: activeShift.id,
         submitted_by: user?.id || '',
-        sales_total: shiftSummary.salesTotal,
-        cash_total: shiftSummary.cashTotal,
-        mpesa_total: shiftSummary.mpesaTotal,
-        room_charges_total: 0,
-        expected_cash: shiftSummary.cashTotal,
         actual_cash: parseFloat(actualCash),
         notes: notes || undefined,
         variance_explanation: hasVariance ? varianceExplanation : undefined,

@@ -378,47 +378,33 @@ export function useSubmitReconciliation() {
   return useMutation({
     mutationFn: async (data: {
       shift_id: string;
-      submitted_by: string;
-      sales_total: number;
-      cash_total: number;
-      mpesa_total: number;
-      room_charges_total: number;
-      expected_cash: number;
+      submitted_by?: string;
       actual_cash: number;
       notes?: string;
       variance_explanation?: string;
       variance_proof_type?: 'mpesa_message' | 'receipt' | 'both';
       proofFile?: File | null;
     }) => {
-      const variance = data.actual_cash - data.expected_cash;
-      const hasVariance = variance !== 0;
-      const { data: rec, error } = await sb
-        .from('shift_reconciliations')
-        .insert({
-          shift_id: data.shift_id,
-          submitted_by: data.submitted_by,
-          sales_total: data.sales_total,
-          cash_total: data.cash_total,
-          mpesa_total: data.mpesa_total,
-          room_charges_total: data.room_charges_total,
-          expected_cash: data.expected_cash,
-          actual_cash: data.actual_cash,
-          variance,
-          notes: data.notes,
-          status: 'submitted',
-          variance_status: hasVariance ? 'open' : 'none',
-          variance_explanation: hasVariance ? data.variance_explanation : null,
-          variance_proof_type: hasVariance ? data.variance_proof_type : null,
-        })
-        .select('*, staff_shifts(shift_name, users(full_name, email))')
-        .single();
+      // Server recalculates all totals from actual transactions
+      const { data: result, error } = await sb.rpc('submit_reconciliation_safe', {
+        p_shift_id: data.shift_id,
+        p_actual_cash: data.actual_cash,
+        p_notes: data.notes || null,
+        p_variance_explanation: data.variance_explanation || null,
+        p_variance_proof_type: data.variance_proof_type || null,
+      });
       if (error) throw error;
+      if (!result?.success) throw new Error(result?.error || 'Submission failed');
+
+      const recId = result.reconciliation_id;
+      const variance = result.variance;
+      const hasVariance = variance !== 0;
 
       // Upload proof file if provided
-      if (data.proofFile && rec) {
+      if (data.proofFile && recId) {
         try {
           const ext = data.proofFile.name.split('.').pop() || 'jpg';
-          const fileName = `receipts/variance/${rec.id}/${Date.now()}.${ext}`;
+          const fileName = `receipts/variance/${recId}/${Date.now()}.${ext}`;
           const { error: uploadErr } = await sb.storage
             .from('rooms')
             .upload(fileName, data.proofFile, { contentType: data.proofFile.type });
@@ -427,17 +413,19 @@ export function useSubmitReconciliation() {
             await sb
               .from('shift_reconciliations')
               .update({ variance_proof_url: urlData.publicUrl })
-              .eq('id', rec.id);
+              .eq('id', recId);
           }
         } catch (e) {
           console.warn('Proof upload failed (reconciliation still submitted):', e);
         }
       }
 
-      await sb
-        .from('staff_shifts')
-        .update({ status: 'submitted' })
-        .eq('id', data.shift_id);
+      // Fetch the full reconciliation record for email notification
+      const { data: rec } = await sb
+        .from('shift_reconciliations')
+        .select('*, staff_shifts(shift_name, users(full_name, email))')
+        .eq('id', recId)
+        .single();
 
       // Send reconciliation email to manager/admin
       try {
@@ -447,9 +435,9 @@ export function useSubmitReconciliation() {
           const managerEmails = managers.map((m: any) => m.email).filter(Boolean);
           const staffName = rec.staff_shifts?.users?.full_name || 'Staff';
           await sendReconciliationSubmitted(managerEmails, staffName, rec.staff_shifts?.shift_name || '', {
-            salesTotal: data.sales_total,
-            cashTotal: data.cash_total,
-            mpesaTotal: data.mpesa_total,
+            salesTotal: result.sales_total,
+            cashTotal: result.cash_total,
+            mpesaTotal: result.mpesa_total,
             variance,
             notes: data.notes,
           });
@@ -465,7 +453,7 @@ export function useSubmitReconciliation() {
         });
       } catch (e) { console.warn('Email/notification failed:', e); }
 
-      return rec;
+      return { ...result, rec };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reconciliations'] });
