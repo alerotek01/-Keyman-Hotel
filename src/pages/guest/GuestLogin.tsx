@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,8 @@ import { Loader2, Mail, KeyRound, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { sendOTPVerification } from '@/lib/email';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { Navigate } from 'react-router-dom';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -16,16 +18,45 @@ function generateOTP(): string {
 }
 
 export default function GuestLogin() {
+  const { user, role } = useAuth();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [loading, setLoading] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
 
+  // Block staff from accessing guest login
+  const staffRoles = ['admin', 'manager', 'receptionist', 'chef', 'waiter', 'housekeeper', 'accountant'];
+  if (user && role && staffRoles.includes(role)) {
+    const redirectMap: Record<string, string> = {
+      admin: '/admin',
+      manager: '/manager',
+      receptionist: '/staff/reception',
+      chef: '/staff/kitchen',
+      waiter: '/staff/waiter',
+      housekeeper: '/staff/housekeeping',
+      accountant: '/admin',
+    };
+    return <Navigate to={redirectMap[role] || '/staff'} replace />;
+  }
+
   const handleSendOTP = async () => {
     if (!email) { toast.error('Enter your email'); return; }
     setLoading(true);
     try {
+      // Check if email is already registered as staff
+      const { data: staffUser } = await sb.from('users')
+        .select('id, role')
+        .eq('email', email)
+        .in('role', ['admin', 'manager', 'receptionist', 'chef', 'waiter', 'housekeeper', 'accountant'])
+        .single();
+      
+      if (staffUser) {
+        toast.error('This email is registered as staff. Please use the staff login instead.');
+        setLoading(false);
+        return;
+      }
+
       // Generate OTP and store it
       const code = generateOTP();
       setGeneratedOtp(code);
@@ -113,11 +144,21 @@ export default function GuestLogin() {
         // Ensure guest record exists
         const { data: guestRec } = await sb.from('guests').select('id').eq('user_id', userId).single();
         if (!guestRec) {
-          await sb.from('guests').insert({
+          const { error: insertError } = await sb.from('guests').insert({
             name: email.split('@')[0] || 'Guest',
             email: email,
             user_id: userId,
           });
+          
+          // Handle unique constraint violations gracefully
+          if (insertError) {
+            if (insertError.message?.includes('unique') || insertError.code === '23505') {
+              // Email already exists as guest — this is fine, they're returning
+              console.log('Guest record already exists for this email');
+            } else {
+              throw insertError;
+            }
+          }
         }
       }
 

@@ -77,7 +77,7 @@ const App = () => (
 
           {/* Guest Routes (Responsive — mobile PDA ↔ desktop sidebar) */}
           <Route path="/guest/login" element={<GuestLogin />} />
-          <Route path="/guest" element={<ResponsiveLayout basePath="/guest" />}>
+          <Route path="/guest" element={<ResponsiveLayout basePath="/guest" allowedRoles={["guest"]} />}>
             <Route index element={<GuestDashboard />} />
             <Route path="folio" element={<GuestFolio />} />
             <Route path="order" element={<GuestOrder />} />

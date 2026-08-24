@@ -25,6 +25,19 @@ export default function ExternalLogin() {
     if (!email) { toast.error('Enter your email'); return; }
     setLoading(true);
     try {
+      // Check if email is staff (excluding admin/manager who can access external)
+      const { data: staffUser } = await sb.from('users')
+        .select('id, role')
+        .eq('email', email)
+        .in('role', ['receptionist', 'chef', 'waiter', 'housekeeper'])
+        .single();
+      
+      if (staffUser) {
+        toast.error('This email is registered as staff. Please use the staff dashboard instead.');
+        setLoading(false);
+        return;
+      }
+
       const code = generateOTP();
       await sb.from('otp_codes').upsert({
         email: email,
