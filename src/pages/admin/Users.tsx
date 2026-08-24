@@ -391,11 +391,32 @@ export default function AdminUsers() {
                     <span className="text-xs text-muted-foreground">
                       {user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : ''}
                     </span>
-                    <Button variant="outline" size="sm" onClick={() => handleSuspend(user)}>
+                    <Button variant="outline" size="sm" onClick={() => handleSuspend(user)} title="Suspend user">
                       <UserX className="h-4 w-4 text-amber-600" />
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleImpersonate(user)} title="Act as this user">
                       <Eye className="h-4 w-4 text-blue-600" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="Delete user"
+                      onClick={() => {
+                        if (confirm(`Permanently delete ${user.full_name || user.email}?\n\nThis will check for any outstanding reconciliation variances first.`)) {
+                          deleteUser.mutate(user.id, {
+                            onError: (error: any) => {
+                              toast({
+                                title: 'Cannot Delete',
+                                description: error.message,
+                                variant: 'destructive',
+                              });
+                            },
+                          });
+                        }
+                      }}
+                      disabled={deleteUser.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </CardContent>
