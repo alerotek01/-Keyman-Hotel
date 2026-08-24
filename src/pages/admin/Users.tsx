@@ -170,11 +170,25 @@ export default function AdminUsers() {
     window.location.href = '/external';
   };
 
-  // Delete user
+  // Delete user (with variance check)
   const deleteUser = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb.from('users').delete().eq('id', id);
+    mutationFn: async (userId: string) => {
+      // Check for pending variance first
+      const { data: varianceCheck, error: checkError } = await sb.rpc('check_user_variance', {
+        p_user_id: userId,
+      });
+      if (checkError) throw checkError;
+
+      if (!varianceCheck?.can_delete) {
+        throw new Error(
+          `Cannot delete: this user has ${varianceCheck?.pending_variance} pending reconciliation(s) with variance. Please resolve the variance or suspend the account instead.`
+        );
+      }
+
+      // Safe to delete
+      const { error } = await sb.from('users').delete().eq('id', userId);
       if (error) throw error;
+      return varianceCheck;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-users'] });
@@ -414,7 +428,24 @@ export default function AdminUsers() {
                     <Button variant="outline" size="sm" onClick={() => handleApprove(user)}>
                       <UserCheck className="h-4 w-4 text-emerald-600 mr-1" /> Approve
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => { if (confirm('Permanently delete this user?')) deleteUser.mutate(user.id); }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm(`Permanently delete ${user.full_name || user.email}?\n\nThis will check for any outstanding reconciliation variances first.`)) {
+                          deleteUser.mutate(user.id, {
+                            onError: (error: any) => {
+                              toast({
+                                title: 'Cannot Delete',
+                                description: error.message,
+                                variant: 'destructive',
+                              });
+                            },
+                          });
+                        }
+                      }}
+                      disabled={deleteUser.isPending}
+                    >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
