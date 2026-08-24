@@ -143,8 +143,9 @@ export default function Reconciliation() {
           return { folioPayments: [], restaurantOrders: [], recordedPayments: [] };
         }
 
-        // Supabase JS may return scalar json as object or as array [{result: {...}}]
-        const result = (Array.isArray(data) ? data[0]?.result || data[0] : data) || {};
+        // PostgREST wraps rpc() result: [{get_shift_transactions: {payments:[], orders:[]}}]
+        const fnData = Array.isArray(data) ? data[0] : data;
+        const result = fnData?.get_shift_transactions || fnData?.result || fnData || {};
         const payments = result.payments || [];
         const orders = result.orders || [];
 
