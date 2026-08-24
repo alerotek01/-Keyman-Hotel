@@ -75,6 +75,28 @@ export default function ShiftManagement() {
   // End shift form
   const [endNotes, setEndNotes] = useState('');
 
+  // Weekly bulk assign
+  const [weeklyDialog, setWeeklyDialog] = useState(false);
+  const [weeklyForm, setWeeklyForm] = useState({
+    user_id: '',
+    department_id: '',
+    shift_name: 'morning',
+    start_date: today,
+    days: ['mon', 'tue', 'wed', 'thu', 'fri'],
+  });
+  const DAYS = [
+    { key: 'mon', label: 'Mon' }, { key: 'tue', label: 'Tue' }, { key: 'wed', label: 'Wed' },
+    { key: 'thu', label: 'Thu' }, { key: 'fri', label: 'Fri' }, { key: 'sat', label: 'Sat' },
+    { key: 'sun', label: 'Sun' },
+  ];
+
+  // Shift recall/reassign
+  const [recallDialog, setRecallDialog] = useState(false);
+  const [recallShift, setRecallShift] = useState<any>(null);
+  const [recallReason, setRecallReason] = useState('');
+  const [reassignMode, setReassignMode] = useState(false);
+  const [reassignUserId, setReassignUserId] = useState('');
+
   // Fetch all staff
   const { data: staff } = useQuery({
     queryKey: ['all-staff-list'],
@@ -193,6 +215,73 @@ export default function ShiftManagement() {
     }
   };
 
+  const handleWeeklyAssign = async () => {
+    if (!weeklyForm.user_id) { toast.error('Select a staff member'); return; }
+    if (weeklyForm.days.length === 0) { toast.error('Select at least one day'); return; }
+    try {
+      const startDate = new Date(weeklyForm.start_date);
+      let assigned = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        const dayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][d.getDay()];
+        if (weeklyForm.days.includes(dayKey)) {
+          const dateStr = d.toISOString().split('T')[0];
+          // Check if already assigned
+          const existing = (shifts || []).find((s: any) =>
+            s.user_id === weeklyForm.user_id && s.shift_date === dateStr && s.shift_name === weeklyForm.shift_name
+          );
+          if (!existing) {
+            await startShift.mutateAsync({
+              user_id: weeklyForm.user_id,
+              department_id: weeklyForm.department_id || undefined,
+              shift_date: dateStr,
+              shift_name: weeklyForm.shift_name,
+            });
+            assigned++;
+          }
+        }
+      }
+      const staffMember = staff?.find((s: any) => s.id === weeklyForm.user_id);
+      toast.success(`${assigned} shifts assigned to ${staffMember?.full_name || 'Staff'}`);
+      setWeeklyDialog(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to assign shifts');
+    }
+  };
+
+  const handleRecallShift = async () => {
+    if (!recallShift) return;
+    try {
+      if (reassignMode && reassignUserId) {
+        // Reassign to another staff member
+        await sb.from('staff_shifts').update({
+          user_id: reassignUserId,
+          recall_reason: recallReason || null,
+          recalled_at: new Date().toISOString(),
+          recalled_by: user?.id,
+        }).eq('id', recallShift.id);
+        toast.success(`Shift reassigned to ${staff?.find((s: any) => s.id === reassignUserId)?.full_name || 'Staff'}`);
+      } else {
+        // Just recall (cancel)
+        await sb.from('staff_shifts').update({
+          status: 'cancelled',
+          recall_reason: recallReason || null,
+          recalled_at: new Date().toISOString(),
+          recalled_by: user?.id,
+        }).eq('id', recallShift.id);
+        toast.success('Shift recalled');
+      }
+      setRecallDialog(false);
+      setRecallShift(null);
+      setRecallReason('');
+      setReassignMode(false);
+      setReassignUserId('');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to recall shift');
+    }
+  };
+
   const handleEndShift = async () => {
     if (!selectedShift) return;
     try {
@@ -259,6 +348,9 @@ export default function ShiftManagement() {
             onChange={(e) => setSelectedDate(e.target.value)}
             className="w-40"
           />
+          <Button variant="outline" onClick={() => setWeeklyDialog(true)}>
+            <Calendar className="mr-2 h-4 w-4" /> Weekly
+          </Button>
           <Button variant="brass" onClick={() => setAssignDialog(true)}>
             <Plus className="mr-2 h-4 w-4" /> Assign Shift
           </Button>
@@ -349,6 +441,15 @@ export default function ShiftManagement() {
                           {duration > 0 && ` · ${duration}min`}
                         </p>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                        onClick={() => { setRecallShift(s); setRecallDialog(true); }}
+                        title="Recall or reassign shift"
+                      >
+                        <Ban className="h-4 w-4 mr-1" /> Recall
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -476,6 +577,125 @@ export default function ShiftManagement() {
               Assign Shift
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== WEEKLY ASSIGN DIALOG ===== */}
+      <Dialog open={weeklyDialog} onOpenChange={setWeeklyDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-brass" /> Weekly Shift Assignment
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Department (optional)</Label>
+              <Select value={weeklyForm.department_id || '__all__'} onValueChange={(v) => setWeeklyForm({ ...weeklyForm, department_id: v === '__all__' ? '' : v, user_id: '' })}>
+                <SelectTrigger><SelectValue placeholder="All departments" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All departments</SelectItem>
+                  {departments?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Staff Member *</Label>
+              <Select value={weeklyForm.user_id} onValueChange={(v) => setWeeklyForm({ ...weeklyForm, user_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                <SelectContent>
+                  {filteredStaff.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.full_name || s.email} ({s.role})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Shift</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {SHIFT_NAMES.map(name => (
+                  <button key={name} type="button" onClick={() => setWeeklyForm({ ...weeklyForm, shift_name: name })}
+                    className={cn('p-3 rounded-xl border-2 text-center transition-all capitalize',
+                      weeklyForm.shift_name === name ? 'border-brass bg-brass/5 text-brass font-semibold' : 'border-border hover:border-brass/50')}
+                  >
+                    <p className="text-sm">{name}</p>
+                    <p className="text-[10px] text-muted-foreground">{SHIFT_TIMES[name]}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Input type="date" value={weeklyForm.start_date} onChange={(e) => setWeeklyForm({ ...weeklyForm, start_date: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Days of Week</Label>
+              <div className="flex gap-2 flex-wrap">
+                {DAYS.map(d => (
+                  <button key={d.key} type="button" onClick={() => {
+                    setWeeklyForm(prev => ({ ...prev, days: prev.days.includes(d.key) ? prev.days.filter(x => x !== d.key) : [...prev.days, d.key] }));
+                  }}
+                    className={cn('px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                      weeklyForm.days.includes(d.key) ? 'bg-brass text-white border-brass' : 'bg-white border-gray-200 text-gray-600 hover:border-brass')}
+                  >{d.label}</button>
+                ))}
+              </div>
+            </div>
+            <Button variant="brass" className="w-full" onClick={handleWeeklyAssign} disabled={startShift.isPending || !weeklyForm.user_id}>
+              {startShift.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calendar className="mr-2 h-4 w-4" />}
+              Assign Weekly Shifts ({weeklyForm.days.length} days)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== RECALL/REASSIGN DIALOG ===== */}
+      <Dialog open={recallDialog} onOpenChange={setRecallDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5 text-amber-600" /> Recall Shift
+            </DialogTitle>
+          </DialogHeader>
+          {recallShift && (
+            <div className="space-y-4">
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <p className="text-sm font-medium">{recallShift.users?.full_name}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {recallShift.shift_name} shift · {recallShift.shift_date}
+                  {recallShift.departments?.name && ` · ${recallShift.departments.name}`}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Reason for Recall *</Label>
+                <Textarea value={recallReason} onChange={(e) => setRecallReason(e.target.value)}
+                  placeholder="e.g. Staff requested day off, scheduling conflict..." rows={2} />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="reassign" checked={reassignMode}
+                  onChange={(e) => setReassignMode(e.target.checked)} className="rounded" />
+                <Label htmlFor="reassign" className="cursor-pointer">Reassign to another staff member</Label>
+              </div>
+              {reassignMode && (
+                <div className="space-y-2">
+                  <Label>Reassign To *</Label>
+                  <Select value={reassignUserId} onValueChange={setReassignUserId}>
+                    <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                    <SelectContent>
+                      {filteredStaff.filter((s: any) => s.id !== recallShift.user_id).map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>{s.full_name || s.email} ({s.role})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setRecallDialog(false); setRecallShift(null); setRecallReason(''); setReassignMode(false); setReassignUserId(''); }}>Cancel</Button>
+                <Button variant="brass" className="flex-1" onClick={handleRecallShift}
+                  disabled={!recallReason || (reassignMode && !reassignUserId)}>
+                  {reassignMode ? 'Reassign Shift' : 'Recall Shift'}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

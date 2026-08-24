@@ -42,6 +42,9 @@ export default function ConferenceManagement() {
   const [quoteNotes, setQuoteNotes] = useState('');
   const [quoting, setQuoting] = useState(false);
   const [newRoom, setNewRoom] = useState({ name: '', capacity: '', hourly_rate: '', daily_rate: '', description: '', equipment: '' });
+  const [editBooking, setEditBooking] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ quoted_amount: '', quote_notes: '', amenities: [] as string[], catering: [] as string[], special_requirements: '' });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -139,6 +142,43 @@ export default function ConferenceManagement() {
     } catch (err: any) { toast.error(err.message); }
   };
 
+  const saveEditBooking = async () => {
+    if (!editBooking) return;
+    setSaving(true);
+    try {
+      await sb.from('conference_bookings').update({
+        quoted_amount: editForm.quoted_amount ? parseFloat(editForm.quoted_amount) : editBooking.quoted_amount,
+        quote_notes: editForm.quote_notes || null,
+        amenities: editForm.amenities,
+        catering: editForm.catering,
+        special_requirements: editForm.special_requirements || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', editBooking.id);
+      toast.success('Booking updated');
+      setEditBooking(null);
+      await loadData();
+    } catch (err: any) { toast.error(err.message); }
+    setSaving(false);
+  };
+
+  const toggleEditAmenity = (key: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      amenities: prev.amenities.includes(key)
+        ? prev.amenities.filter(a => a !== key)
+        : [...prev.amenities, key],
+    }));
+  };
+
+  const toggleEditCatering = (key: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      catering: prev.catering.includes(key)
+        ? prev.catering.filter(c => c !== key)
+        : [...prev.catering, key],
+    }));
+  };
+
   const toggleRoomActive = async (id: string, current: boolean) => {
     await sb.from('conference_rooms').update({ is_active: !current }).eq('id', id);
     await loadData();
@@ -154,6 +194,66 @@ export default function ConferenceManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Edit Booking Modal */}
+      {editBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                ✏️ Edit Booking — {editBooking.room?.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                <p><strong>Contact:</strong> {editBooking.contact_name}</p>
+                <p><strong>Date:</strong> {editBooking.booking_date} · {editBooking.start_time?.slice(0, 5)} ({editBooking.duration_hours}h)</p>
+                <p><strong>Guests:</strong> {editBooking.guest_count}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Quoted Amount (KES)</Label>
+                <Input type="number" value={editForm.quoted_amount} onChange={e => setEditForm({ ...editForm, quoted_amount: e.target.value })} placeholder={editBooking.quoted_amount || '0'} />
+              </div>
+              <div className="space-y-2">
+                <Label>Quote Notes</Label>
+                <Textarea value={editForm.quote_notes} onChange={e => setEditForm({ ...editForm, quote_notes: e.target.value })} rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label>Special Requirements</Label>
+                <Textarea value={editForm.special_requirements} onChange={e => setEditForm({ ...editForm, special_requirements: e.target.value })} rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label>Amenities</Label>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(AMENITY_LABELS).map(([key, label]) => (
+                    <button key={key} type="button" onClick={() => toggleEditAmenity(key)}
+                      className={cn('px-3 py-1.5 rounded-full text-xs border transition-all',
+                        editForm.amenities.includes(key) ? 'bg-brass text-white border-brass' : 'bg-white border-gray-200 text-gray-600 hover:border-brass')}
+                    >{label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Catering</Label>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(CATERING_LABELS).map(([key, label]) => (
+                    <button key={key} type="button" onClick={() => toggleEditCatering(key)}
+                      className={cn('px-3 py-1.5 rounded-full text-xs border transition-all',
+                        editForm.catering.includes(key) ? 'bg-brass text-white border-brass' : 'bg-white border-gray-200 text-gray-600 hover:border-brass')}
+                    >{label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setEditBooking(null)}>Cancel</Button>
+                <Button variant="brass" className="flex-1" onClick={saveEditBooking} disabled={saving}>
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Save Changes
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Quote Modal */}
       {quoteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -314,6 +414,18 @@ export default function ConferenceManagement() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-2 border-t">
+                <Button size="sm" variant="outline" onClick={() => {
+                  setEditBooking(b);
+                  setEditForm({
+                    quoted_amount: b.quoted_amount?.toString() || '',
+                    quote_notes: b.quote_notes || '',
+                    amenities: b.amenities || [],
+                    catering: b.catering || [],
+                    special_requirements: b.special_requirements || '',
+                  });
+                }}>
+                  ✏️ Edit
+                </Button>
                 {b.quote_status === 'pending' && (
                   <Button size="sm" variant="brass" onClick={() => { setQuoteModal(b); setQuoteAmount(''); setQuoteNotes(''); }}>
                     <Send className="h-3 w-3 mr-1" /> Send Quote
