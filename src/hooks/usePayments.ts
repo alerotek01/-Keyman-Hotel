@@ -211,7 +211,10 @@ export function useStartShift() {
       const { data: shift, error } = await sb
         .from('staff_shifts')
         .insert({
-          ...data,
+          user_id: data.user_id,
+          department_id: data.department_id || null,
+          shift_date: data.shift_date,
+          shift_name: data.shift_name,
           status: 'assigned',
         })
         .select('id, user_id, department_id, shift_date, shift_name, start_time, end_time, status, created_at, users:user_id(full_name, email)')
