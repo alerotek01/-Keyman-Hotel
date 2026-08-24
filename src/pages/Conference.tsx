@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Users, Wifi, Projector, Coffee, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
@@ -58,7 +59,7 @@ export default function Conference() {
             Professional meeting space with views of the Taita Hills. Seats 70, full AV, catering on request.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 mt-8">
-            <Button variant="brass" size="lg">Book This Space<ArrowRight className="h-4 w-4" /></Button>
+            <Link to="/guest/conference"><Button variant="brass" size="lg">Book This Space<ArrowRight className="h-4 w-4" /></Button></Link>
             <a href="tel:+254721384779"><Button variant="brass-outline" size="lg">Call +254 721 384 779</Button></a>
           </div>
         </div>
@@ -126,7 +127,7 @@ export default function Conference() {
           <p className="text-cream/40 mt-3 max-w-md mx-auto text-sm">Call or WhatsApp for pricing. Custom packages for half-day and full-day events.</p>
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <a href="tel:+254721384779"><Button variant="brass" size="lg">Call +254 721 384 779</Button></a>
-            <Button variant="brass-outline" size="lg">WhatsApp Us</Button>
+            <a href="https://wa.me/254721384779" target="_blank" rel="noopener noreferrer"><Button variant="brass-outline" size="lg">WhatsApp Us</Button></a>
           </div>
         </div>
       </section>
