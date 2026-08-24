@@ -78,6 +78,7 @@ export default function GuestLogin() {
       // New guest — send OTP for first-time verification
       const { data: otpResult, error: otpError } = await sb.rpc('generate_and_store_otp', {
         p_email: email,
+        p_purpose: 'guest_signup',
       });
 
       if (otpError || !otpResult?.success) {
