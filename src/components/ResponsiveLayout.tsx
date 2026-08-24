@@ -11,7 +11,7 @@ import {
   Loader2, LogOut, Home, LayoutDashboard, BedDouble, CalendarCheck, UtensilsCrossed,
   ChefHat, Sparkles, ClipboardCheck, ClipboardList, Receipt, CreditCard, Clock,
   MessageSquare, Bell, BarChart3, DollarSign, Users, Activity, Settings, Package,
-  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet, Coffee
+  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet, Coffee, Award
 } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +35,7 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/manager', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { path: '/manager/bookings', label: 'Bookings', icon: CalendarCheck },
     { path: '/manager/reconciliation', label: 'Reconciliation', icon: DollarSign },
+    { path: '/manager/kpi', label: 'Staff KPIs', icon: Award },
     { path: '/manager/reports', label: 'Reports', icon: BarChart3 },
     { path: '/manager/staff', label: 'Staff', icon: Users },
     { path: '/manager/shift', label: 'Shift Mgmt', icon: Clock },
@@ -163,6 +164,7 @@ const MANAGER_MORE_ITEMS = [
   { icon: '🏠', label: 'Dashboard', path: '/manager' },
   { icon: '📅', label: 'Bookings', path: '/manager/bookings' },
   { icon: '💰', label: 'Reconciliation', path: '/manager/reconciliation' },
+  { icon: '🏆', label: 'Staff KPIs', path: '/manager/kpi' },
   { icon: '📊', label: 'Reports', path: '/manager/reports' },
   { icon: '👥', label: 'Staff', path: '/manager/staff' },
   { icon: '⏰', label: 'Shift Mgmt', path: '/manager/shift' },
