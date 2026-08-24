@@ -55,7 +55,27 @@ export default function GuestLogin() {
         return;
       }
 
-      // Generate OTP server-side (prevents client prediction)
+      // Check if returning guest (already verified) → instant login, no OTP
+      const { data: returningGuest } = await sb.from('users')
+        .select('id, otp_verified_at')
+        .eq('email', email)
+        .eq('role', 'guest')
+        .not('otp_verified_at', 'is', null)
+        .single();
+
+      if (returningGuest) {
+        // Returning guest — skip OTP, sign in directly
+        const { error: authError } = await sb.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: true },
+        });
+        // Navigate to guest dashboard
+        toast.success('Welcome back!');
+        window.location.href = '/guest';
+        return;
+      }
+
+      // New guest — send OTP for first-time verification
       const { data: otpResult, error: otpError } = await sb.rpc('generate_and_store_otp', {
         p_email: email,
       });
@@ -74,7 +94,7 @@ export default function GuestLogin() {
       const result = await sendOTPVerification(email, code, guestName);
       
       if (result.success) {
-        toast.success('OTP sent to your email!');
+        toast.success('First time? We sent a verification code to your email.');
         setStep('otp');
       } else {
         // Fallback: show OTP on screen for development
@@ -185,7 +205,7 @@ export default function GuestLogin() {
             </CardTitle>
             <CardDescription>
               {step === 'email'
-                ? 'Enter your email to sign in — no password needed'
+                ? 'Enter your email — returning guests sign in instantly, first-timers get a verification code'
                 : `We sent a code to ${email}`
               }
             </CardDescription>
