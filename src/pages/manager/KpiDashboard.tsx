@@ -9,7 +9,7 @@ import { computeStaffKpis, computeKpiTrends, computeDepartmentKpis, getStarRatin
 import { format, subDays } from 'date-fns';
 import {
   Loader2, TrendingUp, TrendingDown, Users, Award, Clock,
-  DollarSign, AlertTriangle, Star, BarChart3, Calendar
+  DollarSign, AlertTriangle, Star, BarChart3, Calendar, GitCompareArrows, X
 } from 'lucide-react';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -36,6 +36,8 @@ export default function KpiDashboard() {
   });
   const [deptFilter, setDeptFilter] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareStaff, setCompareStaff] = useState<string[]>([]);
 
   // Fetch reconciliations
   const { data: recons, isLoading: reconsLoading } = useQuery({
@@ -170,8 +172,43 @@ export default function KpiDashboard() {
             <option value="">All Departments</option>
             {departments.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
+          <Button
+            variant={compareMode ? 'default' : 'outline'}
+            size="sm"
+            className={cn('h-9', compareMode && 'bg-brass hover:bg-brass/90')}
+            onClick={() => {
+              setCompareMode(!compareMode);
+              if (compareMode) setCompareStaff([]);
+              setSelectedStaff(null);
+            }}
+          >
+            <GitCompareArrows className="h-4 w-4 mr-1" />
+            {compareMode ? `Compare (${compareStaff.length}/2)` : 'Compare'}
+          </Button>
         </div>
       </div>
+
+      {/* Compare Mode Indicator */}
+      {compareMode && compareStaff.length > 0 && compareStaff.length < 2 && (
+        <div className="mb-4 p-3 bg-brass/5 border border-brass/20 rounded-lg flex items-center justify-between">
+          <p className="text-sm text-brass">
+            <GitCompareArrows className="h-4 w-4 inline mr-1" />
+            Select {compareStaff.length === 0 ? 'two' : 'one more'} staff member{compareStaff.length === 0 ? 's' : ''} to compare
+          </p>
+          <Button variant="ghost" size="sm" className="h-7" onClick={() => { setCompareStaff([]); setCompareMode(false); }}>
+            <X className="h-3 w-3 mr-1" /> Cancel
+          </Button>
+        </div>
+      )}
+
+      {/* Comparison View */}
+      {compareMode && compareStaff.length === 2 && (
+        <ComparisonView
+          staff1={staffKpis.find(k => k.staffId === compareStaff[0])!}
+          staff2={staffKpis.find(k => k.staffId === compareStaff[1])!}
+          onClose={() => { setCompareStaff([]); setCompareMode(false); }}
+        />
+      )}
 
       {/* Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -320,9 +357,19 @@ export default function KpiDashboard() {
                     key={kpi.staffId}
                     className={cn(
                       'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50',
-                      selectedStaff === kpi.staffId && 'ring-2 ring-brass bg-brass/5'
+                      (selectedStaff === kpi.staffId || compareStaff.includes(kpi.staffId)) && 'ring-2 ring-brass bg-brass/5'
                     )}
-                    onClick={() => setSelectedStaff(kpi.staffId === selectedStaff ? null : kpi.staffId)}
+                    onClick={() => {
+                      if (compareMode) {
+                        if (compareStaff.includes(kpi.staffId)) {
+                          setCompareStaff(compareStaff.filter(id => id !== kpi.staffId));
+                        } else if (compareStaff.length < 2) {
+                          setCompareStaff([...compareStaff, kpi.staffId]);
+                        }
+                      } else {
+                        setSelectedStaff(kpi.staffId === selectedStaff ? null : kpi.staffId);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <span className={cn(
@@ -406,5 +453,112 @@ export default function KpiDashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+// ─── Comparison View ──────────────────────────────────────────────────
+
+function ComparisonView({ staff1, staff2, onClose }: { staff1: StaffKpi; staff2: StaffKpi; onClose: () => void }) {
+  const radarData = [
+    { metric: 'Revenue', [staff1.staffName]: staff1.revenueScore, [staff2.staffName]: staff2.revenueScore, fullMark: 100 },
+    { metric: 'Variance', [staff1.staffName]: staff1.varianceScore, [staff2.staffName]: staff2.varianceScore, fullMark: 100 },
+    { metric: 'Punctuality', [staff1.staffName]: staff1.punctualityScore, [staff2.staffName]: staff2.punctualityScore, fullMark: 100 },
+  ];
+
+  const barData = [
+    { metric: 'Revenue', v1: staff1.revenueScore, v2: staff2.revenueScore },
+    { metric: 'Variance', v1: staff1.varianceScore, v2: staff2.varianceScore },
+    { metric: 'Punctuality', v1: staff1.punctualityScore, v2: staff2.punctualityScore },
+    { metric: 'Composite', v1: staff1.compositeScore, v2: staff2.compositeScore },
+  ];
+
+  return (
+    <Card className="mb-6 border-brass/30">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <GitCompareArrows className="h-4 w-4 text-brass" />
+            Side-by-Side Comparison
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Staff 1 Radar */}
+          <div className="text-center">
+            <p className="font-semibold text-sm">{staff1.staffName}</p>
+            <p className="text-xs text-muted-foreground capitalize mb-2">{staff1.role} · {staff1.department}</p>
+            <div className="flex items-center justify-center gap-1 mb-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} className={cn('h-3.5 w-3.5', i < staff1.starRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300')} />
+              ))}
+              <span className="text-sm font-bold ml-1">{staff1.compositeScore}</span>
+            </div>
+            <ResponsiveContainer width="100" height={100}>
+              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                <PolarGrid />
+                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 9 }} />
+                <Radar name={staff1.staffName} dataKey={staff1.staffName} stroke="#D4AF37" fill="#D4AF37" fillOpacity={0.3} strokeWidth={2} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Comparison Bars */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-3 text-center">Metric Breakdown</p>
+            <div className="space-y-3">
+              {barData.map((b) => {
+                const winner = b.v1 > b.v2 ? 1 : b.v2 > b.v1 ? 2 : 0;
+                return (
+                  <div key={b.metric}>
+                    <div className="flex items-center justify-between text-[10px] mb-1">
+                      <span className={cn('font-medium', winner === 1 && 'text-brass')}>{b.v1}</span>
+                      <span className="text-muted-foreground font-medium">{b.metric}</span>
+                      <span className={cn('font-medium', winner === 2 && 'text-brass')}>{b.v2}</span>
+                    </div>
+                    <div className="flex gap-1 h-2">
+                      <div className={cn('flex-1 rounded-l', b.v1 >= b.v2 ? 'bg-brass' : 'bg-brass/40')} style={{ width: `${b.v1}%` }} />
+                      <div className={cn('flex-1 rounded-r', b.v2 > b.v1 ? 'bg-blue-500' : 'bg-blue-500/40')} style={{ width: `${b.v2}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Winner Summary */}
+            <div className="mt-4 p-2 bg-muted/50 rounded text-center">
+              {staff1.compositeScore > staff2.compositeScore ? (
+                <p className="text-xs"><span className="font-semibold text-brass">{staff1.staffName}</span> leads by <span className="font-bold">{staff1.compositeScore - staff2.compositeScore}</span> points</p>
+              ) : staff2.compositeScore > staff1.compositeScore ? (
+                <p className="text-xs"><span className="font-semibold text-blue-600">{staff2.staffName}</span> leads by <span className="font-bold">{staff2.compositeScore - staff1.compositeScore}</span> points</p>
+              ) : (
+                <p className="text-xs">Tied at <span className="font-bold">{staff1.compositeScore}</span> points</p>
+              )}
+            </div>
+          </div>
+
+          {/* Staff 2 Radar */}
+          <div className="text-center">
+            <p className="font-semibold text-sm">{staff2.staffName}</p>
+            <p className="text-xs text-muted-foreground capitalize mb-2">{staff2.role} · {staff2.department}</p>
+            <div className="flex items-center justify-center gap-1 mb-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} className={cn('h-3.5 w-3.5', i < staff2.starRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300')} />
+              ))}
+              <span className="text-sm font-bold ml-1">{staff2.compositeScore}</span>
+            </div>
+            <ResponsiveContainer width="100" height={100}>
+              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                <PolarGrid />
+                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 9 }} />
+                <Radar name={staff2.staffName} dataKey={staff2.staffName} stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} strokeWidth={2} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

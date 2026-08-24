@@ -94,9 +94,11 @@ async function cleanupTestData() {
   await q(`DELETE FROM guests WHERE email LIKE '%e2etest%' OR email LIKE '%test.guest%'`);
   await q(`DELETE FROM users WHERE email LIKE '%e2etest%' OR email LIKE '%test.guest%'`);
   await q(`DELETE FROM notifications WHERE title LIKE '%E2E_TEST%'`);
+  await q(`DELETE FROM reservations WHERE guest_id IN (SELECT id FROM guests WHERE name LIKE 'E2E_TEST%')`);
+  await q(`DELETE FROM reservations WHERE room_id IN (SELECT id FROM rooms WHERE room_number BETWEEN 101 AND 110) AND status IN ('confirmed','checked_in')`);
   await q(`DELETE FROM housekeeping_tasks WHERE notes LIKE '%E2E_TEST%'`);
   // Reset rooms
-  await q(`UPDATE rooms SET status = 'available' WHERE room_number IN (106,107,108,109,110)`);
+  await q(`UPDATE rooms SET status = 'available' WHERE room_number IN (101,102,103,104,105,106,107,108,109,110)`);
   log('INFO', 'Cleanup complete');
 }
 
