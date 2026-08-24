@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sendWelcomeEmail } from '@/lib/email';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Trash2, Users, Clock } from 'lucide-react';
+import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Trash2, Users, Clock, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/lib/types';
 
@@ -31,6 +31,9 @@ const ROLES: { value: AppRole; label: string; color: string }[] = [
 export default function StaffManagement() {
   const qc = useQueryClient();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editUser, setEditUser] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ full_name: '', email: '', phone: '' });
   const [form, setForm] = useState({ email: '', full_name: '', phone: '', role: 'receptionist' as AppRole, password: '' });
 
   // List all staff
@@ -90,6 +93,27 @@ export default function StaffManagement() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['manager-staff'] });
       toast.success('Staff updated');
+    },
+  });
+
+  // Edit user profile
+  const editUserMutation = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; full_name: string; email: string; phone: string }) => {
+      const { error } = await sb.from('users').update({
+        full_name: data.full_name,
+        email: data.email,
+        phone: data.phone || null,
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['manager-staff'] });
+      setEditDialogOpen(false);
+      setEditUser(null);
+      toast.success('Staff profile updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update');
     },
   });
 
@@ -214,32 +238,41 @@ export default function StaffManagement() {
             const roleInfo = getRoleInfo(user.role);
             return (
               <Card key={user.id}>
-                <CardContent className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-brass/10 flex items-center justify-center">
-                      <UserCog className="h-5 w-5 text-brass" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{user.full_name}</p>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{user.email}</span>
-                        {user.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{user.phone}</span>}
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-brass/10 flex items-center justify-center">
+                        <UserCog className="h-5 w-5 text-brass" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{user.full_name}</p>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{user.email}</span>
+                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{user.phone || 'No phone'}</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : ''}</span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={user.role} onValueChange={(v) => handleRoleChange(user.id, v as AppRole)}>
+                        <SelectTrigger className="w-36 h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Badge className={cn(roleInfo.color)}>{roleInfo.label}</Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Select value={user.role} onValueChange={(v) => handleRoleChange(user.id, v as AppRole)}>
-                      <SelectTrigger className="w-36 h-8"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Badge className={cn(roleInfo.color)}>{roleInfo.label}</Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : ''}
-                    </span>
-                    <Button variant="outline" size="sm" onClick={() => handleSuspend(user)} title="Suspend">
-                      <UserX className="h-4 w-4 text-amber-600" />
+                  <div className="flex gap-2 mt-3 pt-3 border-t">
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setEditUser(user);
+                      setEditForm({ full_name: user.full_name || '', email: user.email || '', phone: user.phone || '' });
+                      setEditDialogOpen(true);
+                    }}>
+                      <Pencil className="h-3 w-3 mr-1" /> Edit
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-amber-600 border-amber-300 hover:bg-amber-50" onClick={() => handleSuspend(user)}>
+                      <UserX className="h-3 w-3 mr-1" /> Suspend
                     </Button>
                   </div>
                 </CardContent>
@@ -281,6 +314,44 @@ export default function StaffManagement() {
           {suspendedUsers.length === 0 && <p className="text-muted-foreground text-center py-8">No suspended staff</p>}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Staff Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-brass" /> Edit Staff Profile
+            </DialogTitle>
+          </DialogHeader>
+          {editUser && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium">{editUser.full_name}</p>
+                <p className="text-xs text-muted-foreground">{editUser.role} · Joined {editUser.created_at ? format(new Date(editUser.created_at), 'MMM d, yyyy') : ''}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Full Name</Label>
+                <Input value={editForm.full_name} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="+254700000000" />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+                <Button variant="brass" className="flex-1" onClick={() => editUserMutation.mutate({ id: editUser.id, ...editForm })} disabled={editUserMutation.isPending}>
+                  {editUserMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
