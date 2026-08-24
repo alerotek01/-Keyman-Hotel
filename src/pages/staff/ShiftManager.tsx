@@ -7,9 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useStaffShifts, useStartShift, useEndShift, useSubmitReconciliation, useShiftSummary } from '@/hooks/usePayments';
+import { useStaffShifts, useStartShift, useEndShift, useSubmitReconciliation, useShiftSummary, useAcceptShift, useRejectShift } from '@/hooks/usePayments';
+import ShiftWorkflow from '@/components/ShiftWorkflow';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { format, differenceInMinutes } from 'date-fns';
@@ -28,9 +29,12 @@ export default function ShiftManager() {
   const { user } = useAuth();
   const today = new Date().toISOString().split('T')[0];
   const { data: shifts, isLoading } = useStaffShifts(user?.id, today);
+  const qc = useQueryClient();
   const startShift = useStartShift();
   const endShift = useEndShift();
   const submitReconciliation = useSubmitReconciliation();
+  const acceptShift = useAcceptShift();
+  const rejectShift = useRejectShift();
 
   const [reconDialog, setReconDialog] = useState(false);
   const [activeShift, setActiveShift] = useState<any>(null);
@@ -39,6 +43,9 @@ export default function ShiftManager() {
   const [receiptUrl, setReceiptUrl] = useState('');
   const [mpesaDialog, setMpesaDialog] = useState(false);
   const [mpesaCode, setMpesaCode] = useState('');
+  const [rejectDialog, setRejectDialog] = useState(false);
+  const [rejectShiftId, setRejectShiftId] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
 
   // Reconciliation form state
   const [actualCash, setActualCash] = useState('');
@@ -99,6 +106,8 @@ export default function ShiftManager() {
   }, [shiftHistory, historyFilters]);
 
   const currentShift = shifts?.find(s => s.status === 'active');
+  const assignedShifts = (shifts || []).filter(s => s.status === 'assigned');
+  const acceptedShifts = (shifts || []).filter(s => s.status === 'accepted');
   const todayShifts = shifts || [];
 
   const variance = shiftSummary && actualCash
@@ -124,6 +133,31 @@ export default function ShiftManager() {
       toast.success(`${shiftName} shift started!`);
     } catch (error: any) {
       toast.error(error.message || 'Failed');
+    }
+  };
+
+  const handleAcceptShift = async (shiftId: string) => {
+    try {
+      await acceptShift.mutateAsync({ shiftId });
+      toast.success('Shift accepted! You can now start when ready.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to accept shift');
+    }
+  };
+
+  const handleRejectShift = async () => {
+    if (!rejectShiftId || !rejectReason.trim()) {
+      toast.error('Please provide a reason for rejection');
+      return;
+    }
+    try {
+      await rejectShift.mutateAsync({ shiftId: rejectShiftId, reason: rejectReason });
+      setRejectDialog(false);
+      setRejectShiftId('');
+      setRejectReason('');
+      toast.success('Shift rejected. Manager has been notified.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to reject shift');
     }
   };
 
@@ -252,6 +286,43 @@ export default function ShiftManager() {
           </CardContent>
         </Card>
       )}
+
+      {/* Shift Assignment Workflow */}
+      {!currentShift && assignedShifts.length === 0 && acceptedShifts.length === 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Start a Shift</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3">
+              {['morning', 'afternoon', 'night'].map(name => (
+                <button
+                  key={name}
+                  onClick={() => handleStartShift(name)}
+                  disabled={startShift.isPending}
+                  className="p-4 rounded-xl border hover:border-brass hover:bg-brass/5 transition-all text-center capitalize"
+                >
+                  <Clock className="h-6 w-6 text-brass mx-auto mb-2" />
+                  <p className="font-medium">{name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {name === 'morning' ? '6am - 2pm' : name === 'afternoon' ? '2pm - 10pm' : '10pm - 6am'}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      <ShiftWorkflow
+        assignedShifts={assignedShifts}
+        acceptedShifts={acceptedShifts}
+        currentShift={currentShift}
+        onAccept={handleAcceptShift}
+        onReject={(id) => { setRejectShiftId(id); setRejectDialog(true); }}
+        onStart={handleStartShift}
+        isAcceptPending={acceptShift.isPending}
+        isStartPending={startShift.isPending}
+      />
 
       {/* Shift Tabs: Today + History */}
       <Tabs defaultValue="today">
@@ -890,6 +961,35 @@ export default function ShiftManager() {
               <img src={receiptUrl} alt="Receipt" className="w-full h-auto max-h-[60vh] object-contain bg-gray-50" />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Shift Dialog */}
+      <Dialog open={rejectDialog} onOpenChange={setRejectDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <X className="h-5 w-5" /> Reject Shift
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <p className="text-sm font-medium">Please provide a reason for rejecting this shift.</p>
+              <p className="text-xs text-muted-foreground mt-1">The manager will be notified and may reassign.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Reason *</Label>
+              <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g. I have a medical appointment, family emergency..." rows={3} />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setRejectDialog(false); setRejectShiftId(''); setRejectReason(''); }}>Cancel</Button>
+              <Button variant="destructive" className="flex-1" onClick={handleRejectShift} disabled={!rejectReason.trim() || rejectShift.isPending}>
+                {rejectShift.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                Reject Shift
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -176,10 +176,14 @@ export default function ShiftManagement() {
   const approveReconciliation = useApproveReconciliation();
 
   // Filtered data
+  const assignedShifts = (shifts || []).filter((s: any) => s.status === 'assigned');
+  const acceptedShifts = (shifts || []).filter((s: any) => s.status === 'accepted');
   const activeShifts = (shifts || []).filter((s: any) => s.status === 'active');
+  const rejectedShifts = (shifts || []).filter((s: any) => s.status === 'rejected');
   const endedShifts = (shifts || []).filter((s: any) => ['ended', 'submitted', 'reconciled', 'closed'].includes(s.status));
   const pendingRecons = (reconciliations || []).filter((r: any) => r.status === 'submitted');
   const reviewedRecons = (reconciliations || []).filter((r: any) => r.status !== 'submitted');
+  const pendingShifts = [...assignedShifts, ...acceptedShifts];
 
   // Filter staff by selected department
   const filteredStaff = assignForm.department_id
@@ -358,7 +362,13 @@ export default function ShiftManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-amber-600">{pendingShifts.length}</p>
+            <p className="text-xs text-muted-foreground">Pending</p>
+          </CardContent>
+        </Card>
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-blue-600">{activeShifts.length}</p>
@@ -371,24 +381,26 @@ export default function ShiftManagement() {
             <p className="text-xs text-muted-foreground">Ended Today</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-red-600">{rejectedShifts.length}</p>
+            <p className="text-xs text-muted-foreground">Rejected</p>
+          </CardContent>
+        </Card>
         <Card className={pendingRecons.length > 0 ? 'bg-amber-50 border-amber-200' : ''}>
           <CardContent className="p-4 text-center">
             <p className={cn('text-2xl font-bold', pendingRecons.length > 0 ? 'text-amber-600' : '')}>{pendingRecons.length}</p>
-            <p className="text-xs text-muted-foreground">Pending Reconciliations</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-emerald-600">{(reconciliations || []).filter((r: any) => r.status === 'approved').length}</p>
-            <p className="text-xs text-muted-foreground">Approved</p>
+            <p className="text-xs text-muted-foreground">Reconciliations</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="active">
+      <Tabs defaultValue="pending">
         <TabsList>
+          <TabsTrigger value="pending">Pending ({pendingShifts.length})</TabsTrigger>
           <TabsTrigger value="active">On Shift ({activeShifts.length})</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected ({rejectedShifts.length})</TabsTrigger>
           <TabsTrigger value="history">History ({endedShifts.length})</TabsTrigger>
         </TabsList>
         {pendingRecons.length > 0 && (
@@ -398,6 +410,58 @@ export default function ShiftManagement() {
             </Button>
           </Link>
         )}
+
+        {/* Pending/Assigned Shifts */}
+        <TabsContent value="pending" className="space-y-3 mt-4">
+          {pendingShifts.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Clock className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
+                <p className="text-muted-foreground">No pending shift assignments</p>
+                <Button variant="brass" className="mt-4" onClick={() => setAssignDialog(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Assign Shift
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            pendingShifts.map((s: any) => (
+              <Card key={s.id} className={cn('border-2', s.status === 'accepted' ? 'border-emerald-200 bg-emerald-50/30' : 'border-amber-200 bg-amber-50/30')}>
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-4">
+                    <div className={cn('h-10 w-10 rounded-full flex items-center justify-center', s.status === 'accepted' ? 'bg-emerald-100' : 'bg-amber-100')}>
+                      {s.status === 'accepted' ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Clock className="h-5 w-5 text-amber-600" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{s.users?.full_name || 'Unknown'}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px] capitalize">{s.users?.role || 'Staff'}</Badge>
+                        <span>•</span>
+                        <span className="capitalize">{s.shift_name} shift</span>
+                        {s.departments?.name && <><span>•</span><span>{s.departments.name}</span></>}
+                        <span>•</span>
+                        <span>{s.shift_date}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge className={s.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
+                      {s.status === 'accepted' ? 'Accepted — Ready to Start' : 'Awaiting Acceptance'}
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                      onClick={() => { setRecallShift(s); setRecallDialog(true); }}
+                      title="Recall or reassign shift"
+                    >
+                      <Ban className="h-4 w-4 mr-1" /> Recall
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
 
         {/* Active Shifts */}
         <TabsContent value="active" className="space-y-3 mt-4">
@@ -463,6 +527,49 @@ export default function ShiftManagement() {
                 </Card>
               );
             })
+          )}
+        </TabsContent>
+
+        {/* Rejected Shifts */}
+        <TabsContent value="rejected" className="space-y-3 mt-4">
+          {rejectedShifts.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No rejected shifts</p>
+          ) : (
+            rejectedShifts.map((s: any) => (
+              <Card key={s.id} className="border-red-200 bg-red-50/30">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{s.users?.full_name || 'Unknown'}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px] capitalize">{s.users?.role || 'Staff'}</Badge>
+                        <span>•</span>
+                        <span className="capitalize">{s.shift_name} shift</span>
+                        <span>•</span>
+                        <span>{s.shift_date}</span>
+                      </div>
+                      {s.recall_reason && (
+                        <p className="text-xs text-red-600 mt-1">Reason: {s.recall_reason}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge className="bg-red-100 text-red-700">Rejected</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                      onClick={() => { setRecallShift(s); setRecallDialog(true); setReassignMode(true); }}
+                    >
+                      <Ban className="h-4 w-4 mr-1" /> Reassign
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           )}
         </TabsContent>
 

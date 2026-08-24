@@ -212,33 +212,104 @@ export function useStartShift() {
         .from('staff_shifts')
         .insert({
           ...data,
-          start_time: new Date().toISOString(),
-          status: 'active',
+          status: 'assigned',
         })
         .select('id, user_id, department_id, shift_date, shift_name, start_time, end_time, status, created_at, users:user_id(full_name, email)')
         .single();
       if (error) throw error;
 
-      // Send shift check-in notification to manager/admin emails
+      // Notify staff of new shift assignment
       try {
-        const { sendShiftCheckIn } = await import('@/lib/email');
-        const { data: managers } = await sb.from('users').select('email').in('role', ['admin', 'manager']).eq('is_active', true);
-        if (managers?.length && shift?.users) {
-          const managerEmails = managers.map((m: any) => m.email).filter(Boolean);
-          await sendShiftCheckIn(managerEmails, shift.users.full_name || 'Staff', shift.shift_name, new Date().toLocaleString());
-        }
-        // In-app notification
         await sb.rpc('fire_notification', {
           p_user_id: data.user_id,
-          p_title: `Shift Started — ${data.shift_name}`,
-          p_body: `You checked in for the ${data.shift_name} shift.`,
+          p_title: `Shift Assigned — ${data.shift_name}`,
+          p_body: `You have been assigned a ${data.shift_name} shift on ${data.shift_date}. Please accept or reject.`,
           p_type: 'shift',
         });
-      } catch (e) { console.warn('Email/notification failed:', e); }
+      } catch (e) { console.warn('Notification failed:', e); }
 
       return shift;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff-shifts'] }),
+  });
+}
+
+export function useAcceptShift() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ shiftId }: { shiftId: string }) => {
+      const { data: shift, error } = await sb
+        .from('staff_shifts')
+        .update({
+          status: 'accepted',
+          accepted_at: new Date().toISOString(),
+        })
+        .eq('id', shiftId)
+        .select('id, user_id, shift_name, shift_date, users:user_id(full_name)')
+        .single();
+      if (error) throw error;
+
+      // Notify manager that shift was accepted
+      try {
+        const { data: managers } = await sb.from('users').select('id, email').in('role', ['admin', 'manager']).eq('is_active', true);
+        if (managers?.length && shift?.users) {
+          for (const m of managers) {
+            await sb.rpc('fire_notification', {
+              p_user_id: m.id,
+              p_title: `Shift Accepted`,
+              p_body: `${shift.users?.full_name || 'Staff'} accepted the ${shift.shift_name} shift on ${shift.shift_date}.`,
+              p_type: 'shift',
+            });
+          }
+        }
+      } catch (e) { console.warn('Notification failed:', e); }
+
+      return shift;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['staff-shifts'] });
+      qc.invalidateQueries({ queryKey: ['all-shifts'] });
+    },
+  });
+}
+
+export function useRejectShift() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ shiftId, reason }: { shiftId: string; reason: string }) => {
+      const { data: shift, error } = await sb
+        .from('staff_shifts')
+        .update({
+          status: 'rejected',
+          rejected_at: new Date().toISOString(),
+          recall_reason: reason,
+        })
+        .eq('id', shiftId)
+        .select('id, user_id, shift_name, shift_date, users:user_id(full_name)')
+        .single();
+      if (error) throw error;
+
+      // Notify manager that shift was rejected
+      try {
+        const { data: managers } = await sb.from('users').select('id, email').in('role', ['admin', 'manager']).eq('is_active', true);
+        if (managers?.length && shift?.users) {
+          for (const m of managers) {
+            await sb.rpc('fire_notification', {
+              p_user_id: m.id,
+              p_title: `Shift Rejected`,
+              p_body: `${shift.users?.full_name || 'Staff'} rejected the ${shift.shift_name} shift on ${shift.shift_date}. Reason: ${reason}`,
+              p_type: 'shift',
+            });
+          }
+        }
+      } catch (e) { console.warn('Notification failed:', e); }
+
+      return shift;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['staff-shifts'] });
+      qc.invalidateQueries({ queryKey: ['all-shifts'] });
+    },
   });
 }
 
