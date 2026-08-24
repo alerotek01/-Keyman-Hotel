@@ -471,10 +471,41 @@ export default function Reconciliation() {
               {/* Role-Specific Transaction List */}
               {roleCfg.hasTransactions ? (
                 <div className="px-4 py-3">
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">
-                    Transactions During Shift
-                    {txLoading && <Loader2 className="inline h-3 w-3 animate-spin ml-2" />}
-                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Transactions During Shift
+                      {txLoading && <Loader2 className="inline h-3 w-3 animate-spin ml-2" />}
+                    </p>
+                    {/* Download CSV button */}
+                    {transactions && (transactions.folioPayments?.length > 0 || transactions.recordedPayments?.length > 0 || transactions.restaurantOrders?.length > 0) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px]"
+                        onClick={() => {
+                          const allPayments = [...(transactions.folioPayments || []), ...(transactions.recordedPayments || [])];
+                          const orders = transactions.restaurantOrders || [];
+                          let csv = 'Type,Time,Amount,Method,M-Pesa Code,Has Receipt,Guest,Items,Order Total\n';
+                          allPayments.forEach((p: any) => {
+                            csv += `Payment,${format(new Date(p.created_at), 'HH:mm')},${p.amount},${p.method},${p.mpesa_transaction_id || ''},${p.receipt_image_url ? 'Yes' : 'No'},,,\n`;
+                          });
+                          orders.forEach((o: any) => {
+                            csv += `Order,${format(new Date(o.created_at), 'HH:mm')},,,,${o.guest_name || 'Walk-in'},${o.restaurant_order_items?.length || 0},${o.total}\n`;
+                          });
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `shift-${staffName.replace(/\s/g, '-')}-${recon.shiftDate || 'today'}.csv`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success('CSV downloaded');
+                        }}
+                      >
+                        📥 Download
+                      </Button>
+                    )}
+                  </div>
 
                   {/* Folio Payments (Receptionist) — each with proof */}
                   {transactions?.folioPayments?.length > 0 && (

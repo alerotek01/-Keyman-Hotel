@@ -433,7 +433,7 @@ export function useApproveReconciliation() {
           .eq('id', data.shift_id);
       }
 
-      // Send in-app notification to the staff member
+      // Send in-app notification + email to staff member
       try {
         const staffUserId = data.staff_shifts?.user_id;
         if (staffUserId) {
@@ -444,20 +444,68 @@ export function useApproveReconciliation() {
               p_body: `Your ${data.staff_shifts?.shift_name || ''} shift reconciliation was flagged. Reason: ${notes || 'No reason provided'}. Please submit an explanation with proof (M-Pesa message or receipt).`,
               p_type: 'reconciliation',
             });
-          } else if (status === 'approved') {
+          } else if (status === 'approved' || status === 'reconciled') {
+            // In-app notification
             await sb.rpc('fire_notification', {
               p_user_id: staffUserId,
-              p_title: '✅ Reconciliation Approved',
-              p_body: `Your ${data.staff_shifts?.shift_name || ''} shift reconciliation has been approved.`,
+              p_title: status === 'approved' ? '✅ Reconciliation Approved' : '🔒 Shift Closed',
+              p_body: status === 'approved'
+                ? `Your ${data.staff_shifts?.shift_name || ''} shift reconciliation has been approved. Check your email for the full transaction summary.`
+                : `Your ${data.staff_shifts?.shift_name || ''} shift has been fully reconciled and closed.`,
               p_type: 'reconciliation',
             });
-          } else if (status === 'reconciled') {
-            await sb.rpc('fire_notification', {
-              p_user_id: staffUserId,
-              p_title: '🔒 Shift Closed',
-              p_body: `Your ${data.staff_shifts?.shift_name || ''} shift has been fully reconciled and closed.`,
-              p_type: 'reconciliation',
-            });
+
+            // Send email with full transaction summary to shift owner
+            try {
+              const { sendShiftReconciliationSummary } = await import('@/lib/email');
+              // Get staff email
+              const { data: staffUser } = await sb.from('users').select('email, full_name').eq('id', staffUserId).single();
+              if (staffUser?.email) {
+                // Get full transaction data
+                const { data: txData } = await sb.rpc('get_shift_transactions', {
+                  p_staff_id: staffUserId,
+                  p_shift_date: data.staff_shifts?.shift_date || new Date().toISOString().split('T')[0],
+                });
+                const payments = (txData?.payments || []).map((p: any) => ({
+                  amount: Number(p.amount),
+                  method: p.method,
+                  mpesaCode: p.mpesa_transaction_id || undefined,
+                  hasReceipt: !!p.receipt_image_url,
+                  time: new Date(p.created_at).toLocaleTimeString(),
+                }));
+                const orders = (txData?.orders || []).map((o: any) => ({
+                  orderNumber: o.order_number,
+                  guestName: o.guest_name || 'Walk-in',
+                  total: Number(o.total),
+                  type: o.delivery_type || 'dine_in',
+                  items: o.items?.length || 0,
+                }));
+
+                // Get manager name
+                const { data: managerUser } = await sb.from('users').select('full_name').eq('id', managerId).single();
+
+                await sendShiftReconciliationSummary(staffUser.email, staffUser.full_name || 'Staff', {
+                  shiftName: data.staff_shifts?.shift_name || 'Unknown',
+                  shiftDate: data.staff_shifts?.shift_date || new Date().toISOString().split('T')[0],
+                  salesTotal: Number(data.sales_total || 0),
+                  cashTotal: Number(data.cash_total || 0),
+                  mpesaTotal: Number(data.mpesa_total || 0),
+                  variance: Number(data.variance || 0),
+                  payments,
+                  orders,
+                  approvedBy: managerUser?.full_name || 'Manager',
+                  notes: data.manager_notes || notes || undefined,
+                });
+
+                // Log email send to notifications for admin/manager visibility
+                await sb.rpc('fire_notification', {
+                  p_title: `📧 Reconciliation Email Sent`,
+                  p_body: `Shift reconciliation summary emailed to ${staffUser.full_name || 'staff'} (${staffUser.email}). ${payments.length} payments, ${orders.length} orders. Variance: KES ${data.variance}.`,
+                  p_type: 'reconciliation',
+                  p_roles: JSON.stringify(['admin', 'manager']),
+                });
+              }
+            } catch (e) { console.warn('Email failed:', e); }
           }
         }
       } catch (e) { console.warn('Staff notification failed:', e); }

@@ -655,6 +655,112 @@ export async function sendReconciliationAuditReport(to: string, report: {
 }
 
 // ═══════════════════════════════════════════
+// SHIFT RECONCILIATION SUMMARY → Staff
+// ═══════════════════════════════════════════
+
+/**
+ * Send full transaction summary to shift owner when reconciliation is approved
+ */
+export async function sendShiftReconciliationSummary(to: string, staffName: string, data: {
+  shiftName: string;
+  shiftDate: string;
+  salesTotal: number;
+  cashTotal: number;
+  mpesaTotal: number;
+  variance: number;
+  payments: { amount: number; method: string; mpesaCode?: string; hasReceipt: boolean; time: string }[];
+  orders: { orderNumber: number; guestName: string; total: number; type: string; items: number }[];
+  approvedBy: string;
+  notes?: string;
+}) {
+  const paymentRows = data.payments.map(p => `
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#555;">${p.time}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#1a2744;font-weight:bold;">KES ${p.amount.toLocaleString()}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#555;text-transform:capitalize;">${p.method}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:${p.mpesaCode ? '#2e7d32' : '#999'};font-family:monospace;font-size:12px;">${p.mpesaCode || '—'}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${p.hasReceipt ? '✅' : '—'}</td>
+    </tr>
+  `).join('');
+
+  const orderRows = data.orders.map(o => `
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#555;">#${o.orderNumber}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#1a2744;">${o.guestName}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#555;">${o.items} items</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#1a2744;font-weight:bold;">KES ${o.total.toLocaleString()}</td>
+    </tr>
+  `).join('');
+
+  const varianceColor = data.variance < 0 ? '#e74c3c' : data.variance > 0 ? '#e67e22' : '#27ae60';
+
+  return sendEmail({
+    to,
+    subject: `✅ Shift Reconciliation Approved — ${data.shiftName} (${data.shiftDate})`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:8px;">✅ Shift Reconciliation Approved</h2>
+      <p style="color:#999;margin:0 0 24px;font-size:14px;">Hi ${staffName}, your ${data.shiftName} shift has been reconciled.</p>
+
+      <!-- Summary Cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px;">
+        <div style="background:#e8f5e9;border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:#2e7d32;font-size:11px;margin:0;">Total Sales</p>
+          <p style="color:#1a2744;font-size:18px;font-weight:bold;margin:4px 0 0;">KES ${data.salesTotal.toLocaleString()}</p>
+        </div>
+        <div style="background:#e3f2fd;border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:#1565c0;font-size:11px;margin:0;">Cash Collected</p>
+          <p style="color:#1a2744;font-size:18px;font-weight:bold;margin:4px 0 0;">KES ${data.cashTotal.toLocaleString()}</p>
+        </div>
+        <div style="background:#e8f5e9;border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:#2e7d32;font-size:11px;margin:0;">M-Pesa Collected</p>
+          <p style="color:#1a2744;font-size:18px;font-weight:bold;margin:4px 0 0;">KES ${data.mpesaTotal.toLocaleString()}</p>
+        </div>
+      </div>
+
+      ${data.variance !== 0 ? `
+      <div style="background:#fff3cd;border-radius:8px;padding:12px;margin-bottom:20px;text-align:center;">
+        <p style="color:#856404;margin:0;font-size:14px;">Variance: <strong style="color:${varianceColor};">${data.variance >= 0 ? '+' : ''}KES ${data.variance.toLocaleString()}</strong> ${data.variance < 0 ? '(short)' : '(over)'}</p>
+      </div>
+      ` : ''}
+
+      <!-- Payments Table -->
+      ${data.payments.length > 0 ? `
+      <h3 style="color:#1a2744;margin:0 0 12px;font-size:14px;">💰 Payments (${data.payments.length})</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px;">
+        <thead><tr style="background:#f5f5f5;">
+          <td style="padding:8px;color:#999;font-size:11px;">TIME</td>
+          <td style="padding:8px;color:#999;font-size:11px;">AMOUNT</td>
+          <td style="padding:8px;color:#999;font-size:11px;">METHOD</td>
+          <td style="padding:8px;color:#999;font-size:11px;">M-PESA CODE</td>
+          <td style="padding:8px;color:#999;font-size:11px;text-align:center;">RECEIPT</td>
+        </tr></thead>
+        <tbody>${paymentRows}</tbody>
+      </table>
+      ` : ''}
+
+      <!-- Orders Table -->
+      ${data.orders.length > 0 ? `
+      <h3 style="color:#1a2744;margin:0 0 12px;font-size:14px;">🍽️ Orders (${data.orders.length})</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px;">
+        <thead><tr style="background:#f5f5f5;">
+          <td style="padding:8px;color:#999;font-size:11px;">ORDER</td>
+          <td style="padding:8px;color:#999;font-size:11px;">GUEST</td>
+          <td style="padding:8px;color:#999;font-size:11px;">ITEMS</td>
+          <td style="padding:8px;color:#999;font-size:11px;">TOTAL</td>
+        </tr></thead>
+        <tbody>${orderRows}</tbody>
+      </table>
+      ` : ''}
+
+      <div style="background:#f5f5f5;border-radius:8px;padding:16px;margin-top:20px;">
+        <p style="color:#999;margin:0;font-size:12px;">Approved by ${data.approvedBy} · ${new Date().toLocaleDateString()}</p>
+        ${data.notes ? `<p style="color:#555;margin:8px 0 0;font-size:12px;">Notes: ${data.notes}</p>` : ''}
+      </div>
+    `),
+  });
+}
+
+// ═══════════════════════════════════════════
 // CONFERENCE QUOTE REQUEST → Manager
 // ═══════════════════════════════════════════
 
