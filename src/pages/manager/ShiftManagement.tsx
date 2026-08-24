@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -61,12 +62,7 @@ export default function ShiftManagement() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [assignDialog, setAssignDialog] = useState(false);
   const [endDialog, setEndDialog] = useState(false);
-  const [reconDialog, setReconDialog] = useState(false);
-  const [flagDialog, setFlagDialog] = useState(false);
-  const [detailDialog, setDetailDialog] = useState(false);
   const [selectedShift, setSelectedShift] = useState<any>(null);
-  const [selectedRecon, setSelectedRecon] = useState<any>(null);
-  const [flagNotes, setFlagNotes] = useState('');
 
   // Assign form
   const [assignForm, setAssignForm] = useState({
@@ -286,8 +282,14 @@ export default function ShiftManagement() {
         <TabsList>
           <TabsTrigger value="active">On Shift ({activeShifts.length})</TabsTrigger>
           <TabsTrigger value="history">History ({endedShifts.length})</TabsTrigger>
-          <TabsTrigger value="reconciliation">Reconciliations ({pendingRecons.length})</TabsTrigger>
         </TabsList>
+        {pendingRecons.length > 0 && (
+          <Link to="/manager/reconciliation">
+            <Button variant="outline" size="sm" className="ml-3 text-amber-600 border-amber-300 hover:bg-amber-50">
+              <AlertTriangle className="h-4 w-4 mr-1" /> {pendingRecons.length} Pending Reconciliations →
+            </Button>
+          </Link>
+        )}
 
         {/* Active Shifts */}
         <TabsContent value="active" className="space-y-3 mt-4">
@@ -387,109 +389,6 @@ export default function ShiftManagement() {
           )}
         </TabsContent>
 
-        {/* Reconciliations */}
-        <TabsContent value="reconciliation" className="mt-4">
-          {pendingRecons.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-amber-700 mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" /> Pending Review ({pendingRecons.length})
-              </h3>
-              <div className="space-y-3">
-                {pendingRecons.map((r: any) => (
-                  <Card key={r.id} className="border-amber-200 bg-amber-50/30">
-                    <CardContent className="py-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-amber-100 flex items-center justify-center">
-                            <DollarSign className="h-4 w-4 text-amber-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">
-                              {r.staff_shifts?.users?.full_name || 'Staff'}
-                              <span className="text-muted-foreground ml-2">({r.staff_shifts?.shift_name})</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Submitted {r.created_at ? format(new Date(r.created_at), 'h:mm a') : ''}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge className={RECON_STATUS[r.status]?.color}>{RECON_STATUS[r.status]?.label}</Badge>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
-                        <div className="p-2 bg-white rounded-lg">
-                          <p className="text-[10px] text-muted-foreground">Sales</p>
-                          <p className="font-medium">{formatCurrency(r.sales_total)}</p>
-                        </div>
-                        <div className="p-2 bg-white rounded-lg">
-                          <p className="text-[10px] text-muted-foreground">Cash</p>
-                          <p className="font-medium">{formatCurrency(r.cash_total)}</p>
-                        </div>
-                        <div className="p-2 bg-white rounded-lg">
-                          <p className="text-[10px] text-muted-foreground">M-Pesa</p>
-                          <p className="font-medium">{formatCurrency(r.mpesa_total)}</p>
-                        </div>
-                        <div className={cn('p-2 rounded-lg', r.variance >= 0 ? 'bg-emerald-50' : 'bg-red-50')}>
-                          <p className="text-[10px] text-muted-foreground">Variance</p>
-                          <p className={cn('font-medium', r.variance >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                            {r.variance >= 0 ? '+' : ''}{formatCurrency(r.variance)}
-                          </p>
-                        </div>
-                        <div className="p-2 bg-white rounded-lg">
-                          <p className="text-[10px] text-muted-foreground">Actual Cash</p>
-                          <p className="font-medium">{formatCurrency(r.actual_cash)}</p>
-                        </div>
-                      </div>
-                      {r.notes && (
-                        <p className="text-xs text-muted-foreground italic bg-white p-2 rounded">"{r.notes}"</p>
-                      )}
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => handleApproveRecon(r.id)}>
-                          <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => { setSelectedRecon(r); setFlagDialog(true); }}>
-                          <XCircle className="h-4 w-4 mr-1" /> Flag
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecon(r); setDetailDialog(true); }}>
-                          <Eye className="h-4 w-4 mr-1" /> Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {reviewedRecons.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3">Reviewed</h3>
-              <div className="space-y-2">
-                {reviewedRecons.map((r: any) => {
-                  const cfg = RECON_STATUS[r.status] || { color: 'bg-gray-100', label: r.status };
-                  return (
-                    <Card key={r.id} className="opacity-70">
-                      <CardContent className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <p className="text-sm font-medium">{r.staff_shifts?.users?.full_name || 'Staff'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Sales {formatCurrency(r.sales_total)} · Variance {formatCurrency(r.variance)}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge className={cfg.color}>{cfg.label}</Badge>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {pendingRecons.length === 0 && reviewedRecons.length === 0 && (
-            <p className="text-muted-foreground text-center py-8">No reconciliations yet</p>
-          )}
-        </TabsContent>
       </Tabs>
 
       {/* ===== ASSIGN SHIFT DIALOG ===== */}
@@ -597,78 +496,6 @@ export default function ShiftManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* ===== FLAG RECONCILIATION DIALOG ===== */}
-      <Dialog open={flagDialog} onOpenChange={setFlagDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" /> Flag Reconciliation
-            </DialogTitle>
-          </DialogHeader>
-          {selectedRecon && (
-            <div className="space-y-4">
-              <div className="p-3 bg-red-50 rounded-lg border border-red-200 text-sm">
-                <p><strong>{selectedRecon.staff_shifts?.users?.full_name}</strong> — Variance: {formatCurrency(selectedRecon.variance)}</p>
-              </div>
-              <div className="space-y-2">
-                <Label>Reason for flagging *</Label>
-                <Textarea
-                  value={flagNotes}
-                  onChange={(e) => setFlagNotes(e.target.value)}
-                  placeholder="Explain the discrepancy or issue..."
-                  rows={3}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setFlagDialog(false); setSelectedRecon(null); setFlagNotes(''); }}>Cancel</Button>
-                <Button variant="destructive" className="flex-1" onClick={handleFlagRecon} disabled={approveReconciliation.isPending || !flagNotes.trim()}>
-                  {approveReconciliation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}
-                  Flag
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ===== RECONCILIATION DETAIL DIALOG ===== */}
-      <Dialog open={detailDialog} onOpenChange={setDetailDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reconciliation Details</DialogTitle>
-          </DialogHeader>
-          {selectedRecon && (
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Staff</p><p className="font-medium">{selectedRecon.staff_shifts?.users?.full_name}</p></div>
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Shift</p><p className="font-medium capitalize">{selectedRecon.staff_shifts?.shift_name}</p></div>
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Sales Total</p><p className="font-medium">{formatCurrency(selectedRecon.sales_total)}</p></div>
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Cash Total</p><p className="font-medium">{formatCurrency(selectedRecon.cash_total)}</p></div>
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">M-Pesa Total</p><p className="font-medium">{formatCurrency(selectedRecon.mpesa_total)}</p></div>
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Room Charges</p><p className="font-medium">{formatCurrency(selectedRecon.room_charges_total || 0)}</p></div>
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Expected Cash</p><p className="font-medium">{formatCurrency(selectedRecon.expected_cash)}</p></div>
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Actual Cash</p><p className="font-medium">{formatCurrency(selectedRecon.actual_cash)}</p></div>
-              </div>
-              <div className={cn('p-3 rounded-lg', selectedRecon.variance >= 0 ? 'bg-emerald-50' : 'bg-red-50')}>
-                <p className="text-[10px] text-muted-foreground">Variance</p>
-                <p className={cn('font-bold text-lg', selectedRecon.variance >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                  {selectedRecon.variance >= 0 ? '+' : ''}{formatCurrency(selectedRecon.variance)}
-                </p>
-              </div>
-              {selectedRecon.notes && (
-                <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Staff Notes</p><p className="italic">{selectedRecon.notes}</p></div>
-              )}
-              {selectedRecon.manager_notes && (
-                <div className="p-2 bg-red-50 rounded"><p className="text-[10px] text-muted-foreground">Manager Notes</p><p className="italic text-red-700">{selectedRecon.manager_notes}</p></div>
-              )}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Submitted by {selectedRecon.users_submitted?.full_name || 'Staff'}</span>
-                <Badge className={RECON_STATUS[selectedRecon.status]?.color}>{RECON_STATUS[selectedRecon.status]?.label}</Badge>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
