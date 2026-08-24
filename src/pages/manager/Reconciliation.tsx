@@ -253,79 +253,123 @@ export default function Reconciliation() {
     }
   };
 
-  const renderPaymentRow = (p: any) => (
-    <div key={p.id} className="flex items-center justify-between p-2 bg-white rounded-lg border text-sm">
-      <div className="flex items-center gap-2">
-        {p.method === 'mpesa' ? (
-          <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
-            <Smartphone className="h-4 w-4 text-emerald-600" />
+  const renderPaymentRow = (p: any) => {
+    const hasProof = !!p.receipt_image_url;
+    const hasMpesaCode = !!p.mpesa_transaction_id;
+    const isCashWithoutProof = p.method === 'cash' && !hasProof;
+    const isMpesaWithoutCode = p.method === 'mpesa' && !hasMpesaCode;
+    const needsAttention = isCashWithoutProof || isMpesaWithoutCode;
+
+    return (
+      <div key={p.id} className={cn(
+        'flex gap-3 p-3 rounded-lg border text-sm',
+        needsAttention ? 'bg-amber-50 border-amber-200' : 'bg-white'
+      )}>
+        {/* Payment Icon */}
+        <div className="shrink-0">
+          {p.method === 'mpesa' ? (
+            <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+              <Smartphone className="h-5 w-5 text-emerald-600" />
+            </div>
+          ) : p.method === 'cash' ? (
+            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <DollarSign className="h-5 w-5 text-blue-600" />
+            </div>
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+              <Receipt className="h-5 w-5 text-purple-600" />
+            </div>
+          )}
+        </div>
+
+        {/* Payment Details */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold">{formatCurrency(p.amount)}</p>
+              <Badge variant="outline" className="text-[10px] capitalize">{p.method}</Badge>
+              {needsAttention && (
+                <Badge className="bg-amber-100 text-amber-700 text-[10px]">
+                  <AlertTriangle className="h-3 w-3 mr-1" /> Missing Proof
+                </Badge>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              {format(new Date(p.created_at), 'h:mm a')}
+            </p>
           </div>
-        ) : p.method === 'cash' ? (
-          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-            <DollarSign className="h-4 w-4 text-blue-600" />
-          </div>
-        ) : (
-          <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-            <Receipt className="h-4 w-4 text-purple-600" />
-          </div>
-        )}
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <p className="font-medium">{formatCurrency(p.amount)}</p>
-            <Badge variant="outline" className="text-[10px] capitalize">{p.method}</Badge>
-          </div>
-          {p.mpesa_transaction_id && (
+
+          {/* M-Pesa Transaction Code */}
+          {hasMpesaCode && (
             <button
-              className="flex items-center gap-1 text-[11px] text-emerald-700 font-mono hover:underline mt-0.5"
+              className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-mono hover:underline mt-1 bg-emerald-50 px-2 py-1 rounded"
               onClick={(e) => { e.stopPropagation(); setMpesaCode(p.mpesa_transaction_id); setMpesaDialog(true); }}
             >
               <Smartphone className="h-3 w-3" />
-              M-Pesa: {p.mpesa_transaction_id}
+              M-Pesa Code: {p.mpesa_transaction_id}
             </button>
           )}
-          {p.reference && (
-            <p className="text-[10px] text-muted-foreground">Ref: {p.reference}</p>
+
+          {/* Proof Image Thumbnail */}
+          {hasProof && (
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                className="shrink-0 w-16 h-16 rounded-lg overflow-hidden border hover:border-brass transition-colors"
+                onClick={(e) => { e.stopPropagation(); setReceiptUrl(p.receipt_image_url); setReceiptDialog(true); }}
+              >
+                <img src={p.receipt_image_url} alt="Proof" className="w-full h-full object-cover" />
+              </button>
+              <div className="text-[10px] text-muted-foreground">
+                <p className="font-medium text-foreground">
+                  {p.method === 'mpesa' ? '📱 M-Pesa Screenshot' : '📷 Receipt'}
+                </p>
+                <p>Click to view full size</p>
+                <p className="text-emerald-600 font-medium">✓ Proof attached</p>
+              </div>
+            </div>
           )}
-          <p className="text-[10px] text-muted-foreground">{format(new Date(p.created_at), 'h:mm a')}</p>
+
+          {/* Missing Proof Warning */}
+          {needsAttention && (
+            <div className="mt-1.5 text-[10px] text-amber-600">
+              {isCashWithoutProof && '⚠️ Cash payment requires receipt as proof for reconciliation'}
+              {isMpesaWithoutCode && '⚠️ M-Pesa payment requires transaction code'}
+            </div>
+          )}
+        </div>
+
+        {/* Status */}
+        <div className="shrink-0 flex flex-col items-end gap-1">
+          <Badge variant={p.verified ? 'default' : 'outline'} className="text-[10px]">
+            {p.verified ? '✓ Verified' : p.status || 'Pending'}
+          </Badge>
         </div>
       </div>
-      <div className="flex items-center gap-1">
-        {p.receipt_image_url && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2"
-            onClick={(e) => { e.stopPropagation(); setReceiptUrl(p.receipt_image_url); setReceiptDialog(true); }}
-          >
-            <Camera className="h-3 w-3 text-blue-600" />
-          </Button>
-        )}
-        <Badge variant={p.verified ? 'default' : 'outline'} className="text-[10px]">
-          {p.verified ? '✓ Verified' : p.status || 'Pending'}
-        </Badge>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderOrderRow = (o: any) => (
-    <div key={o.id} className="p-2 bg-white rounded-lg border text-sm">
+    <div key={o.id} className="p-3 bg-white rounded-lg border text-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <UtensilsCrossed className="h-4 w-4 text-orange-600" />
+          <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
+            <UtensilsCrossed className="h-4 w-4 text-orange-600" />
+          </div>
           <div>
             <p className="font-medium">#{o.order_number} — {o.guest_name || 'Walk-in'}</p>
             <p className="text-[10px] text-muted-foreground">
               {o.status} · {o.restaurant_order_items?.length || 0} items
               {o.delivery_type === 'delivery' && ' · 🚴 Delivery'}
+              {o.delivery_type === 'room_service' && ' · 🛎️ Room Service'}
             </p>
           </div>
         </div>
-        <p className="font-medium">{formatCurrency(o.total)}</p>
+        <p className="font-semibold">{formatCurrency(o.total)}</p>
       </div>
       {o.restaurant_order_items?.length > 0 && (
-        <div className="mt-1.5 pl-6 text-[11px] text-muted-foreground space-y-0.5">
+        <div className="mt-2 pl-10 text-[11px] text-muted-foreground space-y-0.5 bg-muted/30 rounded p-2">
           {o.restaurant_order_items.map((item: any, i: number) => (
-            <p key={i}>{item.quantity}× {item.menu_item_id?.substring(0, 8)}… — {formatCurrency(item.total)}</p>
+            <p key={i}>{item.quantity}× {item.menu_item_id?.substring(0, 8)}… — {formatCurrency(item.subtotal || item.total)}</p>
           ))}
         </div>
       )}
@@ -448,11 +492,11 @@ export default function Reconciliation() {
                     {txLoading && <Loader2 className="inline h-3 w-3 animate-spin ml-2" />}
                   </p>
 
-                  {/* Folio Payments (Receptionist) */}
+                  {/* Folio Payments (Receptionist) — each with proof */}
                   {transactions?.folioPayments?.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                        <BedDouble className="h-3 w-3" /> Room Payments
+                      <p className="text-xs font-semibold text-foreground flex items-center gap-1 mb-2">
+                        <BedDouble className="h-3.5 w-3.5 text-emerald-600" /> Room Payments ({transactions.folioPayments.length})
                       </p>
                       {transactions.folioPayments.map((p: any) => renderPaymentRow(p))}
                     </div>
@@ -460,19 +504,19 @@ export default function Reconciliation() {
 
                   {/* Restaurant Orders (Waiter/Chef) */}
                   {transactions?.restaurantOrders?.length > 0 && (
-                    <div className="space-y-2 mt-3">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                        <UtensilsCrossed className="h-3 w-3" /> Food Orders
+                    <div className="space-y-2 mt-4">
+                      <p className="text-xs font-semibold text-foreground flex items-center gap-1 mb-2">
+                        <UtensilsCrossed className="h-3.5 w-3.5 text-orange-600" /> Food Orders ({transactions.restaurantOrders.length})
                       </p>
                       {transactions.restaurantOrders.map((o: any) => renderOrderRow(o))}
                     </div>
                   )}
 
-                  {/* Recorded Payments (Waiter) */}
+                  {/* Recorded Payments (Waiter) — each with proof */}
                   {transactions?.recordedPayments?.length > 0 && (
-                    <div className="space-y-2 mt-3">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" /> Payment Records
+                    <div className="space-y-2 mt-4">
+                      <p className="text-xs font-semibold text-foreground flex items-center gap-1 mb-2">
+                        <DollarSign className="h-3.5 w-3.5 text-blue-600" /> Payment Records ({transactions.recordedPayments.length})
                       </p>
                       {transactions.recordedPayments.map((p: any) => renderPaymentRow(p))}
                     </div>
