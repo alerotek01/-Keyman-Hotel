@@ -13,9 +13,7 @@ import { Navigate } from 'react-router-dom';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+// OTP is now generated server-side via generate_and_store_otp RPC
 
 export default function GuestLogin() {
   const { user, role } = useAuth();
@@ -57,16 +55,19 @@ export default function GuestLogin() {
         return;
       }
 
-      // Generate OTP and store it
-      const code = generateOTP();
-      setGeneratedOtp(code);
+      // Generate OTP server-side (prevents client prediction)
+      const { data: otpResult, error: otpError } = await sb.rpc('generate_and_store_otp', {
+        p_email: email,
+      });
 
-      // Store OTP in DB for verification
-      await sb.from('otp_codes').upsert({
-        email: email,
-        code: code,
-        expires_at: new Date(Date.now() + 3600000).toISOString(), // 1 hour
-      }, { onConflict: 'email' });
+      if (otpError || !otpResult?.success) {
+        toast.error(otpResult?.error || 'Failed to generate OTP');
+        setLoading(false);
+        return;
+      }
+
+      const code = otpResult.code;
+      setGeneratedOtp(code);
 
       // Send via Resend
       const guestName = email.split('@')[0];
@@ -91,22 +92,17 @@ export default function GuestLogin() {
     if (!otp) { toast.error('Enter the OTP code'); return; }
     setLoading(true);
     try {
-      // Verify against stored OTP
-      const { data: otpRecord } = await sb.from('otp_codes')
-        .select('*')
-        .eq('email', email)
-        .eq('code', otp)
-        .gte('expires_at', new Date().toISOString())
-        .single();
+      // Verify OTP server-side (with attempt limiting)
+      const { data: verifyResult, error: verifyError } = await sb.rpc('verify_otp_safe', {
+        p_email: email,
+        p_code: otp,
+      });
 
-      if (!otpRecord) {
-        toast.error('Invalid or expired OTP code');
+      if (verifyError || !verifyResult?.success) {
+        toast.error(verifyResult?.error || 'Invalid or expired OTP code');
         setLoading(false);
         return;
       }
-
-      // Delete used OTP
-      await sb.from('otp_codes').delete().eq('email', email);
 
       // OTP verified — now create Supabase auth session
       // Use signInWithOtp with shouldCreateUser to create/find auth user

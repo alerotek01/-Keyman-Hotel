@@ -25,7 +25,7 @@ const ROLES: { value: AppRole; label: string; color: string }[] = [
   { value: 'chef', label: 'Chef', color: 'bg-purple-100 text-purple-800' },
   { value: 'housekeeper', label: 'Housekeeper', color: 'bg-amber-100 text-amber-800' },
   { value: 'accountant', label: 'Accountant', color: 'bg-teal-100 text-teal-800' },
-  { value: 'manager', label: 'Manager', color: 'bg-blue-100 text-blue-800' },
+  // Manager role removed — only admin can create managers (prevents privilege escalation)
 ];
 
 export default function StaffManagement() {
