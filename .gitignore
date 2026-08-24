@@ -36,3 +36,8 @@ supabase/update_images.py
 supabase/setup_schema.py
 .freebuff/
 test-results/
+
+# Temp debug/seed scripts
+_*.cjs
+_*.js
+_*.py
