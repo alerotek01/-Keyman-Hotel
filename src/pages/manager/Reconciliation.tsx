@@ -129,61 +129,35 @@ export default function Reconciliation() {
     queryFn: async () => {
       if (!expandedRecon || !staffId) return { folioPayments: [], restaurantOrders: [], recordedPayments: [] };
 
-      // Use shift date string for filtering — ilike on ISO date portion
       const shiftDate = expandedShift?.staff_shifts?.shift_date || new Date().toISOString().split('T')[0];
 
-      console.log('[Recon] Fetching transactions for staff:', staffId, 'role:', staffRole, 'date:', shiftDate);
+      // Use SECURITY DEFINER function to bypass RLS — returns all transactions for this staff on this date
+      try {
+        const { data, error } = await sb.rpc('get_shift_transactions', {
+          p_staff_id: staffId,
+          p_shift_date: shiftDate,
+        });
 
-      const queries: Promise<any>[] = [];
+        if (error) {
+          console.error('[Recon] RPC error:', error.message, error.details);
+          return { folioPayments: [], restaurantOrders: [], recordedPayments: [] };
+        }
 
-      // Receptionist: folio_payments recorded by this staff
-      if (['receptionist', 'admin', 'manager'].includes(staffRole)) {
-        queries.push(
-          sb.from('folio_payments')
-            .select('*, guest_folios!folio_id(reservation_id, guest_name)')
-            .eq('recorded_by', staffId)
-            .ilike('created_at', `${shiftDate}%`)
-            .order('created_at', { ascending: false })
-            .then((r: any) => {
-              if (r.error) console.error('[Recon] folio_payments ERROR:', r.error.message, r.error.details);
-              return { type: 'folio_payments', data: r.data || [], error: r.error };
-            })
-        );
+        const result = data || {};
+        const payments = result.payments || [];
+        const orders = result.orders || [];
+
+        console.log(`[Recon] RPC returned: ${payments.length} payments, ${orders.length} orders`);
+
+        // For receptionist, put payments in folioPayments; for waiter, in recordedPayments
+        if (['receptionist', 'admin', 'manager'].includes(staffRole)) {
+          return { folioPayments: payments, restaurantOrders: orders, recordedPayments: [] };
+        }
+        return { folioPayments: [], restaurantOrders: orders, recordedPayments: payments };
+      } catch (e: any) {
+        console.error('[Recon] Exception:', e.message);
+        return { folioPayments: [], restaurantOrders: [], recordedPayments: [] };
       }
-
-      // Waiter/Chef: orders + payments recorded by this staff
-      if (['waiter', 'chef'].includes(staffRole)) {
-        queries.push(
-          sb.from('restaurant_orders')
-            .select('*, restaurant_order_items(*)')
-            .eq('waiter_id', staffId)
-            .ilike('created_at', `${shiftDate}%`)
-            .order('created_at', { ascending: false })
-            .then((r: any) => {
-              if (r.error) console.error('[Recon] restaurant_orders ERROR:', r.error.message, r.error.details);
-              return { type: 'restaurant_orders', data: r.data || [], error: r.error };
-            })
-        );
-        queries.push(
-          sb.from('payments')
-            .select('*')
-            .eq('recorded_by', staffId)
-            .ilike('created_at', `${shiftDate}%`)
-            .order('created_at', { ascending: false })
-            .then((r: any) => {
-              if (r.error) console.error('[Recon] payments ERROR:', r.error.message, r.error.details);
-              return { type: 'recorded_payments', data: r.data || [], error: r.error };
-            })
-        );
-      }
-
-      const results = await Promise.all(queries);
-      const out: any = { folioPayments: [], restaurantOrders: [], recordedPayments: [] };
-      results.forEach((r: any) => {
-        console.log(`[Recon] ${r.type}: ${r.data?.length || 0} rows`, r.error ? `ERROR: ${r.error.message}` : '');
-        out[r.type] = r.data;
-      });
-      return out;
     },
     enabled: !!expandedRecon && !!staffId,
   });
