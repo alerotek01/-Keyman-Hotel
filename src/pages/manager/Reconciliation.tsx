@@ -129,9 +129,10 @@ export default function Reconciliation() {
     queryFn: async () => {
       if (!expandedRecon || !staffId) return { folioPayments: [], restaurantOrders: [], recordedPayments: [] };
 
-      // Filter by shift date (same day) — simpler than time range
+      // Use shift date string for filtering — ilike on ISO date portion
       const shiftDate = expandedShift?.staff_shifts?.shift_date || new Date().toISOString().split('T')[0];
-      const nextDay = new Date(new Date(shiftDate).getTime() + 86400000).toISOString().split('T')[0];
+
+      console.log('[Recon] Fetching transactions for staff:', staffId, 'role:', staffRole, 'date:', shiftDate);
 
       const queries: Promise<any>[] = [];
 
@@ -141,10 +142,12 @@ export default function Reconciliation() {
           sb.from('folio_payments')
             .select('*, guest_folios!folio_id(reservation_id, guest_name)')
             .eq('recorded_by', staffId)
-            .gte('created_at', shiftDate)
-            .lt('created_at', nextDay)
+            .ilike('created_at', `${shiftDate}%`)
             .order('created_at', { ascending: false })
-            .then((r: any) => ({ type: 'folio_payments', data: r.data || [] }))
+            .then((r: any) => {
+              if (r.error) console.error('[Recon] folio_payments ERROR:', r.error.message, r.error.details);
+              return { type: 'folio_payments', data: r.data || [], error: r.error };
+            })
         );
       }
 
@@ -154,25 +157,32 @@ export default function Reconciliation() {
           sb.from('restaurant_orders')
             .select('*, restaurant_order_items(*)')
             .eq('waiter_id', staffId)
-            .gte('created_at', shiftDate)
-            .lt('created_at', nextDay)
+            .ilike('created_at', `${shiftDate}%`)
             .order('created_at', { ascending: false })
-            .then((r: any) => ({ type: 'restaurant_orders', data: r.data || [] }))
+            .then((r: any) => {
+              if (r.error) console.error('[Recon] restaurant_orders ERROR:', r.error.message, r.error.details);
+              return { type: 'restaurant_orders', data: r.data || [], error: r.error };
+            })
         );
         queries.push(
           sb.from('payments')
             .select('*')
             .eq('recorded_by', staffId)
-            .gte('created_at', shiftDate)
-            .lt('created_at', nextDay)
+            .ilike('created_at', `${shiftDate}%`)
             .order('created_at', { ascending: false })
-            .then((r: any) => ({ type: 'recorded_payments', data: r.data || [] }))
+            .then((r: any) => {
+              if (r.error) console.error('[Recon] payments ERROR:', r.error.message, r.error.details);
+              return { type: 'recorded_payments', data: r.data || [], error: r.error };
+            })
         );
       }
 
       const results = await Promise.all(queries);
       const out: any = { folioPayments: [], restaurantOrders: [], recordedPayments: [] };
-      results.forEach((r: any) => { out[r.type] = r.data; });
+      results.forEach((r: any) => {
+        console.log(`[Recon] ${r.type}: ${r.data?.length || 0} rows`, r.error ? `ERROR: ${r.error.message}` : '');
+        out[r.type] = r.data;
+      });
       return out;
     },
     enabled: !!expandedRecon && !!staffId,
