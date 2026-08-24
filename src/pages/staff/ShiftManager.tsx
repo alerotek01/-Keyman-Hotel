@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,16 +7,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useStaffShifts, useStartShift, useEndShift, useSubmitReconciliation, useShiftSummary } from '@/hooks/usePayments';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';import { Loader2, Play, Square, Send, Clock, DollarSign, AlertTriangle, CheckCircle2,
   Smartphone, Camera, Receipt, ChevronDown, ChevronRight, FileText,
-  Upload, Check, X, UtensilsCrossed, BedDouble, CreditCard
+  Upload, Check, X, UtensilsCrossed, BedDouble, CreditCard, Download, History
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReconciliationAlert from '@/components/ReconciliationAlert';
+import { FilterBar, type FilterState } from '@/components/FilterBar';
+import { generateShiftCSV, downloadCSV, generateShiftPDFReport } from '@/lib/export';
+
+const sb = supabase as any;
 
 export default function ShiftManager() {
   const { user } = useAuth();
@@ -42,6 +48,55 @@ export default function ShiftManager() {
   const [proofFile, setProofFile] = useState<File | null>(null);
 
   const { data: shiftSummary } = useShiftSummary(activeShift?.id || '');
+  const [historyFilters, setHistoryFilters] = useState<FilterState>({ search: '', department: '', dateFrom: '', dateTo: '', status: [] });
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
+
+  // Fetch shift history for current user
+  const { data: shiftHistory, isLoading: historyLoading } = useQuery({
+    queryKey: ['shift-history', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await sb
+        .from('staff_shifts')
+        .select('*, departments:department_id(name), shift_reconciliations(*)')
+        .eq('user_id', user.id)
+        .order('shift_date', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch transactions for expanded history shift
+  const expandedShiftData = expandedHistory ? shiftHistory?.find((s: any) => s.id === expandedHistory) : null;
+  const { data: historyTransactions, isLoading: histTxLoading } = useQuery({
+    queryKey: ['history-transactions', expandedHistory],
+    queryFn: async () => {
+      if (!expandedHistory || !expandedShiftData) return { payments: [], orders: [] };
+      try {
+        const { data, error } = await sb.rpc('get_shift_transactions', {
+          p_staff_id: user?.id,
+          p_shift_date: expandedShiftData.shift_date,
+        });
+        if (error) return { payments: [], orders: [] };
+        const fnData = Array.isArray(data) ? data[0] : data;
+        return fnData?.get_shift_transactions || fnData?.result || fnData || { payments: [], orders: [] };
+      } catch { return { payments: [], orders: [] }; }
+    },
+    enabled: !!expandedHistory && !!expandedShiftData,
+  });
+
+  // Filter history
+  const filteredHistory = useMemo(() => {
+    if (!shiftHistory) return [];
+    return shiftHistory.filter((s: any) => {
+      if (historyFilters.dateFrom && s.shift_date < historyFilters.dateFrom) return false;
+      if (historyFilters.dateTo && s.shift_date > historyFilters.dateTo) return false;
+      if (historyFilters.status.length > 0 && !historyFilters.status.includes(s.status)) return false;
+      return true;
+    });
+  }, [shiftHistory, historyFilters]);
 
   const currentShift = shifts?.find(s => s.status === 'active');
   const todayShifts = shifts || [];
@@ -198,52 +253,229 @@ export default function ShiftManager() {
         </Card>
       )}
 
-      {/* Today's Shifts */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Today&apos;s Shifts</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {todayShifts.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No shifts today</p>
-          ) : (
-            <div className="space-y-3">
-              {todayShifts.map(shift => {
-                const cfg = shiftStatusConfig[shift.status] || { color: 'bg-gray-100 text-gray-800', label: shift.status };
-                const duration = shift.start_time && shift.end_time
-                  ? differenceInMinutes(new Date(shift.end_time), new Date(shift.start_time))
-                  : shift.start_time ? Math.round((Date.now() - new Date(shift.start_time).getTime()) / 60000) : 0;
-                return (
-                  <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <p className="font-medium capitalize">{shift.shift_name} Shift</p>
-                        <p className="text-xs text-muted-foreground">
-                          {shift.start_time ? format(new Date(shift.start_time), 'h:mm a') : '—'}
-                          {shift.end_time ? ` → ${format(new Date(shift.end_time), 'h:mm a')}` : ''}
-                          {duration > 0 && ` · ${duration}min`}
-                        </p>
+      {/* Shift Tabs: Today + History */}
+      <Tabs defaultValue="today">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="today">Today&apos;s Shifts</TabsTrigger>
+          <TabsTrigger value="history"><History className="h-3 w-3 mr-1" /> Shift History</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="today">
+          <Card>
+            <CardContent className="pt-4">
+              {todayShifts.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No shifts today</p>
+              ) : (
+                <div className="space-y-3">
+                  {todayShifts.map(shift => {
+                    const cfg = shiftStatusConfig[shift.status] || { color: 'bg-gray-100 text-gray-800', label: shift.status };
+                    const duration = shift.start_time && shift.end_time
+                      ? differenceInMinutes(new Date(shift.end_time), new Date(shift.start_time))
+                      : shift.start_time ? Math.round((Date.now() - new Date(shift.start_time).getTime()) / 60000) : 0;
+                    return (
+                      <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <p className="font-medium capitalize">{shift.shift_name} Shift</p>
+                            <p className="text-xs text-muted-foreground">
+                              {shift.start_time ? format(new Date(shift.start_time), 'h:mm a') : '—'}
+                              {shift.end_time ? ` → ${format(new Date(shift.end_time), 'h:mm a')}` : ''}
+                              {duration > 0 && ` · ${duration}min`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={cfg.color}>{cfg.label}</Badge>
+                          {shift.status === 'ended' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setActiveShift(shift); setReconDialog(true); setReconTab('summary'); }}
+                            >
+                              <Send className="h-3 w-3 mr-1" /> Reconcile
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={cfg.color}>{cfg.label}</Badge>
-                      {shift.status === 'ended' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => { setActiveShift(shift); setReconDialog(true); setReconTab('summary'); }}
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <div className="space-y-4">
+            {/* Filters */}
+            <FilterBar
+              filters={historyFilters}
+              onChange={setHistoryFilters}
+              showDepartment={false}
+              showStatus={true}
+              statusOptions={[
+                { value: 'active', label: 'Active', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+                { value: 'ended', label: 'Ended', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+                { value: 'reconciled', label: 'Reconciled', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                { value: 'closed', label: 'Closed', color: 'bg-gray-100 text-gray-700 border-gray-200' },
+              ]}
+            />
+
+            {/* Summary Stats */}
+            {filteredHistory.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                <Card><CardContent className="pt-3 pb-2"><p className="text-xs text-muted-foreground">Total Shifts</p><p className="text-xl font-bold">{filteredHistory.length}</p></CardContent></Card>
+                <Card><CardContent className="pt-3 pb-2"><p className="text-xs text-muted-foreground">Reconciled</p><p className="text-xl font-bold text-emerald-600">{filteredHistory.filter((s: any) => s.status === 'reconciled' || s.status === 'closed').length}</p></CardContent></Card>
+                <Card><CardContent className="pt-3 pb-2"><p className="text-xs text-muted-foreground">With Variance</p><p className="text-xl font-bold text-amber-600">{filteredHistory.filter((s: any) => s.shift_reconciliations?.[0]?.variance !== 0).length}</p></CardContent></Card>
+              </div>
+            )}
+
+            {/* Shift History Cards */}
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-brass" /></div>
+            ) : filteredHistory.length === 0 ? (
+              <Card><CardContent className="py-12 text-center">
+                <History className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground">No shift history found</p>
+              </CardContent></Card>
+            ) : (
+              <div className="space-y-3">
+                {filteredHistory.map((shift: any) => {
+                  const cfg = shiftStatusConfig[shift.status] || { color: 'bg-gray-100 text-gray-800', label: shift.status };
+                  const recon = shift.shift_reconciliations?.[0];
+                  const duration = shift.start_time && shift.end_time
+                    ? differenceInMinutes(new Date(shift.end_time), new Date(shift.start_time)) : 0;
+                  const isExpanded = expandedHistory === shift.id;
+
+                  return (
+                    <Card key={shift.id} className={cn(
+                      'transition-all',
+                      recon?.variance ? 'border-l-4 border-l-amber-500' : ''
+                    )}>
+                      <CardContent className="p-0">
+                        {/* Header */}
+                        <div
+                          className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30"
+                          onClick={() => setExpandedHistory(isExpanded ? null : shift.id)}
                         >
-                          <Send className="h-3 w-3 mr-1" /> Reconcile
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium capitalize">{shift.shift_name} Shift</p>
+                              <Badge className={cfg.color}>{cfg.label}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {shift.shift_date} · {duration > 0 ? `${duration}min` : '—'}
+                              {recon && ` · Variance: ${recon.variance >= 0 ? '+' : ''}KES ${Math.abs(recon.variance)}`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm" variant="outline" className="h-7 text-[11px]"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const csv = generateShiftCSV(recon || { staff_shifts: shift, status: shift.status, variance: 0, sales_total: 0, cash_total: 0, mpesa_total: 0 }, historyTransactions?.payments || [], historyTransactions?.orders || []);
+                                  downloadCSV(csv, `shift-${shift.shift_name}-${shift.shift_date}.csv`);
+                                  toast.success('CSV downloaded');
+                                }}
+                              >
+                                <Download className="h-3 w-3 mr-1" /> CSV
+                              </Button>
+                              <Button
+                                size="sm" variant="outline" className="h-7 text-[11px]"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  generateShiftPDFReport(recon || { staff_shifts: shift, status: shift.status, variance: 0, sales_total: 0, cash_total: 0, mpesa_total: 0 }, historyTransactions?.payments || [], historyTransactions?.orders || []);
+                                }}
+                              >
+                                <FileText className="h-3 w-3 mr-1" /> PDF
+                              </Button>
+                            </div>
+                            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                          </div>
+                        </div>
+
+                        {/* Expanded Detail */}
+                        {isExpanded && (
+                          <div className="border-t p-4">
+                            {histTxLoading ? (
+                              <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-brass" /></div>
+                            ) : (
+                              <div className="space-y-4">
+                                {/* Reconciliation Details */}
+                                {recon && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-2">Reconciliation</p>
+                                    <div className="grid grid-cols-3 gap-2 text-sm">
+                                      <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Sales</p><p className="font-medium">KES {(recon.sales_total || 0).toLocaleString()}</p></div>
+                                      <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">Cash</p><p className="font-medium">KES {(recon.cash_total || 0).toLocaleString()}</p></div>
+                                      <div className="p-2 bg-muted rounded"><p className="text-[10px] text-muted-foreground">M-Pesa</p><p className="font-medium">KES {(recon.mpesa_total || 0).toLocaleString()}</p></div>
+                                    </div>
+                                    {recon.variance !== 0 && (
+                                      <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-200 text-sm">
+                                        <p className={cn('font-medium', recon.variance < 0 ? 'text-red-600' : 'text-amber-600')}>
+                                          Variance: {recon.variance >= 0 ? '+' : ''}KES {Math.abs(recon.variance)}
+                                        </p>
+                                        {recon.variance_explanation && <p className="text-xs text-muted-foreground mt-1 italic">"{recon.variance_explanation}"</p>}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Payments */}
+                                {historyTransactions?.payments?.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-2">Payments ({historyTransactions.payments.length})</p>
+                                    <div className="space-y-1.5">
+                                      {historyTransactions.payments.map((p: any) => (
+                                        <div key={p.id} className="flex items-center justify-between p-2 bg-muted/50 rounded text-sm">
+                                          <div className="flex items-center gap-2">
+                                            {p.method === 'mpesa' ? <Smartphone className="h-3.5 w-3.5 text-emerald-600" /> : <DollarSign className="h-3.5 w-3.5 text-blue-600" />}
+                                            <span>KES {(p.amount || 0).toLocaleString()}</span>
+                                            <Badge variant="outline" className="text-[10px] capitalize">{p.method}</Badge>
+                                            {p.mpesa_code && <span className="text-xs font-mono text-emerald-600">{p.mpesa_code}</span>}
+                                          </div>
+                                          {p.receipt_image_url && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Orders */}
+                                {historyTransactions?.orders?.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-2">Orders ({historyTransactions.orders.length})</p>
+                                    <div className="space-y-1.5">
+                                      {historyTransactions.orders.map((o: any) => (
+                                        <div key={o.id} className="flex items-center justify-between p-2 bg-muted/50 rounded text-sm">
+                                          <div>
+                                            <span className="font-medium">#{o.order_number}</span>
+                                            <span className="text-muted-foreground ml-2">{o.guest_name || 'Walk-in'}</span>
+                                          </div>
+                                          <span>KES {(o.total_amount || 0).toLocaleString()}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {!historyTransactions?.payments?.length && !historyTransactions?.orders?.length && (
+                                  <p className="text-sm text-muted-foreground text-center py-4">No transactions recorded for this shift</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* ========================================= */}
       {/* RECONCILIATION DIALOG — Full Form */}

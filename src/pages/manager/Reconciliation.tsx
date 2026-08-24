@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,14 @@ import { useApproveReconciliation, useResolveVariance, useAdminConfirmVariance }
 import { useEmailService } from '@/hooks/useEmailService';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
-import { format, differenceInMinutes } from 'date-fns';
-import {
-  Loader2, CheckCircle2, XCircle, AlertTriangle, DollarSign, Clock,
+import { format, differenceInMinutes } from 'date-fns';import { Loader2, CheckCircle2, XCircle, AlertTriangle, DollarSign, Clock,
   Receipt, Smartphone, Camera, Eye, Ban, ChefHat, UtensilsCrossed,
   BedDouble, Sparkles, LogIn, LogOut, ChevronDown, ChevronRight,
-  FileText, ShieldCheck, MessageSquare, Upload, Check
+  FileText, ShieldCheck, MessageSquare, Upload, Check, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FilterBar, filterReconciliations, type FilterState } from '@/components/FilterBar';
+import { generateShiftCSV, downloadCSV, generateShiftPDFReport } from '@/lib/export';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -68,6 +68,7 @@ export default function Reconciliation() {
   const [confirmNotes, setConfirmNotes] = useState('');
   const [confirmProofType, setConfirmProofType] = useState<'mpesa_message' | 'receipt'>('mpesa_message');
   const [confirmFile, setConfirmFile] = useState<File | null>(null);
+  const [filters, setFilters] = useState<FilterState>({ search: '', department: '', dateFrom: '', dateTo: '', status: [] });
 
   const approveRecon = useApproveReconciliation();
   const resolveVariance = useResolveVariance();
@@ -109,12 +110,14 @@ export default function Reconciliation() {
     },
   });
 
-  const pendingRecons = reconciliations?.filter((r: any) => r.status === 'submitted') || [];
-  const explainedRecons = reconciliations?.filter((r: any) => r.status === 'explained') || [];
-  const flaggedRecons = reconciliations?.filter((r: any) => r.status === 'flagged') || [];
-  const historyRecons = reconciliations?.filter((r: any) => 
+  // Apply filters
+  const filteredRecons = useMemo(() => filterReconciliations(reconciliations || [], filters), [reconciliations, filters]);
+  const pendingRecons = filteredRecons.filter((r: any) => r.status === 'submitted');
+  const explainedRecons = filteredRecons.filter((r: any) => r.status === 'explained');
+  const flaggedRecons = filteredRecons.filter((r: any) => r.status === 'flagged');
+  const historyRecons = filteredRecons.filter((r: any) => 
     !['submitted', 'explained', 'flagged'].includes(r.status)
-  ) || [];
+  );
 
   // Fetch transactions for expanded reconciliation
   const expandedShift = expandedRecon ? reconciliations?.find((r: any) => r.id === expandedRecon) : null;
@@ -478,34 +481,36 @@ export default function Reconciliation() {
                       Transactions During Shift
                       {txLoading && <Loader2 className="inline h-3 w-3 animate-spin ml-2" />}
                     </p>
-                    {/* Download CSV button */}
+                    {/* Download buttons */}
                     {transactions && (transactions.folioPayments?.length > 0 || transactions.recordedPayments?.length > 0 || transactions.restaurantOrders?.length > 0) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-[11px]"
-                        onClick={() => {
-                          const allPayments = [...(transactions.folioPayments || []), ...(transactions.recordedPayments || [])];
-                          const orders = transactions.restaurantOrders || [];
-                          let csv = 'Type,Time,Amount,Method,M-Pesa Code,Has Receipt,Guest,Items,Order Total\n';
-                          allPayments.forEach((p: any) => {
-                            csv += `Payment,${format(new Date(p.created_at), 'HH:mm')},${p.amount},${p.method},${p.mpesa_transaction_id || ''},${p.receipt_image_url ? 'Yes' : 'No'},,,\n`;
-                          });
-                          orders.forEach((o: any) => {
-                            csv += `Order,${format(new Date(o.created_at), 'HH:mm')},,,,${o.guest_name || 'Walk-in'},${o.restaurant_order_items?.length || 0},${o.total}\n`;
-                          });
-                          const blob = new Blob([csv], { type: 'text/csv' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `shift-${staffName.replace(/\s/g, '-')}-${recon.shiftDate || 'today'}.csv`;
-                          a.click();
-                          URL.revokeObjectURL(url);
-                          toast.success('CSV downloaded');
-                        }}
-                      >
-                        📥 Download
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px]"
+                          onClick={() => {
+                            const allPayments = [...(transactions.folioPayments || []), ...(transactions.recordedPayments || [])];
+                            const orders = transactions.restaurantOrders || [];
+                            const csv = generateShiftCSV(recon, allPayments, orders);
+                            downloadCSV(csv, `shift-${staffName.replace(/\s/g, '-')}-${recon.staff_shifts?.shift_date || 'today'}.csv`);
+                            toast.success('CSV downloaded');
+                          }}
+                        >
+                          <Download className="h-3 w-3 mr-1" /> CSV
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px]"
+                          onClick={() => {
+                            const allPayments = [...(transactions.folioPayments || []), ...(transactions.recordedPayments || [])];
+                            const orders = transactions.restaurantOrders || [];
+                            generateShiftPDFReport(recon, allPayments, orders);
+                          }}
+                        >
+                          <FileText className="h-3 w-3 mr-1" /> PDF
+                        </Button>
+                      </div>
                     )}
                   </div>
 
@@ -755,6 +760,11 @@ export default function Reconciliation() {
           {(sendingReport || emailSending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
           Send Midnight Audit Report
         </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-6">
+        <FilterBar filters={filters} onChange={setFilters} />
       </div>
 
       {/* Stats */}
