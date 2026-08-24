@@ -79,14 +79,20 @@ export default function ShiftManagement() {
   const { data: staff } = useQuery({
     queryKey: ['all-staff-list'],
     queryFn: async () => {
-      const { data, error } = await sb
-        .from('users')
-        .select('id, full_name, email, role, department_id')
-        .eq('is_active', true)
-        .not('role', 'in', '(guest,external_customer)')
-        .order('role');
-      if (error) throw error;
-      return data || [];
+      try {
+        const { data, error } = await sb
+          .from('users')
+          .select('id, full_name, email, role, department_id')
+          .eq('is_active', true)
+          .order('role');
+        if (error) throw error;
+        // Filter out guest/external_customer in JS (avoids PostgREST .not() issues)
+        const EXCLUDED = ['guest', 'external_customer'];
+        return (data || []).filter((u: any) => !EXCLUDED.includes(u.role));
+      } catch (err) {
+        console.error('[ShiftMgmt] Staff query failed:', err);
+        return [];
+      }
     },
   });
 
@@ -94,13 +100,18 @@ export default function ShiftManagement() {
   const { data: departments } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
-      const { data, error } = await sb
-        .from('departments')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('name');
-      if (error) throw error;
-      return data || [];
+      try {
+        const { data, error } = await sb
+          .from('departments')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        console.error('[ShiftMgmt] Departments query failed:', err);
+        return [];
+      }
     },
   });
 
@@ -108,13 +119,18 @@ export default function ShiftManagement() {
   const { data: shifts, isLoading: shiftsLoading } = useQuery({
     queryKey: ['all-shifts', selectedDate],
     queryFn: async () => {
-      const { data, error } = await sb
-        .from('staff_shifts')
-        .select('*, users:user_id(full_name, email, role), departments:department_id(name)')
-        .eq('shift_date', selectedDate)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      try {
+        const { data, error } = await sb
+          .from('staff_shifts')
+          .select('*, users:user_id(full_name, email, role), departments:department_id(name)')
+          .eq('shift_date', selectedDate)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        console.error('[ShiftMgmt] Shifts query failed:', err);
+        return [];
+      }
     },
   });
 
