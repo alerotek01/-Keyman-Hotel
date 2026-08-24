@@ -303,3 +303,79 @@ export function useUploadCarouselImage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['carousel-sections'] }),
   });
 }
+
+// ===== Conference Page Media =====
+export interface ConferenceMedia {
+  hero_image: string;
+  carousel_images: CarouselImage[];
+  video_url: string;
+  video_poster: string;
+  video_caption: string;
+}
+
+const DEFAULT_CONFERENCE_MEDIA: ConferenceMedia = {
+  hero_image: '',
+  carousel_images: [],
+  video_url: '',
+  video_poster: '',
+  video_caption: 'Video walkthrough of our conference hall setup',
+};
+
+export function useConferenceMedia() {
+  return useQuery({
+    queryKey: ['conference-media'],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'conference_media')
+        .maybeSingle();
+      if (error) throw error;
+      if (data?.value) {
+        try {
+          return { ...DEFAULT_CONFERENCE_MEDIA, ...JSON.parse(data.value) } as ConferenceMedia;
+        } catch {
+          return DEFAULT_CONFERENCE_MEDIA;
+        }
+      }
+      return DEFAULT_CONFERENCE_MEDIA;
+    },
+  });
+}
+
+export function useUpdateConferenceMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (media: ConferenceMedia) => {
+      const { error } = await sb
+        .from('site_settings')
+        .upsert(
+          { key: 'conference_media', value: JSON.stringify(media) },
+          { onConflict: 'key' }
+        );
+      if (error) throw error;
+      return media;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conference-media'] }),
+  });
+}
+
+export function useUploadConferenceImage() {
+  return useMutation({
+    mutationFn: async ({ folder, file }: { folder: string; file: File }) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `conference/${folder}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('rooms')
+        .upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = sb.storage
+        .from('rooms')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    },
+  });
+}

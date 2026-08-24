@@ -4,10 +4,11 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Users, Wifi, Projector, Coffee, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useConferenceMedia } from '@/hooks/useCms';
 
 const BASE = 'https://uuojiyehhnhjcakgpsjd.supabase.co/storage/v1/object/public/rooms';
 
-const carouselImages = [
+const fallbackImages = [
   { src: BASE + '/conference-01.jpg', alt: 'Conference hall — boardroom setup with white linens' },
 ];
 
@@ -23,6 +24,16 @@ export default function Conference() {
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const slideInterval = useRef<ReturnType<typeof setInterval>>();
+  const { data: confMedia } = useConferenceMedia();
+
+  // Use DB media if available, fallback to defaults
+  const heroImage = confMedia?.hero_image || BASE + '/conference-01.jpg';
+  const carouselImages = (confMedia?.carousel_images && confMedia.carousel_images.length > 0)
+    ? confMedia.carousel_images
+    : fallbackImages;
+  const videoUrl = confMedia?.video_url || BASE + '/conference-video.mp4';
+  const videoPoster = confMedia?.video_poster || BASE + '/conference-01.jpg';
+  const videoCaption = confMedia?.video_caption || 'Video walkthrough of our conference hall setup';
 
   useEffect(() => {
     slideInterval.current = setInterval(() => {
@@ -49,7 +60,7 @@ export default function Conference() {
   return (
     <Layout>
       <section className="relative min-h-[60dvh] flex items-end grain-overlay mt-[72px]">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(' + BASE + '/conference-01.jpg)' }}>
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroImage})` }}>
           <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/40 to-transparent" />
         </div>
         <div className="relative z-10 container pb-16 pt-32 px-4">
@@ -108,8 +119,8 @@ export default function Conference() {
         <div className="container px-4">
           <h2 className="font-display text-xl sm:text-2xl text-charcoal mb-6 sm:mb-8">See It In Action</h2>
           <div className="relative rounded-2xl overflow-hidden aspect-video bg-charcoal">
-            <video ref={videoRef} className="w-full h-full object-cover" poster={BASE + '/conference-01.jpg'} muted loop playsInline>
-              <source src={BASE + '/conference-video.mp4'} type="video/mp4" />
+            <video ref={videoRef} className="w-full h-full object-cover" poster={videoPoster} muted loop playsInline>
+              <source src={videoUrl} type="video/mp4" />
             </video>
             <button onClick={toggleVideo} className="absolute inset-0 flex items-center justify-center group">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
@@ -117,7 +128,7 @@ export default function Conference() {
               </div>
             </button>
           </div>
-          <p className="text-center text-xs text-charcoal/40 mt-4">Video walkthrough of our conference hall setup</p>
+          <p className="text-center text-xs text-charcoal/40 mt-4">{videoCaption}</p>
         </div>
       </section>
 

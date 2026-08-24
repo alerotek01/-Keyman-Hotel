@@ -12,8 +12,11 @@ import { useSiteSettings, useUpdateSiteSetting } from '@/hooks/useCms';
 import { usePageContent, useUpdatePageContent } from '@/hooks/useCms';
 import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide, useUploadHeroSlideImage } from '@/hooks/useCms';
 import { useCarouselSections, useUpdateCarouselSections, useUploadCarouselImage, type CarouselSection, type CarouselImage } from '@/hooks/useCms';
+import { useConferenceMedia, useUpdateConferenceMedia, useUploadConferenceImage, type ConferenceMedia } from '@/hooks/useCms';
+
+const DEFAULT_CONFERENCE_MEDIA: ConferenceMedia = { hero_image: '', carousel_images: [], video_url: '', video_poster: '', video_caption: 'Video walkthrough of our conference hall setup' };
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Globe, FileText, ImagePlus, Trash2, GripVertical, ChevronUp, ChevronDown, Eye, EyeOff, Plus, Images } from 'lucide-react';
+import { Loader2, Save, Globe, FileText, ImagePlus, Trash2, GripVertical, ChevronUp, ChevronDown, Eye, EyeOff, Plus, Images, Video } from 'lucide-react';
 
 export default function AdminSiteContent() {
   const { data: settings, isLoading: settingsLoading } = useSiteSettings();
@@ -50,6 +53,104 @@ export default function AdminSiteContent() {
   const [sectionForm, setSectionForm] = useState<{ eyebrow: string; title: string; caption: string; link: string; linkText: string }>({ eyebrow: '', title: '', caption: '', link: '', linkText: '' });
   const [carouselUploadFile, setCarouselUploadFile] = useState<File | null>(null);
   const [carouselSaving, setCarouselSaving] = useState(false);
+
+  // Conference media
+  const { data: confMedia, isLoading: confMediaLoading } = useConferenceMedia();
+  const updateConfMedia = useUpdateConferenceMedia();
+  const uploadConfImage = useUploadConferenceImage();
+  const [confMediaForm, setConfMediaForm] = useState<ConferenceMedia>(DEFAULT_CONFERENCE_MEDIA);
+  const [confMediaLoaded, setConfMediaLoaded] = useState(false);
+  const [confSaving, setConfSaving] = useState(false);
+
+  // Initialize conference media form from data
+  if (confMedia && !confMediaLoaded) {
+    setConfMediaForm(confMedia);
+    setConfMediaLoaded(true);
+  }
+
+  const handleSaveConfMedia = async () => {
+    setConfSaving(true);
+    try {
+      await updateConfMedia.mutateAsync(confMediaForm);
+      toast({ title: 'Conference media saved' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+    setConfSaving(false);
+  };
+
+  const handleUploadConfImage = async (folder: string, field: 'hero_image' | 'video_poster') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      setConfSaving(true);
+      try {
+        const url = await uploadConfImage.mutateAsync({ folder, file });
+        setConfMediaForm(prev => ({ ...prev, [field]: url }));
+        toast({ title: 'Image uploaded' });
+      } catch (error: any) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      }
+      setConfSaving(false);
+    };
+    input.click();
+  };
+
+  const handleUploadConfCarouselImage = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      setConfSaving(true);
+      try {
+        const url = await uploadConfImage.mutateAsync({ folder: 'carousel', file });
+        const newImage: CarouselImage = { src: url, alt: file.name.replace(/\.[^.]+$/, '') };
+        setConfMediaForm(prev => ({ ...prev, carousel_images: [...prev.carousel_images, newImage] }));
+        toast({ title: 'Image added' });
+      } catch (error: any) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      }
+      setConfSaving(false);
+    };
+    input.click();
+  };
+
+  const handleUploadConfVideo = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      setConfSaving(true);
+      try {
+        const url = await uploadConfImage.mutateAsync({ folder: 'video', file });
+        setConfMediaForm(prev => ({ ...prev, video_url: url }));
+        toast({ title: 'Video uploaded' });
+      } catch (error: any) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      }
+      setConfSaving(false);
+    };
+    input.click();
+  };
+
+  const handleRemoveConfCarouselImage = (idx: number) => {
+    setConfMediaForm(prev => ({ ...prev, carousel_images: prev.carousel_images.filter((_, i) => i !== idx) }));
+  };
+
+  const handleMoveConfImage = (idx: number, dir: -1 | 1) => {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= confMediaForm.carousel_images.length) return;
+    const images = [...confMediaForm.carousel_images];
+    [images[idx], images[newIdx]] = [images[newIdx], images[idx]];
+    setConfMediaForm(prev => ({ ...prev, carousel_images: images }));
+  };
 
   const openEditSlide = (slide: any) => {
     setEditingSlide(slide);
@@ -305,6 +406,7 @@ export default function AdminSiteContent() {
           <TabsTrigger value="content" className="gap-2"><FileText className="h-4 w-4" /> Page Content</TabsTrigger>
           <TabsTrigger value="hero" className="gap-2"><ImagePlus className="h-4 w-4" /> Hero Slides</TabsTrigger>
           <TabsTrigger value="carousels" className="gap-2"><Images className="h-4 w-4" /> Carousels</TabsTrigger>
+          <TabsTrigger value="conference" className="gap-2"><Video className="h-4 w-4" /> Conference</TabsTrigger>
         </TabsList>
 
         {/* ===== HOTEL INFO TAB ===== */}
@@ -648,6 +750,160 @@ export default function AdminSiteContent() {
               <p className="text-muted-foreground">No carousel sections found</p>
             </div>
           )}
+        </TabsContent>
+
+        {/* ===== CONFERENCE MEDIA TAB ===== */}
+        <TabsContent value="conference" className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Manage the hero image, gallery carousel, and video for the Conference Hall page.
+          </p>
+
+          {/* Hero Image */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Hero Background</CardTitle>
+              <CardDescription>The full-width background image on the conference page hero section</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-start gap-4">
+                <div className="w-48 h-28 rounded-lg overflow-hidden bg-muted shrink-0">
+                  {confMediaForm.hero_image ? (
+                    <img src={confMediaForm.hero_image} alt="Hero" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No image</div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Button variant="outline" size="sm" onClick={() => handleUploadConfImage('hero', 'hero_image')} disabled={confSaving}>
+                    {confSaving ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <ImagePlus className="mr-2 h-3 w-3" />}
+                    Upload Image
+                  </Button>
+                  {confMediaForm.hero_image && (
+                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfMediaForm(prev => ({ ...prev, hero_image: '' }))}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Gallery Carousel */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Gallery Carousel ({confMediaForm.carousel_images.length} images)</CardTitle>
+              <CardDescription>Images shown in "The Space" section carousel</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {confMediaForm.carousel_images.map((img, idx) => (
+                  <div key={idx} className="relative group rounded-lg overflow-hidden bg-muted aspect-video">
+                    {img.src ? (
+                      <img src={img.src} alt={img.alt} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No img</div>
+                    )}
+                    {/* Overlay controls */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                      <button
+                        className="p-1 bg-white/80 rounded text-charcoal disabled:opacity-30"
+                        disabled={idx === 0}
+                        onClick={() => handleMoveConfImage(idx, -1)}
+                      ><ChevronUp className="h-3 w-3" /></button>
+                      <button
+                        className="p-1 bg-white/80 rounded text-charcoal disabled:opacity-30"
+                        disabled={idx === confMediaForm.carousel_images.length - 1}
+                        onClick={() => handleMoveConfImage(idx, 1)}
+                      ><ChevronDown className="h-3 w-3" /></button>
+                      <button
+                        className="p-1 bg-red-500/80 rounded text-white"
+                        onClick={() => handleRemoveConfCarouselImage(idx)}
+                      ><Trash2 className="h-3 w-3" /></button>
+                    </div>
+                    {/* Alt text */}
+                    <input
+                      className="absolute bottom-0 left-0 right-0 text-[10px] px-1.5 py-1 bg-black/60 text-white w-full outline-none opacity-0 group-hover:opacity-100 transition-opacity"
+                      defaultValue={img.alt}
+                      onBlur={(e) => {
+                        const images = [...confMediaForm.carousel_images];
+                        images[idx] = { ...images[idx], alt: e.target.value };
+                        setConfMediaForm(prev => ({ ...prev, carousel_images: images }));
+                      }}
+                      placeholder="Alt text"
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" onClick={handleUploadConfCarouselImage} disabled={confSaving}>
+                {confSaving ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Plus className="mr-2 h-3 w-3" />}
+                Add Image
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Video */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Walkthrough Video</CardTitle>
+              <CardDescription>Video shown in "See It In Action" section</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="w-64 h-36 rounded-lg overflow-hidden bg-muted shrink-0">
+                  {confMediaForm.video_url ? (
+                    <video src={confMediaForm.video_url} poster={confMediaForm.video_poster || undefined} className="w-full h-full object-cover" muted />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No video</div>
+                  )}
+                </div>
+                <div className="space-y-2 flex-1">
+                  <Button variant="outline" size="sm" onClick={handleUploadConfVideo} disabled={confSaving}>
+                    {confSaving ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Video className="mr-2 h-3 w-3" />}
+                    Upload Video
+                  </Button>
+                  {confMediaForm.video_url && (
+                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfMediaForm(prev => ({ ...prev, video_url: '' }))}>
+                      Remove Video
+                    </Button>
+                  )}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Video Caption</Label>
+                    <Input
+                      value={confMediaForm.video_caption}
+                      onChange={(e) => setConfMediaForm(prev => ({ ...prev, video_caption: e.target.value }))}
+                      placeholder="Video walkthrough of our conference hall setup"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Poster image */}
+              <div className="flex items-center gap-3 pt-2 border-t">
+                <div className="w-20 h-12 rounded overflow-hidden bg-muted shrink-0">
+                  {confMediaForm.video_poster ? (
+                    <img src={confMediaForm.video_poster} alt="Poster" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Poster</div>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Poster Image (thumbnail before video plays)</Label>
+                  <Button variant="outline" size="sm" onClick={() => handleUploadConfImage('poster', 'video_poster')} disabled={confSaving}>
+                    {confSaving ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <ImagePlus className="mr-2 h-3 w-3" />}
+                    Upload Poster
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Save button */}
+          <div className="flex justify-end">
+            <Button variant="brass" onClick={handleSaveConfMedia} disabled={confSaving}>
+              {confSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save Conference Media
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
 
