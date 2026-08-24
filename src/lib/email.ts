@@ -129,7 +129,7 @@ export async function sendPasswordReset(to: string, resetLink: string, userName:
 /**
  * Welcome email when admin creates a user
  */
-export async function sendWelcomeEmail(to: string, userName: string, role: string, temporaryPassword?: string) {
+export async function sendWelcomeEmail(to: string, userName: string, role: string, temporaryPassword?: string, setPasswordUrl?: string) {
   // Role-specific dashboard links
   const ROLE_DASHBOARDS: Record<string, string> = {
     admin: '/admin',
@@ -162,6 +162,13 @@ export async function sendWelcomeEmail(to: string, userName: string, role: strin
           <p style="color:#555;margin:8px 0 0;"><strong>Password:</strong> <code style="background:#e8e8e8;padding:2px 6px;border-radius:4px;">${temporaryPassword}</code></p>
         </div>
         <p style="color:#e74c3c;font-size:13px;">⚠️ Please change your password after first login.</p>
+      ` : ''}
+      ${setPasswordUrl ? `
+        <div style="background:#e8f0fe;border-radius:8px;padding:20px;margin:20px 0;text-align:center;">
+          <p style="color:#1a2744;margin:0 0 12px;font-size:14px;">👆 Click below to set your password and access your dashboard:</p>
+          <a href="${setPasswordUrl}" style="background:#c8a951;color:#1a2744;text-decoration:none;padding:12px 32px;border-radius:6px;font-weight:bold;display:inline-block;">Set My Password</a>
+        </div>
+        <p style="color:#999;font-size:11px;text-align:center;">This link expires in 24 hours. If you didn't expect this email, please ignore it.</p>
       ` : ''}
       <div style="text-align:center;margin:24px 0;">
         <a href="${dashboardUrl}" style="background:#c8a951;color:#1a2744;text-decoration:none;padding:12px 32px;border-radius:6px;font-weight:bold;display:inline-block;">Open ${roleLabel} Dashboard</a>

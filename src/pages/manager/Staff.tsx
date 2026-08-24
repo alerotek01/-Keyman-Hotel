@@ -54,7 +54,7 @@ export default function StaffManagement() {
     mutationFn: async (data: { email: string; password: string; full_name: string; phone: string; role: AppRole }) => {
       const { data: result, error } = await sb.rpc('create_staff_user', {
         p_email: data.email,
-        p_password: data.password,
+        p_password: data.password || null,
         p_full_name: data.full_name,
         p_phone: data.phone || '',
         p_role: data.role,
@@ -62,7 +62,19 @@ export default function StaffManagement() {
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || 'User creation failed');
 
-      await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
+      if (data.password) {
+        await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
+      } else {
+        const { data: linkData } = await sb.auth.admin.generateLink({
+          type: 'signup',
+          email: data.email,
+        });
+        const supabaseUrl = linkData?.properties?.action_link || '';
+        const urlObj = new URL(supabaseUrl);
+        const token = urlObj.searchParams.get('token') || '';
+        const setPwdUrl = `${window.location.origin}/set-password?token=${token}&type=signup&email=${encodeURIComponent(data.email)}`;
+        await sendWelcomeEmail(data.email, data.full_name, data.role, undefined, setPwdUrl);
+      }
       return { id: result.user_id };
     },
     onSuccess: () => {
@@ -176,7 +188,7 @@ export default function StaffManagement() {
               </div>
               <div className="space-y-2">
                 <Label>Password</Label>
-                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} placeholder="Min 6 characters" />
+                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} minLength={6} placeholder="Leave blank to send set-password link" />
               </div>
               <div className="space-y-2">
                 <Label>Role</Label>

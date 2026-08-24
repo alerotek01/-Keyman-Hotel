@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ResponsiveLayout from "./components/ResponsiveLayout";
 import Index from "./pages/Index";
+import SetPassword from "./pages/SetPassword";
 import Rooms from "./pages/Rooms";
 import Conference from "./pages/Conference";
 import Cafeteria from "./pages/Cafeteria";
@@ -74,6 +75,7 @@ const App = () => (
           <Route path="/cafeteria" element={<Cafeteria />} />
           <Route path="/cafeteria/:mealId" element={<CafeteriaMenu />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/set-password" element={<SetPassword />} />
 
           {/* Guest Routes (Responsive — mobile PDA ↔ desktop sidebar) */}
           <Route path="/guest/login" element={<GuestLogin />} />

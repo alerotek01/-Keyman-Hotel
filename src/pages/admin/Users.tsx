@@ -56,7 +56,7 @@ export default function AdminUsers() {
       // Use server-side function (bypasses RLS, handles auth + users table)
       const { data: result, error } = await sb.rpc('create_staff_user', {
         p_email: data.email,
-        p_password: data.password,
+        p_password: data.password || null,
         p_full_name: data.full_name,
         p_phone: data.phone || '',
         p_role: data.role,
@@ -64,8 +64,23 @@ export default function AdminUsers() {
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || 'User creation failed');
 
-      // Send welcome email
-      await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
+      if (data.password) {
+        // Password provided — send welcome email with credentials
+        await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
+      } else {
+        // No password — send set-password link via Supabase
+        const { data: linkData } = await sb.auth.admin.generateLink({
+          type: 'signup',
+          email: data.email,
+        });
+        // Extract the token from the link and build our set-password URL
+        const supabaseUrl = linkData?.properties?.action_link || '';
+        const urlObj = new URL(supabaseUrl);
+        const token = urlObj.searchParams.get('token') || '';
+        const setPwdUrl = `${window.location.origin}/set-password?token=${token}&type=signup&email=${encodeURIComponent(data.email)}`;
+        // Send email with set-password link (reuse welcome email with link)
+        await sendWelcomeEmail(data.email, data.full_name, data.role, undefined, setPwdUrl);
+      }
 
       return { id: result.user_id };
     },
@@ -273,7 +288,7 @@ export default function AdminUsers() {
               </div>
               <div className="space-y-2">
                 <Label>Password</Label>
-                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} placeholder="Min 6 characters" />
+                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} minLength={6} placeholder="Leave blank to send set-password link" />
               </div>
               <div className="space-y-2">
                 <Label>Role</Label>
@@ -285,11 +300,10 @@ export default function AdminUsers() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <Button type="submit" variant="brass" className="w-full" disabled={createUser.isPending}>
-                {createUser.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Account
-              </Button>
+              </div>                <Button type="submit" variant="brass" className="w-full" disabled={createUser.isPending}>
+                  {createUser.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {form.password ? 'Create Account' : 'Create & Send Invite'}
+                </Button>
             </form>
           </DialogContent>
         </Dialog>
