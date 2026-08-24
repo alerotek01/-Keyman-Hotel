@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useApproveReconciliation, useResolveVariance, useAdminConfirmVariance } from '@/hooks/usePayments';
+import { useEmailService } from '@/hooks/useEmailService';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format, differenceInMinutes } from 'date-fns';
@@ -71,6 +72,8 @@ export default function Reconciliation() {
   const approveRecon = useApproveReconciliation();
   const resolveVariance = useResolveVariance();
   const adminConfirmVariance = useAdminConfirmVariance();
+  const { reconciliationAuditReport, sending: emailSending } = useEmailService();
+  const [sendingReport, setSendingReport] = useState(false);
 
   // Fetch all reconciliations with shift + staff info
   const { data: reconciliations, isLoading } = useQuery({
@@ -647,6 +650,36 @@ export default function Reconciliation() {
       <div className="mb-6">
         <h1 className="font-display text-3xl font-bold">Reconciliation</h1>
         <p className="text-muted-foreground">Review transactions, verify M-Pesa codes & receipts, approve shift closings</p>
+      </div>
+
+      {/* Send Audit Report Button */}
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          className="text-brass border-brass hover:bg-brass/10"
+          onClick={async () => {
+            setSendingReport(true);
+            try {
+              const { data: admins } = await sb.from('users').select('email').in('role', ['admin', 'manager']).eq('is_active', true);
+              const emails = (admins || []).map((a: any) => a.email).filter(Boolean);
+              if (emails.length === 0) { toast.error('No admin/manager emails found'); return; }
+              const result = await reconciliationAuditReport(emails);
+              if (result.success) {
+                toast.success(`Audit report sent to ${emails.length} recipient(s)`);
+              } else {
+                toast.error(result.error || 'Failed to send report');
+              }
+            } catch (e: any) {
+              toast.error(e.message || 'Failed');
+            } finally {
+              setSendingReport(false);
+            }
+          }}
+          disabled={sendingReport || emailSending}
+        >
+          {(sendingReport || emailSending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+          Send Midnight Audit Report
+        </Button>
       </div>
 
       {/* Stats */}

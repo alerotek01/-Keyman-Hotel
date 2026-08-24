@@ -464,6 +464,197 @@ export async function sendReconciliationResult(to: string, staffName: string, st
 }
 
 // ═══════════════════════════════════════════
+// MIDNIGHT RECONCILIATION AUDIT REPORT
+// ═══════════════════════════════════════════
+
+/**
+ * Midnight reconciliation audit report email
+ * Sent to admin + manager with full reconciliation breakdown
+ */
+export async function sendReconciliationAuditReport(to: string, report: {
+  date: string;
+  totalRevenue: number;
+  cashCollected: number;
+  mpesaCollected: number;
+  cardCollected: number;
+  totalPayments: number;
+  mpesaCodesCount: number;
+  shifts: {
+    staffName: string;
+    role: string;
+    shiftName: string;
+    salesTotal: number;
+    cashTotal: number;
+    mpesaTotal: number;
+    variance: number;
+    varianceStatus: string;
+    status: string;
+    explanation?: string;
+    proofType?: string;
+    adminConfirmed: boolean;
+  }[];
+  unresolvedCount: number;
+  resolvedCount: number;
+  totalShifts: number;
+}) {
+  const unresolvedShifts = report.shifts.filter(s => s.varianceStatus === 'open' || s.varianceStatus === 'staff_explained');
+  const resolvedShifts = report.shifts.filter(s => s.varianceStatus === 'resolved' || s.varianceStatus === 'none');
+  const totalVariance = report.shifts.reduce((sum, s) => sum + s.variance, 0);
+  const shortShifts = report.shifts.filter(s => s.variance < 0);
+  const overShifts = report.shifts.filter(s => s.variance > 0);
+
+  const shiftRows = report.shifts.map(s => {
+    const varianceColor = s.variance < 0 ? '#e74c3c' : s.variance > 0 ? '#e67e22' : '#27ae60';
+    const statusBadge = s.status === 'reconciled' ? '✅ Closed' 
+      : s.status === 'flagged' ? '🚩 Flagged'
+      : s.status === 'explained' ? '💬 Explained'
+      : s.status === 'approved' ? '👍 Approved'
+      : '⏳ Pending';
+    const varianceStatus = s.varianceStatus === 'resolved' ? '✅ Resolved'
+      : s.varianceStatus === 'staff_explained' ? '💬 Awaiting Admin'
+      : s.varianceStatus === 'open' ? '🔴 Open'
+      : '—';
+    
+    return `
+      <tr>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;color:#1a2744;font-weight:bold;">${s.staffName}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;color:#555;text-transform:capitalize;">${s.role}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;color:#1a2744;text-align:right;">KES ${s.salesTotal.toLocaleString()}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;color:#1a2744;text-align:right;">KES ${s.cashTotal.toLocaleString()}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;color:#1a2744;text-align:right;">KES ${s.mpesaTotal.toLocaleString()}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;color:${varianceColor};text-align:right;font-weight:bold;">${s.variance >= 0 ? '+' : ''}KES ${s.variance.toLocaleString()}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center;font-size:12px;">${varianceStatus}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center;font-size:12px;">${statusBadge}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const unresolvedRows = unresolvedShifts.map(s => `
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#1a2744;">${s.staffName} (${s.role})</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:${s.variance < 0 ? '#e74c3c' : '#e67e22'};font-weight:bold;">${s.variance >= 0 ? '+' : ''}KES ${s.variance.toLocaleString()}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;color:#555;font-size:12px;">${s.varianceStatus === 'staff_explained' ? '💬 Explained — awaiting admin' : '🔴 Open — needs explanation'}</td>
+    </tr>
+  `).join('');
+
+  return sendEmail({
+    to,
+    subject: `${report.unresolvedCount > 0 ? '⚠️' : '📊'} Reconciliation Audit — ${report.date} — ${HOTEL_NAME}`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:8px;">📊 Midnight Reconciliation Audit</h2>
+      <p style="color:#999;margin:0 0 24px;font-size:14px;">${report.date} · Auto-generated at midnight</p>
+
+      <!-- Summary Cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px;">
+        <div style="background:#e8f5e9;border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:#2e7d32;font-size:11px;margin:0;">Total Revenue</p>
+          <p style="color:#1a2744;font-size:20px;font-weight:bold;margin:4px 0 0;">KES ${report.totalRevenue.toLocaleString()}</p>
+        </div>
+        <div style="background:#e3f2fd;border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:#1565c0;font-size:11px;margin:0;">Cash</p>
+          <p style="color:#1a2744;font-size:20px;font-weight:bold;margin:4px 0 0;">KES ${report.cashCollected.toLocaleString()}</p>
+        </div>
+        <div style="background:#e8f5e9;border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:#2e7d32;font-size:11px;margin:0;">M-Pesa</p>
+          <p style="color:#1a2744;font-size:20px;font-weight:bold;margin:4px 0 0;">KES ${report.mpesaCollected.toLocaleString()}</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px;">
+        <div style="background:#f5f5f5;border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:#999;font-size:11px;margin:0;">Shifts</p>
+          <p style="color:#1a2744;font-size:18px;font-weight:bold;margin:4px 0 0;">${report.totalShifts}</p>
+        </div>
+        <div style="background:#e8f5e9;border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:#2e7d32;font-size:11px;margin:0;">Resolved</p>
+          <p style="color:#27ae60;font-size:18px;font-weight:bold;margin:4px 0 0;">${report.resolvedCount}</p>
+        </div>
+        <div style="background:${report.unresolvedCount > 0 ? '#fce4ec' : '#e8f5e9'};border-radius:8px;padding:14px;text-align:center;">
+          <p style="color:${report.unresolvedCount > 0 ? '#c62828' : '#2e7d32'};font-size:11px;margin:0;">Unresolved</p>
+          <p style="color:${report.unresolvedCount > 0 ? '#c62828' : '#27ae60'};font-size:18px;font-weight:bold;margin:4px 0 0;">${report.unresolvedCount}</p>
+        </div>
+      </div>
+
+      <!-- Variance Summary -->
+      <div style="background:#f5f5f5;border-radius:8px;padding:16px;margin-bottom:24px;">
+        <h3 style="color:#1a2744;margin:0 0 12px;font-size:14px;">Variance Summary</h3>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:4px 0;color:#555;">Total Variance</td>
+            <td style="padding:4px 0;color:${totalVariance < 0 ? '#e74c3c' : '#27ae60'};text-align:right;font-weight:bold;">${totalVariance >= 0 ? '+' : ''}KES ${totalVariance.toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#555;">Short Shifts</td>
+            <td style="padding:4px 0;color:#e74c3c;text-align:right;">${shortShifts.length} staff</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#555;">Over Shifts</td>
+            <td style="padding:4px 0;color:#e67e22;text-align:right;">${overShifts.length} staff</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#555;">M-Pesa Codes Recorded</td>
+            <td style="padding:4px 0;color:#1a2744;text-align:right;">${report.mpesaCodesCount}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#555;">Total Payments</td>
+            <td style="padding:4px 0;color:#1a2744;text-align:right;">${report.totalPayments}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Full Shift Breakdown -->
+      <h3 style="color:#1a2744;margin:0 0 12px;font-size:14px;">Shift Breakdown</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px;">
+        <thead>
+          <tr style="background:#f5f5f5;">
+            <td style="padding:8px;color:#999;font-weight:bold;font-size:11px;">STAFF</td>
+            <td style="padding:8px;color:#999;font-weight:bold;font-size:11px;">ROLE</td>
+            <td style="padding:8px;color:#999;font-weight:bold;font-size:11px;text-align:right;">SALES</td>
+            <td style="padding:8px;color:#999;font-weight:bold;font-size:11px;text-align:right;">CASH</td>
+            <td style="padding:8px;color:#999;font-weight:bold;font-size:11px;text-align:right;">M-PESA</td>
+            <td style="padding:8px;color:#999;font-weight:bold;font-size:11px;text-align:right;">VARIANCE</td>
+            <td style="padding:8px;color:#999;font-weight:bold;font-size:11px;text-align:center;">V. STATUS</td>
+            <td style="padding:8px;color:#999;font-weight:bold;font-size:11px;text-align:center;">SHIFT</td>
+          </tr>
+        </thead>
+        <tbody>
+          ${shiftRows}
+        </tbody>
+      </table>
+
+      <!-- Unresolved Variances -->
+      ${unresolvedShifts.length > 0 ? `
+        <div style="background:#fce4ec;border:1px solid #ef9a9a;border-radius:8px;padding:16px;margin-bottom:24px;">
+          <h3 style="color:#c62828;margin:0 0 12px;font-size:14px;">⚠️ Unresolved Variances — Action Required</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr>
+                <td style="padding:6px 8px;color:#c62828;font-weight:bold;font-size:11px;">STAFF</td>
+                <td style="padding:6px 8px;color:#c62828;font-weight:bold;font-size:11px;text-align:right;">VARIANCE</td>
+                <td style="padding:6px 8px;color:#c62828;font-weight:bold;font-size:11px;">STATUS</td>
+              </tr>
+            </thead>
+            <tbody>
+              ${unresolvedRows}
+            </tbody>
+          </table>
+          <p style="color:#c62828;font-size:12px;margin:12px 0 0;">These variances need to be resolved before the shift can be closed. Log in to review and take action.</p>
+        </div>
+      ` : `
+        <div style="background:#e8f5e9;border-radius:8px;padding:16px;margin-bottom:24px;text-align:center;">
+          <p style="color:#2e7d32;margin:0;font-size:14px;">✅ All variances resolved — no action required</p>
+        </div>
+      `}
+
+      <!-- Action Button -->
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${HOTEL_URL}/manager/reconciliation" style="background:#c8a951;color:#1a2744;text-decoration:none;padding:12px 32px;border-radius:6px;font-weight:bold;display:inline-block;">Review Reconciliation</a>
+      </div>
+    `),
+  });
+}
+
+// ═══════════════════════════════════════════
 // CONFERENCE QUOTE REQUEST → Manager
 // ═══════════════════════════════════════════
 

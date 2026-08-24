@@ -185,7 +185,19 @@ async function testCreateShifts() {
 async function testCreateOrders() {
   log('INFO', '\n═══ SCENARIO 2: Create Restaurant Orders ═══');
 
-  const menuItems = rows(await q(`SELECT id, name, price FROM menu_items WHERE is_available=true LIMIT 5`));
+  let menuItems = rows(await q(`SELECT id, name, price FROM menu_items WHERE is_available=true LIMIT 5`));
+  // If no menu items, create test ones
+  if (menuItems.length < 3) {
+    log('INFO', 'Creating test menu items...');
+    for (const item of [
+      { name: 'E2E_RECON_Pilau', price: 500 },
+      { name: 'E2E_RECON_Chai', price: 80 },
+      { name: 'E2E_RECON_Fish', price: 550 },
+    ]) {
+      await q(`INSERT INTO menu_items (name, price, is_available, category) VALUES ('${item.name}', ${item.price}, true, 'main') ON CONFLICT DO NOTHING`);
+    }
+    menuItems = rows(await q(`SELECT id, name, price FROM menu_items WHERE name LIKE 'E2E_RECON_%' OR (is_available=true ORDER BY created_at DESC LIMIT 5)`));
+  }
   assert(menuItems.length >= 3, 'Fixtures: At least 3 menu items available');
 
   const orderData = [
@@ -212,7 +224,7 @@ async function testCreateOrders() {
     // Add order items
     for (const itemIdx of o.items) {
       const item = menuItems[itemIdx];
-      await q(`INSERT INTO restaurant_order_items (order_id, menu_item_id, quantity, unit_price, total)
+      await q(`INSERT INTO restaurant_order_items (order_id, menu_item_id, quantity, unit_price, subtotal)
         VALUES ('${order.id}', '${item.id}', 1, ${item.price}, ${item.price})`);
     }
 
