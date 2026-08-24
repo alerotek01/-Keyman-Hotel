@@ -49,29 +49,21 @@ export default function StaffManagement() {
     },
   });
 
-  // Create user
+  // Create user via server-side function
   const createUser = useMutation({
     mutationFn: async (data: { email: string; password: string; full_name: string; phone: string; role: AppRole }) => {
-      const { data: authData, error: authError } = await sb.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: { data: { full_name: data.full_name } },
+      const { data: result, error } = await sb.rpc('create_staff_user', {
+        p_email: data.email,
+        p_password: data.password,
+        p_full_name: data.full_name,
+        p_phone: data.phone || '',
+        p_role: data.role,
       });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('User creation failed');
-
-      const { error: insertError } = await sb.from('users').insert({
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.full_name,
-        phone: data.phone || null,
-        role: data.role,
-        is_active: true,
-      });
-      if (insertError) throw insertError;
+      if (error) throw error;
+      if (!result?.success) throw new Error(result?.error || 'User creation failed');
 
       await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
-      return authData.user;
+      return { id: result.user_id };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['manager-staff'] });
