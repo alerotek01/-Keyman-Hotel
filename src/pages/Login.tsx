@@ -6,8 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { sendPasswordResetOTP } from '@/lib/email';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sb = supabase as any;
 
 export default function Login() {
   const navigate = useNavigate();
@@ -18,10 +22,15 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [forgotPassword, setForgotPassword] = useState(false);
+
+  // Forgot password state
+  const [forgotStep, setForgotStep] = useState<'email' | 'otp' | 'new_password'>('email');
   const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   // Redirect based on role once auth is resolved
   useEffect(() => {
@@ -53,7 +62,6 @@ export default function Login() {
           title: 'Welcome Back',
           description: 'You have been signed in successfully.',
         });
-        // Don't navigate here — the useEffect above handles it once role is fetched
       }
     } catch (error: any) {
       const isTimeout = error.name === 'AbortError' || error.message?.includes('abort');
@@ -80,19 +88,119 @@ export default function Login() {
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  // Step 1: Send OTP code
+  const handleSendResetOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/set-password`,
+      // Generate OTP server-side
+      const { data: otpResult, error: otpError } = await sb.rpc('generate_and_store_otp', {
+        p_email: resetEmail,
+        p_purpose: 'password_reset',
       });
-      if (error) throw error;
-      setResetSent(true);
+
+      if (otpError || !otpResult?.success) {
+        throw new Error(otpResult?.error || 'Failed to generate code');
+      }
+
+      // Send OTP via email
+      const code = otpResult.code;
+      await sendPasswordResetOTP(resetEmail, code);
+
+      toast({
+        title: 'Code Sent',
+        description: `A 6-digit code has been sent to ${resetEmail}`,
+      });
+      setForgotStep('otp');
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to send reset link',
+        description: error.message || 'Failed to send reset code',
+        variant: 'destructive',
+      });
+    }
+    setResetLoading(false);
+  };
+
+  // Step 2: Verify OTP code
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    try {
+      const { data: result, error } = await sb.rpc('verify_otp_safe', {
+        p_email: resetEmail,
+        p_code: resetOtp,
+        p_purpose: 'password_reset',
+      });
+
+      if (error || !result?.success) {
+        throw new Error(result?.error || 'Invalid code');
+      }
+
+      setOtpVerified(true);
+      toast({ title: 'Code Verified', description: 'Now set your new password.' });
+      setForgotStep('new_password');
+    } catch (error: any) {
+      toast({
+        title: 'Verification Failed',
+        description: error.message || 'Invalid or expired code',
+        variant: 'destructive',
+      });
+    }
+    setResetLoading(false);
+  };
+
+  // Step 3: Set new password
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (resetNewPassword.length < 6) {
+      toast({ title: 'Error', description: 'Password must be at least 6 characters', variant: 'destructive' });
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      toast({ title: 'Error', description: 'Passwords do not match', variant: 'destructive' });
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const { data: result, error } = await sb.rpc('reset_password_with_otp', {
+        p_email: resetEmail,
+        p_new_password: resetNewPassword,
+      });
+
+      if (error || !result?.success) {
+        throw new Error(result?.error || 'Failed to reset password');
+      }
+
+      // Sign in with new password
+      const { error: signInError } = await sb.auth.signInWithPassword({
+        email: resetEmail,
+        password: resetNewPassword,
+      });
+
+      toast({
+        title: 'Password Reset!',
+        description: 'Signing you in...',
+      });
+
+      // Reset form
+      setForgotStep('email');
+      setResetEmail('');
+      setResetOtp('');
+      setResetNewPassword('');
+      setResetConfirmPassword('');
+      setOtpVerified(false);
+
+      if (signInError) {
+        // Password set but can't auto-login
+        navigate('/login', { replace: true });
+      }
+      // If sign-in succeeded, the useEffect will redirect to dashboard
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reset password',
         variant: 'destructive',
       });
     }
@@ -127,6 +235,8 @@ export default function Login() {
             <p className="text-sm text-charcoal/50">
               {isSignUp 
                 ? 'Create a new staff account'
+                : forgotStep !== 'email'
+                ? 'Reset your password'
                 : 'Sign in to the staff portal'
               }
             </p>
@@ -134,12 +244,15 @@ export default function Login() {
 
           {/* Form */}
           <div className="card-warm p-8">
-            {/* Forgot Password Form */}
-            {forgotPassword && !resetSent && (
-              <form onSubmit={handleForgotPassword} className="space-y-5">
+            
+            {/* ═══ FORGOT PASSWORD FLOW ═══ */}
+
+            {/* Step 1: Enter email */}
+            {forgotStep === 'email' && (
+              <form onSubmit={handleSendResetOTP} className="space-y-5">
                 <div className="space-y-2">
                   <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
-                    Enter your email to reset password
+                    Enter your email to receive a reset code
                   </Label>
                   <Input
                     type="email"
@@ -151,11 +264,11 @@ export default function Login() {
                   />
                 </div>
                 <Button type="submit" variant="brass" className="w-full" disabled={resetLoading}>
-                  {resetLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Send Reset Link'}
+                  {resetLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Send Reset Code'}
                 </Button>
                 <button
                   type="button"
-                  onClick={() => setForgotPassword(false)}
+                  onClick={() => { setForgotStep('email'); setResetEmail(''); }}
                   className="w-full text-xs text-charcoal/40 hover:text-charcoal transition-colors"
                 >
                   ← Back to Sign In
@@ -163,44 +276,89 @@ export default function Login() {
               </form>
             )}
 
-            {/* Reset Link Sent */}
-            {forgotPassword && resetSent && (
-              <div className="text-center space-y-4 py-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-                  <span className="text-2xl">📧</span>
+            {/* Step 2: Enter OTP code */}
+            {forgotStep === 'otp' && (
+              <form onSubmit={handleVerifyOTP} className="space-y-5">
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-charcoal/60">
+                    Enter the 6-digit code sent to
+                  </p>
+                  <p className="text-sm font-medium text-charcoal">{resetEmail}</p>
                 </div>
-                <h3 className="font-display text-lg font-bold text-charcoal">Check your email</h3>
-                <p className="text-sm text-charcoal/50">
-                  We sent a password reset link to <strong>{resetEmail}</strong>
-                </p>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
+                    Verification Code
+                  </Label>
+                  <Input
+                    type="text"
+                    placeholder="000000"
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    maxLength={6}
+                    className="rounded-full border-charcoal/10 focus-visible:ring-brass text-center text-lg tracking-[0.3em] font-mono"
+                    autoFocus
+                  />
+                </div>
+                <Button type="submit" variant="brass" className="w-full" disabled={resetLoading || resetOtp.length !== 6}>
+                  {resetLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Verify Code'}
+                </Button>
                 <button
-                  onClick={() => { setForgotPassword(false); setResetSent(false); setResetEmail(''); }}
-                  className="text-xs text-brass hover:text-brass-dark transition-colors"
+                  type="button"
+                  onClick={() => { setForgotStep('email'); setResetOtp(''); }}
+                  className="w-full text-xs text-charcoal/40 hover:text-charcoal transition-colors"
                 >
                   ← Back to Sign In
                 </button>
-              </div>
+              </form>
             )}
 
-            {/* Login / Sign Up Form */}
-            {!forgotPassword && (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {isSignUp && (
+            {/* Step 3: Set new password */}
+            {forgotStep === 'new_password' && (
+              <form onSubmit={handleSetNewPassword} className="space-y-5">
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-charcoal/60">Code verified! Set your new password.</p>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
-                    Full Name
+                  <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
+                    New Password
                   </Label>
                   <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Jane Doe"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    type="password"
+                    placeholder="At least 6 characters"
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
                     required
+                    minLength={6}
                     className="rounded-full border-charcoal/10 focus-visible:ring-brass"
                   />
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
+                    Confirm Password
+                  </Label>
+                  <Input
+                    type="password"
+                    placeholder="Re-enter your password"
+                    value={resetConfirmPassword}
+                    onChange={(e) => setResetConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="rounded-full border-charcoal/10 focus-visible:ring-brass"
+                  />
+                </div>
+                {resetNewPassword && resetConfirmPassword && resetNewPassword !== resetConfirmPassword && (
+                  <p className="text-xs text-destructive">Passwords do not match</p>
+                )}
+                <Button type="submit" variant="brass" className="w-full" disabled={resetLoading || !resetNewPassword || !resetConfirmPassword || resetNewPassword !== resetConfirmPassword}>
+                  {resetLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Reset Password & Sign In'}
+                </Button>
+              </form>
+            )}
+
+            {/* ═══ LOGIN / SIGN UP ═══ */}
+            {forgotStep === 'email' && !isSignUp && (
+            <form onSubmit={handleSubmit} className="space-y-5 mt-0">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
                   Email
@@ -234,35 +392,95 @@ export default function Login() {
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isSignUp ? 'Creating...' : 'Signing in...'}
+                    Signing in...
                   </>
                 ) : (
-                  isSignUp ? 'Create Account' : 'Sign In'
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+            )}
+
+            {forgotStep === 'email' && isSignUp && (
+            <form onSubmit={handleSubmit} className="space-y-5 mt-0">
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
+                  Full Name
+                </Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Jane Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  className="rounded-full border-charcoal/10 focus-visible:ring-brass"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@keymanhotel.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="rounded-full border-charcoal/10 focus-visible:ring-brass"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-xs font-medium tracking-wide uppercase text-charcoal/60">
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="rounded-full border-charcoal/10 focus-visible:ring-brass"
+                />
+              </div>
+              <Button type="submit" variant="brass" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Account'
                 )}
               </Button>
             </form>
             )}
 
             <div className="mt-6 space-y-3 text-center">
-              {!isSignUp && !forgotPassword && (
+              {forgotStep === 'email' && !isSignUp && (
                 <button
-                  onClick={() => setForgotPassword(true)}
+                  onClick={() => setForgotStep('email')}
                   className="text-xs text-brass hover:text-brass-dark transition-colors duration-300"
                 >
                   Forgot password?
                 </button>
               )}
-              <div>
-                <button
-                  onClick={() => { setIsSignUp(!isSignUp); setForgotPassword(false); }}
-                  className="text-xs text-charcoal/40 hover:text-charcoal transition-colors duration-300"
-                >
-                  {isSignUp
-                    ? 'Already have an account? Sign in'
-                    : "Don't have an account? Sign up"
-                  }
-                </button>
-              </div>
+              {forgotStep === 'email' && (
+                <div>
+                  <button
+                    onClick={() => { setIsSignUp(!isSignUp); setForgotStep('email'); }}
+                    className="text-xs text-charcoal/40 hover:text-charcoal transition-colors duration-300"
+                  >
+                    {isSignUp
+                      ? 'Already have an account? Sign in'
+                      : "Don't have an account? Sign up"
+                    }
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

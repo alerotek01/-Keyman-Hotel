@@ -127,6 +127,48 @@ export async function sendPasswordReset(to: string, resetLink: string, userName:
 }
 
 /**
+ * Password reset OTP code email
+ */
+export async function sendPasswordResetOTP(to: string, otpCode: string) {
+  return sendEmail({
+    to,
+    subject: `Your Password Reset Code — ${HOTEL_NAME}`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">Password Reset</h2>
+      <p style="color:#555;line-height:1.6;">We received a request to reset your password. Use the code below:</p>
+      <div style="background:#f5f5f5;border-radius:8px;padding:24px;text-align:center;margin:24px 0;">
+        <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a2744;margin:0;">${otpCode}</p>
+        <p style="color:#999;font-size:12px;margin-top:8px;">Expires in 10 minutes</p>
+      </div>
+      <p style="color:#e74c3c;font-size:12px;line-height:1.6;">If you didn't request this, please ignore this email. Do not share this code with anyone.</p>
+    `),
+  });
+}
+
+/**
+ * Staff invite OTP code email
+ */
+export async function sendStaffInviteOTP(to: string, otpCode: string, userName: string, role: string) {
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ');
+  return sendEmail({
+    to,
+    subject: `Welcome to ${HOTEL_NAME} — Your ${roleLabel} Account`,
+    html: baseTemplate(`
+      <h2 style="color:#1a2744;margin-bottom:16px;">Welcome, ${userName}! 👋</h2>
+      <p style="color:#555;line-height:1.6;">Your <strong>${roleLabel}</strong> account has been created. Use the code below to set your password and access your dashboard:</p>
+      <div style="background:#e8f5e9;border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
+        <p style="color:#2e7d32;margin:0;font-size:14px;">🎯 Your Role: <strong>${roleLabel}</strong></p>
+      </div>
+      <div style="background:#f5f5f5;border-radius:8px;padding:24px;text-align:center;margin:24px 0;">
+        <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a2744;margin:0;">${otpCode}</p>
+        <p style="color:#999;font-size:12px;margin-top:8px;">Expires in 10 minutes</p>
+      </div>
+      <p style="color:#e74c3c;font-size:12px;line-height:1.6;">If you didn't expect this email, please ignore it. Do not share this code with anyone.</p>
+    `),
+  });
+}
+
+/**
  * Welcome email when admin creates a user
  */
 export async function sendWelcomeEmail(to: string, userName: string, role: string, temporaryPassword?: string, setPasswordUrl?: string) {

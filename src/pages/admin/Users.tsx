@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { sendWelcomeEmail } from '@/lib/email';
+import { sendWelcomeEmail, sendStaffInviteOTP } from '@/lib/email';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Pencil, Trash2, Eye, BedDouble, Coffee } from 'lucide-react';
@@ -68,10 +68,14 @@ export default function AdminUsers() {
         // Password provided — send welcome email with credentials
         await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
       } else {
-        // No password — send set-password link using token from server
-        const token = result.token;
-        const setPwdUrl = `${window.location.origin}/set-password?token=${token}&type=signup&email=${encodeURIComponent(data.email)}`;
-        await sendWelcomeEmail(data.email, data.full_name, data.role, undefined, setPwdUrl);
+        // No password — generate OTP and send invite code
+        const { data: otpResult } = await sb.rpc('generate_and_store_otp', {
+          p_email: data.email,
+          p_purpose: 'staff_invite',
+        });
+        if (otpResult?.success) {
+          await sendStaffInviteOTP(data.email, otpResult.code, data.full_name, data.role);
+        }
       }
 
       return { id: result.user_id };

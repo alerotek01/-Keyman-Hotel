@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { sendWelcomeEmail } from '@/lib/email';
+import { sendWelcomeEmail, sendStaffInviteOTP } from '@/lib/email';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Loader2, Plus, Shield, UserCog, UserX, UserCheck, Mail, Phone, Trash2, Users, Clock, Pencil } from 'lucide-react';
@@ -65,9 +65,14 @@ export default function StaffManagement() {
       if (data.password) {
         await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
       } else {
-        const token = result.token;
-        const setPwdUrl = `${window.location.origin}/set-password?token=${token}&type=signup&email=${encodeURIComponent(data.email)}`;
-        await sendWelcomeEmail(data.email, data.full_name, data.role, undefined, setPwdUrl);
+        // No password — generate OTP and send invite code
+        const { data: otpResult } = await sb.rpc('generate_and_store_otp', {
+          p_email: data.email,
+          p_purpose: 'staff_invite',
+        });
+        if (otpResult?.success) {
+          await sendStaffInviteOTP(data.email, otpResult.code, data.full_name, data.role);
+        }
       }
       return { id: result.user_id };
     },
