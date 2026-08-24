@@ -4,20 +4,25 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, KeyRound, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
+/**
+ * Handles three URL patterns:
+ * 1. PKCE code exchange:  /set-password?code=xxx&type=recovery
+ * 2. Hash fragment:       /set-password#access_token=xxx&refresh_token=yyy&type=recovery
+ * 3. Staff invite:        /set-password?token=xxx&email=yyy
+ * 4. Supabase errors:     /set-password?error=access_denied&error_code=otp_expired
+ */
 export default function SetPassword() {
   const [searchParams] = useSearchParams();
 
   const [email, setEmail] = useState<string | null>(null);
   const [isRecovery, setIsRecovery] = useState(false);
-  const [recoveryAccessToken, setRecoveryAccessToken] = useState<string | null>(null);
-  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState<string | null>(null);
 
   const [inviteToken, setInviteToken] = useState<string | null>(null);
 
@@ -28,64 +33,104 @@ export default function SetPassword() {
   const [tokenValid, setTokenValid] = useState(false);
   const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Sign out helper — always sign out when landing on this page
+  // This prevents the dangerous auto-login the user reported
+  const signOutAndRedirect = async () => {
+    try { await sb.auth.signOut(); } catch { /* ignore */ }
+    window.location.href = '/login';
+  };
 
   // Parse URL on mount
   useEffect(() => {
-    // 1. Check hash fragment — Supabase recovery link format:
-    //    /set-password#access_token=xxx&refresh_token=yyy&type=recovery&token_type=bearer
-    const hash = window.location.hash;
-    if (hash && hash.length > 1) {
-      const params = new URLSearchParams(hash.substring(1));
-      const at = params.get('access_token');
-      const rt = params.get('refresh_token');
-      const type = params.get('type');
+    const init = async () => {
+      // 0. Check for Supabase error params (otp_expired, access_denied, etc.)
+      const errCode = searchParams.get('error_code');
+      const errDesc = searchParams.get('error_description');
+      if (errCode) {
+        let friendly = 'This password reset link is invalid or has expired.';
+        if (errCode === 'otp_expired') {
+          friendly = 'This password reset link has expired. Please request a new one.';
+        } else if (errCode === 'otp_disabled') {
+          friendly = 'Password reset is temporarily disabled. Please try again later.';
+        } else if (errDesc) {
+          friendly = decodeURIComponent(errDesc.replace(/\+/g, ' '));
+        }
+        setErrorMsg(friendly);
+        setVerifying(false);
+        return;
+      }
 
-      if (at && type === 'recovery') {
-        setRecoveryAccessToken(at);
-        setRecoveryRefreshToken(rt || '');
+      // 1. PKCE code exchange — Supabase redirects with ?code=xxx&type=recovery
+      const code = searchParams.get('code');
+      const type = searchParams.get('type');
+
+      if (code && (type === 'recovery' || type === 'magiclink')) {
         setIsRecovery(true);
+        try {
+          const { data, error } = await sb.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('exchangeCodeForSession error:', error);
+            setErrorMsg('This link is invalid or has expired. Please request a new one.');
+            setVerifying(false);
+            return;
+          }
 
-        // Exchange tokens for a session so we can get the user's email
-        const establishSession = async () => {
+          if (data?.user?.email) {
+            setEmail(data.user.email);
+          }
+          setTokenValid(true);
+          setVerifying(false);
+        } catch (err) {
+          console.error('PKCE exchange failed:', err);
+          setErrorMsg('Failed to verify link. Please try again.');
+          setVerifying(false);
+        }
+        return;
+      }
+
+      // 2. Hash fragment — implicit flow: #access_token=xxx&refresh_token=yyy&type=recovery
+      const hash = window.location.hash;
+      if (hash && hash.length > 1) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const at = hashParams.get('access_token');
+        const rt = hashParams.get('refresh_token');
+        const hashType = hashParams.get('type');
+
+        if (at && hashType === 'recovery') {
+          setIsRecovery(true);
           try {
             const { data, error } = await sb.auth.setSession({
               access_token: at,
               refresh_token: rt || '',
             });
             if (error) {
-              console.error('setSession error:', error);
-              setTokenValid(false);
+              setErrorMsg('Failed to verify link. Please request a new one.');
               setVerifying(false);
               return;
             }
-
-            // Get email from the session user
             if (data?.user?.email) {
               setEmail(data.user.email);
             }
             setTokenValid(true);
             setVerifying(false);
           } catch (err) {
-            console.error('Session establishment failed:', err);
-            setTokenValid(false);
+            setErrorMsg('Failed to verify link. Please try again.');
             setVerifying(false);
           }
-        };
-        establishSession();
-        return;
+          return;
+        }
       }
-    }
 
-    // 2. Check query params — Staff invite link:
-    //    /set-password?token=xxx&email=yyy
-    const token = searchParams.get('token');
-    const em = searchParams.get('email');
+      // 3. Staff invite link: ?token=xxx&email=yyy
+      const token = searchParams.get('token');
+      const em = searchParams.get('email');
 
-    if (token && em) {
-      setInviteToken(token);
-      setEmail(em);
+      if (token && em) {
+        setInviteToken(token);
+        setEmail(em);
 
-      const verifyToken = async () => {
         try {
           const { data } = await sb.rpc('verify_set_password_token', {
             p_email: em,
@@ -99,13 +144,14 @@ export default function SetPassword() {
           setTokenValid(false);
         }
         setVerifying(false);
-      };
-      verifyToken();
-      return;
-    }
+        return;
+      }
 
-    // 3. No valid params found
-    setVerifying(false);
+      // 4. No valid params found
+      setVerifying(false);
+    };
+
+    init();
   }, [searchParams]);
 
   const handleSetPassword = async (e: React.FormEvent) => {
@@ -122,32 +168,41 @@ export default function SetPassword() {
     setLoading(true);
     try {
       if (isRecovery) {
-        // Supabase recovery flow — session is already established via setSession
+        // Session already established via PKCE exchange or setSession
         const { error } = await sb.auth.updateUser({ password });
         if (error) throw error;
 
         toast.success('Password reset successfully!');
         setSuccess(true);
-        setTimeout(async () => {
-          try {
-            const { data: userData } = await sb.auth.getUser();
-            const uid = userData?.user?.id;
-            if (uid) {
-              const { data: roleData } = await sb.rpc('get_user_role', { p_user_id: uid });
-              const role = roleData || 'staff';
-              if (role === 'admin') window.location.href = '/admin';
-              else if (role === 'manager') window.location.href = '/manager';
-              else if (role === 'guest') window.location.href = '/guest';
-              else window.location.href = '/staff';
-            } else {
-              window.location.href = '/staff';
-            }
-          } catch {
-            window.location.href = '/staff';
-          }
-        }, 1500);
+
+        // Sign out then sign back in to get a clean session
+        await sb.auth.signOut();
+        const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({
+          email: email || '',
+          password,
+        });
+        if (signInError) {
+          // Password set, redirect to login
+          setTimeout(() => { window.location.href = '/login'; }, 1500);
+          return;
+        }
+
+        // Route to correct dashboard
+        const uid = signInData?.user?.id;
+        if (uid) {
+          const { data: roleData } = await sb.rpc('get_user_role', { p_user_id: uid });
+          const role = roleData || 'staff';
+          setTimeout(() => {
+            if (role === 'admin') window.location.href = '/admin';
+            else if (role === 'manager') window.location.href = '/manager';
+            else if (role === 'guest') window.location.href = '/guest';
+            else window.location.href = '/staff';
+          }, 1500);
+        } else {
+          setTimeout(() => { window.location.href = '/staff'; }, 1500);
+        }
       } else if (inviteToken && email) {
-        // Staff invite flow — use server-side function
+        // Staff invite flow
         const { data: result, error } = await sb.rpc('set_user_password', {
           p_email: email,
           p_new_password: password,
@@ -161,7 +216,6 @@ export default function SetPassword() {
           password,
         });
         if (signInError) {
-          // Password was set, just can't auto-login — redirect to login
           toast.success('Password set! Please sign in.');
           setSuccess(true);
           setTimeout(() => { window.location.href = '/login'; }, 1500);
@@ -170,9 +224,7 @@ export default function SetPassword() {
 
         toast.success('Password set successfully!');
         setSuccess(true);
-        setTimeout(() => {
-          window.location.href = '/staff';
-        }, 1500);
+        setTimeout(() => { window.location.href = '/staff'; }, 1500);
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to set password');
@@ -180,8 +232,29 @@ export default function SetPassword() {
     setLoading(false);
   };
 
+  // Error state (expired link, invalid code, etc.)
+  if (!verifying && errorMsg) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-navy via-navy/95 to-brass/20 flex items-center justify-center p-4">
+        <Card className="bg-white/95 backdrop-blur w-full max-w-md">
+          <CardContent className="py-12 text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+            <h2 className="font-display text-xl font-bold">Invalid Link</h2>
+            <p className="text-muted-foreground text-sm">{errorMsg}</p>
+            <div className="flex flex-col gap-2 mt-4">
+              <Button variant="brass" onClick={signOutAndRedirect}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out & Go to Login
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Missing parameters
-  if (!verifying && !tokenValid && !isRecovery && !inviteToken) {
+  if (!verifying && !tokenValid && !isRecovery && !inviteToken && !errorMsg) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-navy via-navy/95 to-brass/20 flex items-center justify-center p-4">
         <Card className="bg-white/95 backdrop-blur w-full max-w-md">
@@ -189,7 +262,12 @@ export default function SetPassword() {
             <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
             <h2 className="font-display text-xl font-bold">Invalid Link</h2>
             <p className="text-muted-foreground text-sm">This password reset link is invalid or has expired.</p>
-            <a href="/login"><Button variant="outline" className="mt-2">Go to Login</Button></a>
+            <div className="flex flex-col gap-2 mt-4">
+              <Button variant="brass" onClick={signOutAndRedirect}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out & Go to Login
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -219,7 +297,9 @@ export default function SetPassword() {
             <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
             <h2 className="font-display text-xl font-bold">Password Already Set</h2>
             <p className="text-muted-foreground text-sm">You can log in directly.</p>
-            <a href="/login"><Button variant="brass" className="mt-4">Go to Login</Button></a>
+            <Button variant="brass" className="mt-4" onClick={signOutAndRedirect}>
+              Go to Login
+            </Button>
           </CardContent>
         </Card>
       </div>
