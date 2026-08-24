@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useSiteSettings, useUpdateSiteSetting } from '@/hooks/useCms';
 import { usePageContent, useUpdatePageContent } from '@/hooks/useCms';
 import { useHeroSlides, useCreateHeroSlide, useUpdateHeroSlide, useDeleteHeroSlide, useUploadHeroSlideImage } from '@/hooks/useCms';
+import { useCarouselSections, useUpdateCarouselSections, useUploadCarouselImage, type CarouselSection, type CarouselImage } from '@/hooks/useCms';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Globe, FileText, ImagePlus, Trash2, GripVertical, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Save, Globe, FileText, ImagePlus, Trash2, GripVertical, ChevronUp, ChevronDown, Eye, EyeOff, Plus, Images } from 'lucide-react';
 
 export default function AdminSiteContent() {
   const { data: settings, isLoading: settingsLoading } = useSiteSettings();
@@ -40,6 +41,15 @@ export default function AdminSiteContent() {
   const [editingSlide, setEditingSlide] = useState<any>(null);
   const [editForm, setEditForm] = useState({ caption: '', alt_text: '', link_url: '', icon: '' });
   const [editFile, setEditFile] = useState<File | null>(null);
+
+  // Carousel sections
+  const { data: carouselSections, isLoading: carouselLoading } = useCarouselSections();
+  const updateCarousels = useUpdateCarouselSections();
+  const uploadCarouselImage = useUploadCarouselImage();
+  const [editingSection, setEditingSection] = useState<CarouselSection | null>(null);
+  const [sectionForm, setSectionForm] = useState<{ eyebrow: string; title: string; caption: string; link: string; linkText: string }>({ eyebrow: '', title: '', caption: '', link: '', linkText: '' });
+  const [carouselUploadFile, setCarouselUploadFile] = useState<File | null>(null);
+  const [carouselSaving, setCarouselSaving] = useState(false);
 
   const openEditSlide = (slide: any) => {
     setEditingSlide(slide);
@@ -70,7 +80,104 @@ export default function AdminSiteContent() {
     }
   };
 
-  const isLoading = settingsLoading || contentLoading || slidesLoading;
+  const isLoading = settingsLoading || contentLoading || slidesLoading || carouselLoading;
+
+  // Carousel handlers
+  const openSectionEditor = (section: CarouselSection) => {
+    setEditingSection(section);
+    setSectionForm({ eyebrow: section.eyebrow, title: section.title, caption: section.caption, link: section.link, linkText: section.linkText });
+    setCarouselUploadFile(null);
+  };
+
+  const handleSaveSectionText = async () => {
+    if (!editingSection || !carouselSections) return;
+    setCarouselSaving(true);
+    try {
+      const updated = carouselSections.map(s =>
+        s.id === editingSection.id ? { ...s, ...sectionForm } : s
+      );
+      await updateCarousels.mutateAsync(updated);
+      setEditingSection(null);
+      toast({ title: 'Section updated' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+    setCarouselSaving(false);
+  };
+
+  const handleUploadCarouselImage = async () => {
+    if (!editingSection || !carouselUploadFile || !carouselSections) return;
+    setCarouselSaving(true);
+    try {
+      const url = await uploadCarouselImage.mutateAsync({ sectionId: editingSection.id, file: carouselUploadFile });
+      const newImage: CarouselImage = { src: url, alt: carouselUploadFile.name.replace(/\.[^.]+$/, '') };
+      const updated = carouselSections.map(s =>
+        s.id === editingSection.id ? { ...s, images: [...s.images, newImage] } : s
+      );
+      await updateCarousels.mutateAsync(updated);
+      // Refresh local editing section
+      const refreshed = updated.find(s => s.id === editingSection.id);
+      if (refreshed) setEditingSection(refreshed);
+      setCarouselUploadFile(null);
+      toast({ title: 'Image added' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+    setCarouselSaving(false);
+  };
+
+  const handleRemoveCarouselImage = async (imageIndex: number) => {
+    if (!editingSection || !carouselSections) return;
+    setCarouselSaving(true);
+    try {
+      const updated = carouselSections.map(s =>
+        s.id === editingSection.id ? { ...s, images: s.images.filter((_, i) => i !== imageIndex) } : s
+      );
+      await updateCarousels.mutateAsync(updated);
+      const refreshed = updated.find(s => s.id === editingSection.id);
+      if (refreshed) setEditingSection(refreshed);
+      toast({ title: 'Image removed' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+    setCarouselSaving(false);
+  };
+
+  const handleUpdateImageAlt = async (imageIndex: number, newAlt: string) => {
+    if (!editingSection || !carouselSections) return;
+    try {
+      const updated = carouselSections.map(s => {
+        if (s.id !== editingSection.id) return s;
+        const images = [...s.images];
+        images[imageIndex] = { ...images[imageIndex], alt: newAlt };
+        return { ...s, images };
+      });
+      await updateCarousels.mutateAsync(updated);
+      const refreshed = updated.find(s => s.id === editingSection.id);
+      if (refreshed) setEditingSection(refreshed);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleMoveImage = async (imageIndex: number, direction: -1 | 1) => {
+    if (!editingSection || !carouselSections) return;
+    const newIndex = imageIndex + direction;
+    if (newIndex < 0 || newIndex >= editingSection.images.length) return;
+    try {
+      const updated = carouselSections.map(s => {
+        if (s.id !== editingSection.id) return s;
+        const images = [...s.images];
+        [images[imageIndex], images[newIndex]] = [images[newIndex], images[imageIndex]];
+        return { ...s, images };
+      });
+      await updateCarousels.mutateAsync(updated);
+      const refreshed = updated.find(s => s.id === editingSection.id);
+      if (refreshed) setEditingSection(refreshed);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
 
   // Initialize settings form from data
   const getSetting = (key: string): string => {
@@ -197,6 +304,7 @@ export default function AdminSiteContent() {
           <TabsTrigger value="hotel" className="gap-2"><Globe className="h-4 w-4" /> Hotel Info</TabsTrigger>
           <TabsTrigger value="content" className="gap-2"><FileText className="h-4 w-4" /> Page Content</TabsTrigger>
           <TabsTrigger value="hero" className="gap-2"><ImagePlus className="h-4 w-4" /> Hero Slides</TabsTrigger>
+          <TabsTrigger value="carousels" className="gap-2"><Images className="h-4 w-4" /> Carousels</TabsTrigger>
         </TabsList>
 
         {/* ===== HOTEL INFO TAB ===== */}
@@ -485,7 +593,180 @@ export default function AdminSiteContent() {
             </div>
           )}
         </TabsContent>
+
+        {/* ===== CAROUSELS TAB ===== */}
+        <TabsContent value="carousels" className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Manage the image carousels shown on the homepage under "What We Offer". Each section has a title, caption, and rotating images.
+          </p>
+
+          <div className="grid gap-4">
+            {carouselSections?.map((section) => (
+              <Card key={section.id} className="cursor-pointer transition-all hover:ring-2 hover:ring-brass/50">
+                <CardContent className="py-4">
+                  <div className="flex items-start gap-4">
+                    {/* Preview thumbnails */}
+                    <div className="flex gap-1 shrink-0">
+                      {section.images.slice(0, 3).map((img, i) => (
+                        <div key={i} className="w-16 h-12 rounded overflow-hidden bg-muted">
+                          {img.src && !img.src.includes('placeholder') ? (
+                            <img src={img.src} alt={img.alt} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">No img</div>
+                          )}
+                        </div>
+                      ))}
+                      {section.images.length > 3 && (
+                        <div className="w-16 h-12 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                          +{section.images.length - 3}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{section.eyebrow}</Badge>
+                        <span className="font-medium truncate">{section.title}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{section.caption}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{section.images.length} images · Link: {section.link}</p>
+                    </div>
+
+                    <Button variant="outline" size="sm" onClick={() => openSectionEditor(section)}>
+                      Edit
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {(!carouselSections || carouselSections.length === 0) && !carouselLoading && (
+            <div className="text-center py-12">
+              <Images className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+              <p className="text-muted-foreground">No carousel sections found</p>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* ===== EDIT CAROUSEL SECTION DIALOG ===== */}
+      <Dialog open={!!editingSection} onOpenChange={(open) => { if (!open) setEditingSection(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Images className="h-5 w-5" /> Edit — {editingSection?.eyebrow}
+            </DialogTitle>
+            <DialogDescription>Manage images and text for this carousel section.</DialogDescription>
+          </DialogHeader>
+
+          {editingSection && (
+            <div className="space-y-6">
+              {/* Text fields */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Section Text</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Eyebrow</Label>
+                    <Input value={sectionForm.eyebrow} onChange={(e) => setSectionForm({ ...sectionForm, eyebrow: e.target.value })} placeholder="Stay, Events, Dining..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Title</Label>
+                    <Input value={sectionForm.title} onChange={(e) => setSectionForm({ ...sectionForm, title: e.target.value })} placeholder="Wake up to the hills" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Caption</Label>
+                  <Textarea value={sectionForm.caption} onChange={(e) => setSectionForm({ ...sectionForm, caption: e.target.value })} rows={2} placeholder="Description text..." />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Link URL</Label>
+                    <Input value={sectionForm.link} onChange={(e) => setSectionForm({ ...sectionForm, link: e.target.value })} placeholder="/rooms" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Link Text</Label>
+                    <Input value={sectionForm.linkText} onChange={(e) => setSectionForm({ ...sectionForm, linkText: e.target.value })} placeholder="See rooms & rates" />
+                  </div>
+                </div>
+                <Button variant="brass" size="sm" onClick={handleSaveSectionText} disabled={carouselSaving}>
+                  {carouselSaving ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />}
+                  Save Text
+                </Button>
+              </div>
+
+              {/* Images */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Images ({editingSection.images.length})</h4>
+
+                {/* Upload new image */}
+                <div className="flex items-end gap-3 p-3 rounded-lg border border-dashed bg-muted/30">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Upload Image</Label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="w-full text-xs text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-brass file:text-white hover:file:bg-brass/90"
+                      onChange={(e) => setCarouselUploadFile(e.target.files?.[0] || null)}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleUploadCarouselImage}
+                    disabled={!carouselUploadFile || carouselSaving}
+                  >
+                    {carouselSaving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Plus className="mr-1 h-3 w-3" />}
+                    Add
+                  </Button>
+                </div>
+
+                {/* Image list */}
+                <div className="space-y-2">
+                  {editingSection.images.map((img, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-2 rounded-lg border bg-muted/20">
+                      <div className="w-20 h-14 rounded overflow-hidden bg-muted shrink-0">
+                        {img.src && !img.src.includes('placeholder') ? (
+                          <img src={img.src} alt={img.alt} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">No img</div>
+                        )}
+                      </div>
+                      <Input
+                        className="flex-1 text-xs"
+                        defaultValue={img.alt}
+                        onBlur={(e) => handleUpdateImageAlt(idx, e.target.value)}
+                        placeholder="Alt text"
+                      />
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveImage(idx, -1)}
+                        ><ChevronUp className="h-3 w-3" /></button>
+                        <button
+                          className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          disabled={idx === editingSection.images.length - 1}
+                          onClick={() => handleMoveImage(idx, 1)}
+                        ><ChevronDown className="h-3 w-3" /></button>
+                      </div>
+                      <button
+                        className="p-1 text-destructive/60 hover:text-destructive"
+                        onClick={() => handleRemoveCarouselImage(idx)}
+                      ><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  ))}
+                </div>
+
+                {editingSection.images.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">No images yet. Upload one above.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ===== EDIT HERO SLIDE DIALOG ===== */}
       <Dialog open={editSlideOpen} onOpenChange={setEditSlideOpen}>

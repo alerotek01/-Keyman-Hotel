@@ -5,7 +5,7 @@ import { Layout } from '@/components/Layout';
 import { BookingModal } from '@/components/BookingModal';
 import { Button } from '@/components/ui/button';
 import { useRoomAvailability } from '@/hooks/useRooms';
-import { useHeroSlides } from '@/hooks/useCms';
+import { useHeroSlides, useCarouselSections } from '@/hooks/useCms';
 import { ArrowRight, ChevronLeft, ChevronRight, Bed, Presentation, UtensilsCrossed, Car } from 'lucide-react';
 import type { RoomWithAvailability } from '@/lib/types';
 
@@ -22,67 +22,11 @@ const fallbackHeroSlides = [
   { image_url: `${BASE}/hero-front-view.webp`, alt_text: 'Keyman Hotel front view', caption: 'Front view' },
 ];
 
-// Amenity carousel data
-const amenityBlocks = [
-  {
-    id: 'rooms',
-    icon: Bed,
-    eyebrow: 'Stay',
-    title: 'Wake up to the hills',
-    caption: 'Clean rooms with views of the Taita Hills. From KES 91/night — no hidden charges, no surprises at checkout. Single, twin, and studio options.',
-    link: '/rooms',
-    linkText: 'See rooms & rates',
-    images: [
-      { src: `${BASE}/room-single.jpg`, alt: 'Single room — clean linens and dark headboard' },
-      { src: `${BASE}/single-1.jpg`, alt: 'Single room — white sheets, side table' },
-      { src: `${BASE}/room-twin.jpg`, alt: 'Twin room — two beds with fresh linens' },
-      { src: `${BASE}/twin-1.jpg`, alt: 'Twin room — comfortable seating' },
-      { src: `${BASE}/studio-1.jpg`, alt: 'Studio suite — spacious setup' },
-    ],
-  },
-  {
-    id: 'conference',
-    icon: Presentation,
-    eyebrow: 'Events',
-    title: 'Host with a view',
-    caption: 'Taita Taveta\'s only professional conference venue. Seats 70, full AV setup, catering on request. Half-day and full-day packages.',
-    link: '/conference',
-    linkText: 'Book the conference hall',
-    images: [
-      { src: `${BASE}/conference-01.jpg`, alt: 'Conference hall — boardroom setup with white linens' },
-      { src: `${BASE}/conference-1.jpg`, alt: 'Conference hall — meeting arrangement' },
-      { src: `${BASE}/conference-01.jpg`, alt: 'Conference hall — boardroom setup' },
-    ],
-  },
-  {
-    id: 'cafeteria',
-    icon: UtensilsCrossed,
-    eyebrow: 'Dining',
-    title: 'Eat like a local',
-    caption: 'Kenyan favourites and continental dishes, three meals a day. Home-cooked food at honest prices — for guests and walk-ins.',
-    link: '/cafeteria',
-    linkText: 'View today\'s menu',
-    images: [
-      { src: `${BASE}/cafe.jpg`, alt: 'Cafeteria dining area' },
-      { src: `${BASE}/lounge.jpg`, alt: 'Guest lounge — comfortable seating' },
-      { src: `${BASE}/lounge.jpg`, alt: 'Guest lounge area' },
-    ],
-  },
-  {
-    id: 'parking',
-    icon: Car,
-    eyebrow: 'Convenience',
-    title: 'Free parking',
-    caption: 'Secure parking, no extra charge. Drive in, park, check in. Simple.',
-    link: '/rooms',
-    linkText: 'Book a room',
-    images: [
-      { src: `${BASE}/hero-arrival.webp`, alt: 'Free parking — arrival area' },
-      { src: `${BASE}/hero-entrance.webp`, alt: 'Hotel entrance' },
-      { src: `${BASE}/hero-arrival.webp`, alt: 'Hotel arrival and parking' },
-    ],
-  },
-];
+// Icon mapping for carousel sections
+const sectionIcons: Record<string, React.ComponentType<any>> = {
+  rooms: Bed, conference: Presentation, cafeteria: UtensilsCrossed, parking: Car,
+};
+const defaultIcon = Bed;
 
 // Full-width amenity carousel with auto-scroll, arrows, and dots
 function AmenityCarousel({ images, className }: { images: { src: string; alt: string }[]; className?: string }) {
@@ -146,6 +90,32 @@ export default function Index() {
 
   const { data: rooms, isLoading } = useRoomAvailability(null, null);
   const { data: dbSlides } = useHeroSlides();
+  const { data: carouselSections } = useCarouselSections();
+
+  // Build amenity blocks from DB or fallback to hardcoded
+  const amenityBlocks = (carouselSections && carouselSections.length > 0)
+    ? carouselSections.map((s) => ({
+        ...s,
+        icon: sectionIcons[s.id] || defaultIcon,
+        images: s.images.map(img => ({
+          src: img.src.includes('placeholder') ? `${BASE}/hero-night.webp` : img.src,
+          alt: img.alt,
+        })),
+      }))
+    : [
+        { id: 'rooms', icon: Bed, eyebrow: 'Stay', title: 'Wake up to the hills', caption: 'Clean rooms with views of the Taita Hills. From KES 91/night.', link: '/rooms', linkText: 'See rooms & rates', images: [
+          { src: `${BASE}/room-single.jpg`, alt: 'Single room' }, { src: `${BASE}/single-1.jpg`, alt: 'Single room side table' }, { src: `${BASE}/room-twin.jpg`, alt: 'Twin room' }, { src: `${BASE}/twin-1.jpg`, alt: 'Twin room seating' }, { src: `${BASE}/studio-1.jpg`, alt: 'Studio suite' },
+        ]},
+        { id: 'conference', icon: Presentation, eyebrow: 'Events', title: 'Host with a view', caption: "Taita Taveta's only professional conference venue. Seats 70.", link: '/conference', linkText: 'Book the conference hall', images: [
+          { src: `${BASE}/conference-01.jpg`, alt: 'Conference boardroom' }, { src: `${BASE}/conference-1.jpg`, alt: 'Conference meeting' }, { src: `${BASE}/conference-01.jpg`, alt: 'Conference setup' },
+        ]},
+        { id: 'cafeteria', icon: UtensilsCrossed, eyebrow: 'Dining', title: 'Eat like a local', caption: 'Kenyan favourites and continental dishes, three meals a day.', link: '/cafeteria', linkText: "View today's menu", images: [
+          { src: `${BASE}/cafe.jpg`, alt: 'Cafeteria' }, { src: `${BASE}/lounge.jpg`, alt: 'Guest lounge' }, { src: `${BASE}/lounge.jpg`, alt: 'Lounge area' },
+        ]},
+        { id: 'parking', icon: Car, eyebrow: 'Convenience', title: 'Free parking', caption: 'Secure parking, no extra charge.', link: '/rooms', linkText: 'Book a room', images: [
+          { src: `${BASE}/hero-arrival.webp`, alt: 'Parking arrival' }, { src: `${BASE}/hero-entrance.webp`, alt: 'Hotel entrance' }, { src: `${BASE}/hero-arrival.webp`, alt: 'Hotel parking' },
+        ]},
+      ]
 
   // Use DB slides if available, otherwise fallback to hardcoded
   const heroSlides = (dbSlides && dbSlides.length > 0)
