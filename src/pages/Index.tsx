@@ -93,12 +93,22 @@ export default function Index() {
   const { data: carouselSections } = useCarouselSections();
 
   // Build amenity blocks from DB or fallback to hardcoded
+  // Fallback images per section if DB images are missing
+  const SECTION_FALLBACKS: Record<string, string[]> = {
+    rooms: [`${BASE}/room-single.jpg`, `${BASE}/single-1.jpg`, `${BASE}/room-twin.jpg`, `${BASE}/twin-1.jpg`, `${BASE}/studio-1.jpg`],
+    conference: [`${BASE}/conference-01.jpg`, `${BASE}/conference-1.jpg`, `${BASE}/conference-01.jpg`],
+    cafeteria: [`${BASE}/cafe.jpg`, `${BASE}/lounge.jpg`, `${BASE}/hero-lounge.webp`],
+    parking: [`${BASE}/parking.jpg`, `${BASE}/hero-entrance.webp`, `${BASE}/hero-arrival.webp`],
+  };
+
   const amenityBlocks = (carouselSections && carouselSections.length > 0)
     ? carouselSections.map((s) => ({
         ...s,
         icon: sectionIcons[s.id] || defaultIcon,
-        images: s.images.map(img => ({
-          src: img.src.includes('placeholder') ? `${BASE}/hero-night.webp` : img.src,
+        images: s.images.map((img, idx) => ({
+          src: (img.src.includes('placeholder') || !img.src || img.src === '')
+            ? (SECTION_FALLBACKS[s.id] || SECTION_FALLBACKS.rooms)[idx % (SECTION_FALLBACKS[s.id] || SECTION_FALLBACKS.rooms).length]
+            : img.src,
           alt: img.alt,
         })),
       }))

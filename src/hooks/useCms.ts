@@ -195,11 +195,11 @@ const DEFAULT_CAROUSEL_SECTIONS: CarouselSection[] = [
     link: '/rooms',
     linkText: 'See rooms & rates',
     images: [
-      { src: '/placeholder.svg', alt: 'Single room — clean linens and dark headboard' },
-      { src: '/placeholder.svg', alt: 'Single room — white sheets, side table' },
-      { src: '/placeholder.svg', alt: 'Twin room — two beds with fresh linens' },
-      { src: '/placeholder.svg', alt: 'Twin room — comfortable seating' },
-      { src: '/placeholder.svg', alt: 'Studio suite — spacious setup' },
+      { src: '/images/room-single.jpg', alt: 'Single room — clean linens and dark headboard' },
+      { src: '/images/single-1.jpg', alt: 'Single room — white sheets, side table' },
+      { src: '/images/room-twin.jpg', alt: 'Twin room — two beds with fresh linens' },
+      { src: '/images/twin-1.jpg', alt: 'Twin room — comfortable seating' },
+      { src: '/images/studio-1.jpg', alt: 'Studio suite — spacious setup' },
     ],
   },
   {
@@ -210,9 +210,9 @@ const DEFAULT_CAROUSEL_SECTIONS: CarouselSection[] = [
     link: '/conference',
     linkText: 'Book the conference hall',
     images: [
-      { src: '/placeholder.svg', alt: 'Conference hall — boardroom setup with white linens' },
-      { src: '/placeholder.svg', alt: 'Conference hall — meeting arrangement' },
-      { src: '/placeholder.svg', alt: 'Conference hall — boardroom setup' },
+      { src: '/images/conference-01.jpg', alt: 'Conference hall — boardroom setup with white linens' },
+      { src: '/images/conference-1.jpg', alt: 'Conference hall — meeting arrangement' },
+      { src: '/images/conference-01.jpg', alt: 'Conference hall — boardroom setup' },
     ],
   },
   {
@@ -223,9 +223,9 @@ const DEFAULT_CAROUSEL_SECTIONS: CarouselSection[] = [
     link: '/cafeteria',
     linkText: "View today's menu",
     images: [
-      { src: '/placeholder.svg', alt: 'Cafeteria dining area' },
-      { src: '/placeholder.svg', alt: 'Guest lounge — comfortable seating' },
-      { src: '/placeholder.svg', alt: 'Guest lounge area' },
+      { src: '/images/cafe.jpg', alt: 'Cafeteria dining area' },
+      { src: '/images/lounge.jpg', alt: 'Guest lounge — comfortable seating' },
+      { src: '/images/hero-lounge.webp', alt: 'Guest lounge area' },
     ],
   },
   {
@@ -236,9 +236,9 @@ const DEFAULT_CAROUSEL_SECTIONS: CarouselSection[] = [
     link: '/rooms',
     linkText: 'Book a room',
     images: [
-      { src: '/placeholder.svg', alt: 'Free parking — arrival area' },
-      { src: '/placeholder.svg', alt: 'Hotel entrance' },
-      { src: '/placeholder.svg', alt: 'Hotel arrival and parking' },
+      { src: '/images/parking.jpg', alt: 'Free parking — arrival area' },
+      { src: '/images/hero-entrance.webp', alt: 'Hotel entrance' },
+      { src: '/images/hero-arrival.webp', alt: 'Hotel arrival and parking' },
     ],
   },
 ];
