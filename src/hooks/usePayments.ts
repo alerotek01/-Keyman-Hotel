@@ -421,7 +421,7 @@ export function useApproveReconciliation() {
         .from('shift_reconciliations')
         .update(updateData)
         .eq('id', reconciliationId)
-        .select()
+        .select('*, staff_shifts(user_id, shift_name)')
         .single();
       if (error) throw error;
 
@@ -432,6 +432,35 @@ export function useApproveReconciliation() {
           .update({ status: status === 'approved' ? 'reconciled' : 'closed' })
           .eq('id', data.shift_id);
       }
+
+      // Send in-app notification to the staff member
+      try {
+        const staffUserId = data.staff_shifts?.user_id;
+        if (staffUserId) {
+          if (status === 'flagged') {
+            await sb.rpc('fire_notification', {
+              p_user_id: staffUserId,
+              p_title: '⚠️ Reconciliation Flagged',
+              p_body: `Your ${data.staff_shifts?.shift_name || ''} shift reconciliation was flagged. Reason: ${notes || 'No reason provided'}. Please submit an explanation with proof (M-Pesa message or receipt).`,
+              p_type: 'reconciliation',
+            });
+          } else if (status === 'approved') {
+            await sb.rpc('fire_notification', {
+              p_user_id: staffUserId,
+              p_title: '✅ Reconciliation Approved',
+              p_body: `Your ${data.staff_shifts?.shift_name || ''} shift reconciliation has been approved.`,
+              p_type: 'reconciliation',
+            });
+          } else if (status === 'reconciled') {
+            await sb.rpc('fire_notification', {
+              p_user_id: staffUserId,
+              p_title: '🔒 Shift Closed',
+              p_body: `Your ${data.staff_shifts?.shift_name || ''} shift has been fully reconciled and closed.`,
+              p_type: 'reconciliation',
+            });
+          }
+        }
+      } catch (e) { console.warn('Staff notification failed:', e); }
 
       return data;
     },

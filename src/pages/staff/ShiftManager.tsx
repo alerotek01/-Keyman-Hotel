@@ -11,13 +11,12 @@ import { useStaffShifts, useStartShift, useEndShift, useSubmitReconciliation, us
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { format, differenceInMinutes } from 'date-fns';
-import { toast } from 'sonner';
-import {
-  Loader2, Play, Square, Send, Clock, DollarSign, AlertTriangle, CheckCircle2,
+import { toast } from 'sonner';import { Loader2, Play, Square, Send, Clock, DollarSign, AlertTriangle, CheckCircle2,
   Smartphone, Camera, Receipt, ChevronDown, ChevronRight, FileText,
   Upload, Check, X, UtensilsCrossed, BedDouble, CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ReconciliationAlert from '@/components/ReconciliationAlert';
 
 export default function ShiftManager() {
   const { user } = useAuth();
@@ -138,6 +137,9 @@ export default function ShiftManager() {
         <h1 className="font-display text-3xl font-bold">My Shift</h1>
         <p className="text-muted-foreground">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
       </div>
+
+      {/* Flagged Reconciliation Alert — shows when manager has flagged */}
+      <ReconciliationAlert />
 
       {/* Active Shift */}
       {currentShift ? (
