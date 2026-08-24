@@ -1,7 +1,24 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export function Footer() {
+  const { user, role } = useAuth();
+
+  const getDashboardLink = () => {
+    if (!user) return '/login';
+    switch (role) {
+      case 'admin': return '/admin';
+      case 'manager': return '/manager';
+      case 'guest': return '/guest';
+      default: return '/staff';
+    }
+  };
+
+  const getDashboardLabel = () => {
+    if (!user) return 'Log In';
+    return 'Dashboard';
+  };
   return (
     <footer className="bg-charcoal text-cream/70">
       <div className="container py-12 sm:py-16 px-4">
@@ -62,8 +79,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/login" className="text-cream/50 hover:text-cream transition-colors duration-300">
-                  Staff Portal
+                <Link to={getDashboardLink()} className="text-cream/50 hover:text-cream transition-colors duration-300">
+                  {getDashboardLabel()}
                 </Link>
               </li>
             </ul>
