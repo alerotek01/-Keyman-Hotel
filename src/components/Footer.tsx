@@ -74,9 +74,8 @@ export function Footer() {
           <p className="text-[10px] sm:text-xs text-cream/30">
             © {new Date().getFullYear()} Keyman Hotel, Mwatate. All rights reserved.
           </p>
-          <a href="https://www.alerotek.co.ke/studio" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 opacity-40 hover:opacity-70 transition-opacity">
-            <span className="text-[10px] sm:text-xs text-cream/40">powered by</span>
-            <img src="/alerotek-logo.png" alt="Alerotek" className="h-4 sm:h-5 w-auto brightness-0 invert opacity-60" />
+          <a href="https://www.alerotek.co.ke/studio" target="_blank" rel="noopener noreferrer" className="text-[10px] sm:text-xs text-cream/30 hover:text-[#3B82F6] transition-colors">
+            powered by <span className="font-semibold text-[#3B82F6]">Alerotek</span>
           </a>
         </div>
       </div>
