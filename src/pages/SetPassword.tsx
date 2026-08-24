@@ -35,11 +35,26 @@ export default function SetPassword() {
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Sign out helper — always sign out when landing on this page
+  // Sign out helper — aggressively clear ALL session data before redirect
   // This prevents the dangerous auto-login the user reported
   const signOutAndRedirect = async () => {
-    try { await sb.auth.signOut(); } catch { /* ignore */ }
-    window.location.href = '/login';
+    try {
+      await sb.auth.signOut({ scope: 'global' });
+    } catch {
+      // Even if signOut fails, nuke the storage manually
+    }
+    // Nuclear option: clear everything Supabase touches
+    try {
+      localStorage.removeItem('sb-uuojiyehhnhjcakgpsjd-auth-token');
+      sessionStorage.clear();
+      // Clear all sb-* keys
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-')) localStorage.removeItem(key);
+      }
+    } catch { /* ignore */ }
+    // Force full page reload to /login — no React state leakage
+    window.location.replace('/login');
   };
 
   // Parse URL on mount
