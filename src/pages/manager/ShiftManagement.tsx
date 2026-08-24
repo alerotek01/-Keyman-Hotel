@@ -258,9 +258,12 @@ export default function ShiftManagement() {
     if (!recallShift) return;
     try {
       if (reassignMode && reassignUserId) {
-        // Reassign to another staff member
+        // Reassign to another staff member — reset status so new staff can accept/reject
         await sb.from('staff_shifts').update({
           user_id: reassignUserId,
+          status: 'assigned',
+          accepted_at: null,
+          rejected_at: null,
           recall_reason: recallReason || null,
           recalled_at: new Date().toISOString(),
           recalled_by: user?.id,
