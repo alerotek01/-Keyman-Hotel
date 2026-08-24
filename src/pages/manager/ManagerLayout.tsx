@@ -1,7 +1,7 @@
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Loader2, LayoutDashboard, BarChart3, Users, CalendarCheck, LogOut, Home, DollarSign, MessageSquare, Bell, TrendingUp } from 'lucide-react';
+import { Loader2, LayoutDashboard, BarChart3, Users, CalendarCheck, LogOut, Home, DollarSign, MessageSquare, Bell } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { cn } from '@/lib/utils';
 
@@ -10,7 +10,6 @@ const navItems = [
   { path: '/manager/reports', label: 'Reports', icon: BarChart3 },
   { path: '/manager/bookings', label: 'Bookings', icon: CalendarCheck },
   { path: '/manager/reconciliation', label: 'Reconciliation', icon: DollarSign },
-  { path: '/manager/reconciliation/analytics', label: 'Recon. Analytics', icon: TrendingUp },
   { path: '/manager/staff', label: 'Staff', icon: Users },
   { path: '/manager/messages', label: 'Messages', icon: MessageSquare },
   { path: '/manager/notification-settings', label: 'Notifications', icon: Bell },

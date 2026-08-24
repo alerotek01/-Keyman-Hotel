@@ -31,6 +31,7 @@ import {
   BarChart3 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ReconciliationAnalytics from '@/pages/manager/ReconciliationAnalytics';
 import {
   BarChart,
   Bar,
@@ -182,6 +183,7 @@ export default function Reports() {
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="guests">Guest Insights</TabsTrigger>
           <TabsTrigger value="bookings">Bookings</TabsTrigger>
+          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="occupancy" className="space-y-6">
@@ -402,6 +404,10 @@ export default function Reports() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="reconciliation" className="space-y-6">
+          <ReconciliationAnalytics />
         </TabsContent>
       </Tabs>
     </div>

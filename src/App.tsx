@@ -54,7 +54,7 @@ import ShiftManager from "./pages/staff/ShiftManager";
 import HousekeeperPda from "./pages/staff/HousekeeperPda";
 import HousekeepingSupervisor from "./pages/staff/HousekeepingSupervisor";
 import Reconciliation from "./pages/manager/Reconciliation";
-import ReconciliationAnalytics from "./pages/manager/ReconciliationAnalytics";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -117,7 +117,6 @@ const App = () => (
             <Route path="reports" element={<ManagerReports />} />
             <Route path="bookings" element={<ManagerBookings />} />
             <Route path="reconciliation" element={<Reconciliation />} />
-            <Route path="reconciliation/analytics" element={<ReconciliationAnalytics />} />
             <Route path="staff" element={<ManagerStaff />} />
             <Route path="shift" element={<ShiftManagement />} />
             <Route path="inventory" element={<InventoryComingSoon />} />
