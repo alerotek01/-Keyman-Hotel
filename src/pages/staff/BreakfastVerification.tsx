@@ -15,7 +15,6 @@ export default function BreakfastVerification() {
   const markServed = useMarkBreakfastServed();
   const markSkipped = useMarkBreakfastSkipped();
   const updateKitchenStatus = useUpdateKitchenStatus();
-  const markSkipped = useMarkBreakfastSkipped();
   const { toast } = useToast();
 
   const [code, setCode] = useState('');

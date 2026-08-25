@@ -54,6 +54,10 @@ export default function BookingFlow() {
   const [daySelections, setDaySelections] = useState<DaySelection[]>([]);
   const [activeDay, setActiveDay] = useState(0);
 
+  // Revenue management: per-night effective rates
+  const [nightlyRates, setNightlyRates] = useState<{ date: string; rate: number }[]>([]);
+  const [minStayInfo, setMinStayInfo] = useState<{ meets: boolean; required: number; message: string } | null>(null);
+
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
@@ -122,12 +126,62 @@ export default function BookingFlow() {
     return total;
   }, [daySelections, mealPlan, numAdults]);
 
-  // Room total
+  // Fetch effective rates when dates/room type change
+  useEffect(() => {
+    if (!selectedRoomType || !checkIn || !checkOut || nights <= 0) {
+      setNightlyRates([]);
+      setMinStayInfo(null);
+      return;
+    }
+    (async () => {
+      try {
+        // Fetch rate overrides for this room type & date range
+        const { data: overrides } = await sb
+          .from('rate_overrides')
+          .select('rate, start_date, end_date')
+          .eq('room_type_id', selectedRoomType)
+          .eq('is_active', true)
+          .lte('start_date', checkOut)
+          .gte('end_date', checkIn);
+
+        const rt = roomTypes.find((r: any) => r.id === selectedRoomType);
+        const baseRate = rt ? Number(rt.base_rate) : 0;
+
+        // Build per-night rates
+        const rates = stayDates.map((dateStr: string) => {
+          const override = overrides?.find((o: any) =>
+            o.start_date <= dateStr && o.end_date >= dateStr
+          );
+          return { date: dateStr, rate: override ? Number(override.rate) : baseRate };
+        });
+        setNightlyRates(rates);
+
+        // Check minimum stay
+        const { data: minStay } = await sb.rpc('check_min_stay', {
+          p_room_type_id: selectedRoomType,
+          p_check_in: checkIn,
+          p_check_out: checkOut
+        });
+        if (minStay && minStay.length > 0) {
+          setMinStayInfo({
+            meets: minStay[0].meets_minimum,
+            required: minStay[0].required_nights,
+            message: minStay[0].message
+          });
+        }
+      } catch (e) { console.error('Rate calculation error:', e); }
+    })();
+  }, [selectedRoomType, checkIn, checkOut, nights, stayDates, roomTypes]);
+
+  // Room total using effective rates
   const roomTotal = useMemo(() => {
+    if (nightlyRates.length > 0) {
+      return nightlyRates.reduce((sum, r) => sum + r.rate, 0);
+    }
     const rt = roomTypes.find((r: any) => r.id === selectedRoomType);
     if (!rt) return 0;
     return Number(rt.base_rate) * nights;
-  }, [selectedRoomType, nights, roomTypes]);
+  }, [nightlyRates, selectedRoomType, nights, roomTypes]);
 
   // Grand total
   const grandTotal = roomTotal + breakfastTotal;
@@ -202,7 +256,7 @@ export default function BookingFlow() {
         p_num_adults: parseInt(numAdults),
         p_num_children: parseInt(numChildren),
         p_special_requests: specialRequests || null,
-        p_rate_override: Number(rt.base_rate),
+        p_rate_override: nightlyRates.length > 0 ? Math.round(nightlyRates.reduce((s, r) => s + r.rate, 0) / nightlyRates.length) : Number(rt.base_rate),
       });
       if (error) throw error;
 
@@ -289,7 +343,7 @@ export default function BookingFlow() {
                 <SelectTrigger><SelectValue placeholder="Choose room type" /></SelectTrigger>
                 <SelectContent>
                   {roomTypes.map((r: any) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name} — {formatCurrency(r.base_rate)}/night</SelectItem>
+                    <SelectItem key={r.id} value={r.id}>{r.name} — from {formatCurrency(r.base_rate)}/night</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -311,7 +365,14 @@ export default function BookingFlow() {
             <div className="space-y-2"><Label>Phone</Label><Input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} /></div>
             <div className="space-y-2"><Label>Special Requests</Label><Input value={specialRequests} onChange={e => setSpecialRequests(e.target.value)} placeholder="e.g., extra pillows" /></div>
 
-            <Button variant="brass" className="w-full" onClick={() => setStep('mealplan')} disabled={!selectedRoomType || !checkIn || !checkOut}>
+            {minStayInfo && !minStayInfo.meets && (
+              <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-amber-800">{minStayInfo.message}</p>
+              </div>
+            )}
+
+            <Button variant="brass" className="w-full" onClick={() => setStep('mealplan')} disabled={!selectedRoomType || !checkIn || !checkOut || (minStayInfo !== null && !minStayInfo.meets)}>
               Continue to Meal Plan <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </CardContent>
@@ -509,7 +570,21 @@ export default function BookingFlow() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Room ({nights} nights)</p>
-                  <p className="text-sm">{formatCurrency(roomTotal)}</p>
+                  <p className="text-sm font-medium">{formatCurrency(roomTotal)}</p>
+                  {nightlyRates.length > 0 && nightlyRates.some(r => r.rate !== nightlyRates[0].rate) && (
+                    <div className="mt-1 space-y-0.5">
+                      {nightlyRates.map(r => (
+                        <p key={r.date} className="text-[10px] text-muted-foreground">
+                          {r.date}: {formatCurrency(r.rate)}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {nightlyRates.length > 0 && nightlyRates.every(r => r.rate === nightlyRates[0].rate) && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {formatCurrency(nightlyRates[0].rate)}/night × {nights}
+                    </p>
+                  )}
                 </div>
               </div>
               <Separator className="my-2" />
