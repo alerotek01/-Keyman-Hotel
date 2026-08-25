@@ -34,7 +34,7 @@ export function RoomCard({ room, onBook }: RoomCardProps) {
 
   // Prefer DB room_images, fall back to hardcoded carousel
   const dbImages = room.room_images
-    ?.sort((a, b) => a.sort_order - b.sort_order)
+    ?.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map(img => ({ src: img.image_url, alt: img.alt_text || typeName + ' room' })) || [];
   const images = dbImages.length > 0 ? dbImages : (fallbackImages[typeName] || fallbackImages.Single);
 

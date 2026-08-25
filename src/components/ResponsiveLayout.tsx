@@ -33,6 +33,10 @@ interface NavItem {
 const NAV_CONFIGS: Record<string, NavItem[]> = {
   manager: [
     { path: '/manager', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { path: '/admin/rooms', label: 'Rooms', icon: BedDouble },
+    { path: '/admin/menu', label: 'Menu', icon: UtensilsCrossed },
+    { path: '/admin/content', label: 'Site Content', icon: Globe },
+    { path: '/admin/discounts', label: 'Discounts', icon: Tag },
     { path: '/manager/bookings', label: 'Bookings', icon: CalendarCheck },
     { path: '/manager/reconciliation', label: 'Reconciliation', icon: DollarSign },
     { path: '/manager/kpi', label: 'Staff KPIs', icon: Award },
@@ -154,6 +158,22 @@ const ROLE_TABS: Record<string, TabConfig[]> = {
     { path: '/manager/messages', label: 'Chat', icon: '💬' },
     { path: '/manager/reconciliation', label: 'Money', icon: '💰' },
   ],
+  managerMoreItems: [
+    { icon: '🏠', label: 'Dashboard', path: '/manager' },
+    { icon: '🛏️', label: 'Rooms', path: '/admin/rooms' },
+    { icon: '🍽️', label: 'Menu', path: '/admin/menu' },
+    { icon: '🌐', label: 'Site Content', path: '/admin/content' },
+    { icon: '🏷️', label: 'Discounts', path: '/admin/discounts' },
+    { icon: '📅', label: 'Bookings', path: '/manager/bookings' },
+    { icon: '💰', label: 'Reconciliation', path: '/manager/reconciliation' },
+    { icon: '📊', label: 'KPIs', path: '/manager/kpi' },
+    { icon: '📈', label: 'Reports', path: '/manager/reports' },
+    { icon: '👥', label: 'Staff', path: '/manager/staff' },
+    { icon: '🕐', label: 'Shifts', path: '/manager/shift' },
+    { icon: '📦', label: 'Inventory', path: '/manager/inventory' },
+    { icon: '⚙️', label: 'Operations', path: '/manager/operations' },
+    { icon: '🔔', label: 'Alerts', path: '/manager/notification-settings' },
+  ],
   receptionist: [
     { path: '/staff', label: 'Home', icon: '🏠', centerAction: false },
     { path: '/staff/reception', label: 'Check-In', icon: '📋' },
@@ -205,6 +225,10 @@ const ROLE_TABS: Record<string, TabConfig[]> = {
 // Manager "More" overlay items
 const MANAGER_MORE_ITEMS = [
   { icon: '🏠', label: 'Dashboard', path: '/manager' },
+  { icon: '🛏️', label: 'Rooms', path: '/admin/rooms' },
+  { icon: '🍽️', label: 'Menu', path: '/admin/menu' },
+  { icon: '🌐', label: 'Site Content', path: '/admin/content' },
+  { icon: '🏷️', label: 'Discounts', path: '/admin/discounts' },
   { icon: '📅', label: 'Bookings', path: '/manager/bookings' },
   { icon: '💰', label: 'Reconciliation', path: '/manager/reconciliation' },
   { icon: '🏆', label: 'Staff KPIs', path: '/manager/kpi' },

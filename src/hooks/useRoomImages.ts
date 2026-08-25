@@ -21,12 +21,23 @@ export function useUploadRoomImage() {
         .from('rooms')
         .getPublicUrl(fileName);
 
+      // Get current max sort_order for this room to auto-increment
+      const { data: existing } = await supabase
+        .from('room_images')
+        .select('sort_order')
+        .eq('room_id', roomId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      const nextSort = (existing?.[0]?.sort_order ?? -1) + 1;
+
       // Save reference in room_images table
       const { data, error: insertError } = await supabase
         .from('room_images')
         .insert({
           room_id: roomId,
           image_url: publicUrl,
+          sort_order: nextSort,
+          alt_text: file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
         })
         .select()
         .single();
