@@ -42,6 +42,7 @@ export default function ReceptionistPda() {
   const [walkInForm, setWalkInForm] = useState({
     guest_name: '', guest_phone: '', guest_email: '', room_type_id: '',
     room_id: '', num_adults: '2', num_children: '0', check_out: '', special_requests: '', plate_number: '',
+    meal_plan: 'room_only' as 'room_only' | 'b&b',
   });
 
   // Payment form
@@ -127,7 +128,7 @@ export default function ReceptionistPda() {
     if (!walkInForm.room_type_id) { toast.error('Select a room type'); return; }
 
     try {
-      await walkIn.mutateAsync({
+      const result = await walkIn.mutateAsync({
         guest_name: walkInForm.guest_name, guest_phone: walkInForm.guest_phone,
         guest_email: walkInForm.guest_email || undefined,
         room_type_id: walkInForm.room_type_id,
@@ -137,8 +138,13 @@ export default function ReceptionistPda() {
         special_requests: walkInForm.special_requests || undefined,
         plate_number: walkInForm.plate_number || undefined,
       });
+      // Set meal plan on the reservation if B&B
+      if (walkInForm.meal_plan === 'b&b' && result?.reservation_id) {
+        const { supabase } = await import('@/integrations/supabase/client');
+        await (supabase as any).from('reservations').update({ meal_plan: 'b&b' }).eq('id', result.reservation_id);
+      }
       setWalkInDialog(false);
-      setWalkInForm({ guest_name: '', guest_phone: '', guest_email: '', room_type_id: '', room_id: '', num_adults: '2', num_children: '0', check_out: '', special_requests: '', plate_number: '' });
+      setWalkInForm({ guest_name: '', guest_phone: '', guest_email: '', room_type_id: '', room_id: '', num_adults: '2', num_children: '0', check_out: '', special_requests: '', plate_number: '', meal_plan: 'room_only' });
       toast.success('Walk-in guest checked in!');
     } catch (error: any) { toast.error(error.message || 'Failed'); }
   };
@@ -435,6 +441,13 @@ export default function ReceptionistPda() {
             {walkInForm.room_type_id && (
               <div className="space-y-2"><Label>Assign Room *</Label><Select value={walkInForm.room_id} onValueChange={(v) => setWalkInForm({ ...walkInForm, room_id: v })}><SelectTrigger><SelectValue placeholder="Select room" /></SelectTrigger><SelectContent>{availableRooms?.filter((r: any) => r.room_type_id === walkInForm.room_type_id).map((room: any) => (<SelectItem key={room.id} value={room.id}>Room {room.room_number} (Floor {room.floor})</SelectItem>))}</SelectContent></Select></div>
             )}
+            <div className="space-y-2">
+              <Label>Meal Plan</Label>
+              <div className="flex gap-2">
+                <Button type="button" variant={walkInForm.meal_plan === 'room_only' ? 'default' : 'outline'} size="sm" onClick={() => setWalkInForm({ ...walkInForm, meal_plan: 'room_only' })}>🛏️ Room Only</Button>
+                <Button type="button" variant={walkInForm.meal_plan === 'b&b' ? 'default' : 'outline'} size="sm" onClick={() => setWalkInForm({ ...walkInForm, meal_plan: 'b&b' })}>🍳 B&B</Button>
+              </div>
+            </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2"><Label>Adults</Label><Input type="number" min={1} value={walkInForm.num_adults} onChange={(e) => setWalkInForm({ ...walkInForm, num_adults: e.target.value })} /></div>
               <div className="space-y-2"><Label>Children</Label><Input type="number" min={0} value={walkInForm.num_children} onChange={(e) => setWalkInForm({ ...walkInForm, num_children: e.target.value })} /></div>
