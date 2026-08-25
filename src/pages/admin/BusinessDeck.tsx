@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Download, TrendingUp, TrendingDown, Minus, AlertTriangle, ChevronDown } from "lucide-react";
+import { Download, TrendingUp, TrendingDown, Minus, AlertTriangle, ChevronDown, Mail, Loader2 } from "lucide-react";
 import {
   useBusinessDeckExecutive, useBusinessDeckRevenue, useBusinessDeckOccupancy,
   useBusinessDeckKitchen, useBusinessDeckStaff, useBusinessDeckGuests,
@@ -41,6 +41,35 @@ export default function BusinessDeck() {
   const forecast = useBusinessDeckForecast(selectedDate);
 
   const isLoading = executive.isLoading || revenue.isLoading || occupancy.isLoading;
+
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<string | null>(null);
+
+  const handleSendEmail = async () => {
+    setSending(true);
+    setSendResult(null);
+    try {
+      const supabaseUrl = 'https://uuojiyehhnhjcakgpsjd.supabase.co';
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-business-deck`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        setSendResult(`✅ Deck emailed to ${result.recipients} recipient(s)!`);
+      } else if (result.status === 'no_recipients') {
+        setSendResult('⚠️ No admin/manager users found to email.');
+      } else {
+        setSendResult(`❌ Error: ${result.error || 'Unknown error'}`);
+      }
+    } catch (e: any) {
+      setSendResult(`❌ Failed: ${e.message}`);
+    }
+    setSending(false);
+  };
 
   const handleDownloadPDF = async () => {
     try {
@@ -81,9 +110,14 @@ export default function BusinessDeck() {
         <div className="flex items-center gap-2">
           <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm" />
+          <Button variant="outline" onClick={handleSendEmail} disabled={sending}>
+            {sending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Mail className="w-4 h-4 mr-1" />}
+            {sending ? 'Sending...' : 'Generate & Send Email'}
+          </Button>
           <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="w-4 h-4 mr-1" /> Download PDF
           </Button>
+          {sendResult && <span className="text-xs text-muted-foreground">{sendResult}</span>}
         </div>
       </div>
 
