@@ -36,6 +36,7 @@ import AdminBookingSettings from "./pages/admin/BookingSettings";
 import PaymentVerification from "./pages/admin/PaymentVerification";
 import ConferenceManagement from "./pages/admin/ConferenceManagement";
 import AdminUsers from "./pages/admin/Users";
+import AdminDiscounts from "./pages/admin/Discounts";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerReports from "./pages/admin/Reports";
 import ManagerBookings from "./pages/admin/Bookings";
@@ -104,6 +105,7 @@ const App = () => (
             <Route path="bookings" element={<AdminBookings />} />
             <Route path="folios" element={<AdminFolios />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="discounts" element={<AdminDiscounts />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="audit" element={<AdminAudit />} />
             <Route path="operations" element={<AdminOperations />} />

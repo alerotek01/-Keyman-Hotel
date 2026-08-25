@@ -11,7 +11,7 @@ import {
   Loader2, LogOut, Home, LayoutDashboard, BedDouble, CalendarCheck, UtensilsCrossed,
   ChefHat, Sparkles, ClipboardCheck, ClipboardList, Receipt, CreditCard, Clock,
   MessageSquare, Bell, BarChart3, DollarSign, Users, Activity, Settings, Package,
-  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet, Coffee, Award
+  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet, Coffee, Award, Tag
 } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,6 +48,7 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { path: '/admin/rooms', label: 'Rooms', icon: BedDouble },
     { path: '/admin/menu', label: 'Menu', icon: UtensilsCrossed },
+    { path: '/admin/discounts', label: 'Discounts', icon: Tag },
     { path: '/admin/content', label: 'Site Content', icon: Globe },
     { path: '/admin/bookings', label: 'Bookings', icon: CalendarCheck },
     { path: '/admin/folios', label: 'Folios', icon: Receipt },
@@ -221,6 +222,7 @@ const ADMIN_MORE_ITEMS = [
   { icon: '🏠', label: 'Dashboard', path: '/admin' },
   { icon: '🛏️', label: 'Rooms', path: '/admin/rooms' },
   { icon: '🍽️', label: 'Menu', path: '/admin/menu' },
+  { icon: '🏷️', label: 'Discounts', path: '/admin/discounts' },
   { icon: '🌐', label: 'Site Content', path: '/admin/content' },
   { icon: '📅', label: 'Bookings', path: '/admin/bookings' },
   { icon: '🧾', label: 'Folios', path: '/admin/folios' },
