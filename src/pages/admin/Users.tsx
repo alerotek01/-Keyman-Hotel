@@ -50,23 +50,44 @@ export default function AdminUsers() {
     },
   });
 
-  // Create user via Supabase Auth + insert into users table
+  // Create user via Edge Function (proper auth credentials)
   const createUser = useMutation({
     mutationFn: async (data: { email: string; password: string; full_name: string; phone: string; role: AppRole }) => {
-      // Use server-side function (bypasses RLS, handles auth + users table)
-      const { data: result, error } = await sb.rpc('create_staff_user', {
-        p_email: data.email,
-        p_password: data.password || null,
-        p_full_name: data.full_name,
-        p_phone: data.phone || '',
-        p_role: data.role,
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      // Get current session token
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password || null,
+          full_name: data.full_name,
+          phone: data.phone || '',
+          role: data.role,
+        }),
       });
-      if (error) throw error;
-      if (!result?.success) throw new Error(result?.error || 'User creation failed');
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'User creation failed');
+      }
+
+      const tempPassword = result.temp_password;
 
       if (data.password) {
         // Password provided — send welcome email with credentials
         await sendWelcomeEmail(data.email, data.full_name, data.role, data.password);
+      } else if (tempPassword) {
+        // Auto-generated password — send welcome email with credentials
+        await sendWelcomeEmail(data.email, data.full_name, data.role, tempPassword);
       } else {
         // No password — generate OTP and send invite code
         const { data: otpResult } = await sb.rpc('generate_and_store_otp', {

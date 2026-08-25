@@ -109,8 +109,28 @@ export default function Login() {
     if (resetNewPassword !== resetConfirmPassword) { toast({ title: 'Error', description: 'Passwords do not match', variant: 'destructive' }); return; }
     setResetLoading(true);
     try {
-      const { data: result, error } = await sb.rpc('reset_password_with_otp', { p_email: resetEmail, p_new_password: resetNewPassword });
-      if (error || !result?.success) throw new Error(result?.error || 'Failed to reset password');
+      // Use Edge Function for proper Supabase auth password update
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          email: resetEmail,
+          new_password: resetNewPassword,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to reset password');
+      }
+
+      // Now sign in with the new password
       const { error: signInError } = await sb.auth.signInWithPassword({ email: resetEmail, password: resetNewPassword });
       toast({ title: 'Password Reset!', description: 'Signing you in...' });
       resetForgotFlow();
