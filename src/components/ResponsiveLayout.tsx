@@ -92,6 +92,7 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
   ],
   chef: [
     { path: '/staff/kitchen', label: 'Kitchen', icon: ChefHat, exact: true },
+    { path: '/staff/breakfast', label: 'B&B Verify', icon: UtensilsCrossed },
     { path: '/staff/shift', label: 'My Shift', icon: Clock },
     { path: '/staff/messages', label: 'Messages', icon: MessageSquare },
     { path: '/staff/notification-settings', label: 'Notifications', icon: Bell },
@@ -197,6 +198,7 @@ const ROLE_TABS: Record<string, TabConfig[]> = {
   chef: [
     { path: '/staff/kitchen', label: 'Queue', icon: '📋', centerAction: false },
     { path: '/staff/kitchen', label: 'Status', icon: '👨‍🍳' },
+    { path: '/staff/breakfast', label: 'B&B Verify', icon: '🍳' },
     { path: '/staff', label: 'Sold Out', icon: '🚫', centerAction: true },
     { path: '/staff', label: 'Menu', icon: '📖' },
     { path: '/staff/messages', label: 'Chat', icon: '💬' },
@@ -292,6 +294,7 @@ const STAFF_MORE_ITEMS: Record<string, { icon: string; label: string; path: stri
   ],
   chef: [
     { icon: '👨‍🍳', label: 'Kitchen', path: '/staff/kitchen' },
+    { icon: '🍳', label: 'B&B Verify', path: '/staff/breakfast' },
     { icon: '⏰', label: 'My Shift', path: '/staff/shift' },
     { icon: '💬', label: 'Messages', path: '/staff/messages' },
     { icon: '🔔', label: 'Notifications', path: '/staff/notification-settings' },

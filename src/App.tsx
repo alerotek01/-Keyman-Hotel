@@ -53,6 +53,7 @@ import StaffReceipts from "./pages/staff/Receipts";
 import ReceptionistPda from "./pages/staff/ReceptionistPda";
 import WaiterPda from "./pages/staff/WaiterPda";
 import KitchenTablet from "./pages/staff/KitchenTablet";
+import BreakfastVerification from "./pages/staff/BreakfastVerification";
 import PaymentRecording from "./pages/staff/PaymentRecording";
 import ShiftManager from "./pages/staff/ShiftManager";
 import HousekeeperPda from "./pages/staff/HousekeeperPda";
@@ -142,6 +143,7 @@ const App = () => (
             <Route path="reception" element={<ReceptionistPda />} />
             <Route path="waiter" element={<WaiterPda />} />
             <Route path="kitchen" element={<KitchenTablet />} />
+            <Route path="breakfast" element={<BreakfastVerification />} />
             <Route path="payments" element={<PaymentRecording />} />
             <Route path="shift" element={<ShiftManager />} />
             <Route path="housekeeping" element={<HousekeeperPda />} />
