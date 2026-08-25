@@ -191,6 +191,96 @@ export function useSaveBreakfastSelections() {
   });
 }
 
+export function useGuestBreakfastOrders(guestId?: string) {
+  return useQuery({
+    queryKey: ['guest-breakfast-orders', guestId],
+    queryFn: async () => {
+      if (!guestId) return [];
+      const { data, error } = await supabase.rpc('get_guest_breakfast_orders', { p_guest_id: guestId });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!guestId,
+    refetchInterval: 15000,
+  });
+}
+
+export function useUpdateKitchenStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ itemId, status }: { itemId: string; status: string }) => {
+      const { data, error } = await supabase.rpc('update_breakfast_kitchen_status', {
+        p_item_id: itemId,
+        p_new_status: status,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['today-breakfast-items'] });
+      qc.invalidateQueries({ queryKey: ['today-breakfasts'] });
+      qc.invalidateQueries({ queryKey: ['guest-breakfast-orders'] });
+    },
+  });
+}
+
+export interface GuestAlert {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  read: boolean;
+  metadata: any;
+  created_at: string;
+}
+
+export function useGuestAlerts(guestId?: string) {
+  return useQuery({
+    queryKey: ['guest-alerts', guestId],
+    queryFn: async () => {
+      if (!guestId) return [];
+      const { data, error } = await supabase
+        .from('guest_alerts')
+        .select('*')
+        .eq('guest_id', guestId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as GuestAlert[];
+    },
+    enabled: !!guestId,
+    refetchInterval: 10000,
+  });
+}
+
+export function useUnreadAlertCount(guestId?: string) {
+  return useQuery({
+    queryKey: ['unread-alert-count', guestId],
+    queryFn: async () => {
+      if (!guestId) return 0;
+      const { data, error } = await supabase.rpc('get_unread_alert_count', { p_guest_id: guestId });
+      if (error) throw error;
+      return data ?? 0;
+    },
+    enabled: !!guestId,
+    refetchInterval: 10000,
+  });
+}
+
+export function useMarkAlertsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (guestId: string) => {
+      const { error } = await supabase.rpc('mark_alerts_read', { p_guest_id: guestId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['guest-alerts'] });
+      qc.invalidateQueries({ queryKey: ['unread-alert-count'] });
+    },
+  });
+}
+
 export function useBreakfastMenuItems() {
   return useQuery({
     queryKey: ['breakfast-menu-items'],

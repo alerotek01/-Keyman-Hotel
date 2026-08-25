@@ -123,6 +123,7 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
   guest: [
     { path: '/guest', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { path: '/guest/booking', label: 'Book Room', icon: BedDouble },
+    { path: '/guest/my-breakfast', label: 'My Breakfast', icon: UtensilsCrossed },
     { path: '/guest/conference', label: 'Conference', icon: Building2 },
     { path: '/guest/order', label: 'Order Food', icon: UtensilsCrossed },
     { path: '/guest/folio', label: 'My Folio', icon: Receipt },
@@ -150,6 +151,7 @@ const ROLE_TABS: Record<string, TabConfig[]> = {
   guest: [
     { path: '/guest', label: 'Home', icon: '🏠', centerAction: false },
     { path: '/guest/booking', label: 'Book', icon: '🛏️' },
+    { path: '/guest/my-breakfast', label: 'Breakfast', icon: '🍳' },
     { path: '/guest', label: 'More', icon: '➕', centerAction: true },
     { path: '/guest/order', label: 'Food', icon: '🍽️' },
     { path: '/guest/chat', label: 'Chat', icon: '💬' },
@@ -315,6 +317,7 @@ const GUEST_MORE_ITEMS = [
   { icon: '🛏️', label: 'Book Room', path: '/guest/booking' },
   { icon: '🏢', label: 'Conference', path: '/guest/conference' },
   { icon: '🍽️', label: 'Order Food', path: '/guest/order' },
+  { icon: '🍳', label: 'My Breakfast', path: '/guest/my-breakfast' },
   { icon: '📋', label: 'My Folio', path: '/guest/folio' },
   { icon: '💬', label: 'Messages', path: '/guest/chat' },
   { icon: '☕', label: 'Café Order', path: '/external/order' },

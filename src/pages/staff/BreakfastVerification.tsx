@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useTodayBreakfastItems, useVerifyBreakfastCode, useMarkBreakfastServed, useMarkBreakfastSkipped, VerifyResult, BreakfastItem } from '@/hooks/useBreakfast';
+import { useTodayBreakfastItems, useVerifyBreakfastCode, useMarkBreakfastServed, useMarkBreakfastSkipped, useUpdateKitchenStatus, VerifyResult, BreakfastItem } from '@/hooks/useBreakfast';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Search, CheckCircle2, XCircle, AlertTriangle, Utensils, Clock } from 'lucide-react';
@@ -13,6 +13,8 @@ export default function BreakfastVerification() {
   const { data: todayItems, isLoading } = useTodayBreakfastItems();
   const verifyCode = useVerifyBreakfastCode();
   const markServed = useMarkBreakfastServed();
+  const markSkipped = useMarkBreakfastSkipped();
+  const updateKitchenStatus = useUpdateKitchenStatus();
   const markSkipped = useMarkBreakfastSkipped();
   const { toast } = useToast();
 
@@ -232,7 +234,24 @@ export default function BreakfastVerification() {
                               <p className="text-xs text-muted-foreground">{formatCurrency(item.item_price)}</p>
                             </div>
                           </div>
-                          <Badge variant="outline" className="text-blue-600 text-xs">Pending</Badge>
+                          <div className="flex items-center gap-1">
+                            {item.kitchen_status === 'pending' && (
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateKitchenStatus.mutate({ itemId: item.id, status: 'preparing' })}>
+                                👨‍🍳 Start
+                              </Button>
+                            )}
+                            {item.kitchen_status === 'preparing' && (
+                              <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => updateKitchenStatus.mutate({ itemId: item.id, status: 'ready' })}>
+                                ✅ Ready
+                              </Button>
+                            )}
+                            {item.kitchen_status === 'ready' && (
+                              <Badge className="bg-green-100 text-green-800 text-xs">Ready</Badge>
+                            )}
+                            {(item.kitchen_status === 'served' || item.kitchen_status === 'skipped') && (
+                              <Badge variant="secondary" className="text-xs capitalize">{item.kitchen_status}</Badge>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

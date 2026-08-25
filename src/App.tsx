@@ -15,6 +15,7 @@ import GuestLogin from "./pages/guest/GuestLogin";
 import GuestDashboard from "./pages/guest/GuestDashboard";
 import GuestFolio from "./pages/guest/GuestFolio";
 import ChangeBreakfast from "./pages/guest/ChangeBreakfast";
+import MyBreakfast from "./pages/guest/MyBreakfast";
 import GuestOrder from "./pages/guest/GuestOrder";
 import GuestChat from "./pages/guest/GuestChat";
 import BookingFlow from "./pages/guest/BookingFlow";
@@ -87,6 +88,7 @@ const App = () => (
           <Route path="/guest" element={<ResponsiveLayout basePath="/guest" allowedRoles={["guest"]} />}>
             <Route index element={<GuestDashboard />} />
             <Route path="folio" element={<GuestFolio />} />
+            <Route path="my-breakfast" element={<MyBreakfast />} />
             <Route path="change-breakfast" element={<ChangeBreakfast reservationId="" />} />
             <Route path="order" element={<GuestOrder />} />
             <Route path="chat" element={<GuestChat />} />
