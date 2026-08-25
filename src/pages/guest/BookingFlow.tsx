@@ -298,8 +298,13 @@ export default function BookingFlow() {
               <div className="space-y-2"><Label>Check-In *</Label><Input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)} min={new Date().toISOString().split('T')[0]} /></div>
               <div className="space-y-2"><Label>Check-Out *</Label><Input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)} min={checkIn || new Date().toISOString().split('T')[0]} /></div>
             </div>
+            {rt && (
+              <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                Max occupancy: {rt.max_occupancy} guest{rt.max_occupancy !== 1 ? 's' : ''}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label>Adults</Label><Input type="number" min={1} value={numAdults} onChange={e => setNumAdults(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Adults</Label><Input type="number" min={1} max={rt?.max_occupancy || 3} value={numAdults} onChange={e => setNumAdults(e.target.value)} /></div>
               <div className="space-y-2"><Label>Children</Label><Input type="number" min={0} value={numChildren} onChange={e => setNumChildren(e.target.value)} /></div>
             </div>
             <div className="space-y-2"><Label>Guest Name *</Label><Input value={guestName} onChange={e => setGuestName(e.target.value)} /></div>
@@ -348,7 +353,10 @@ export default function BookingFlow() {
                         Room + pick your breakfast from our menu ({nights} morning{nights !== 1 ? 's' : ''})
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Choose different items for each morning • {breakfastItems.length} items available
+                        Order for {numAdults} guest{parseInt(numAdults) !== 1 ? 's' : ''} • {breakfastItems.length} items available
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        You can change your order up to 5 hours before breakfast
                       </p>
                     </div>
                     {mealPlan === 'b&b' && <CheckCircle2 className="h-5 w-5 text-primary" />}
@@ -459,15 +467,18 @@ export default function BookingFlow() {
               {/* Day summary */}
               {daySelections[activeDay]?.items.length > 0 && (
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-xs font-medium mb-1">Day {activeDay + 1} Selection:</p>
+                  <p className="text-xs font-medium mb-1">Day {activeDay + 1} Selection — for {numAdults} guest{parseInt(numAdults) !== 1 ? 's' : ''}:</p>
                   {daySelections[activeDay].items.map(sel => (
                     <p key={sel.menuItem.id} className="text-xs text-muted-foreground">
-                      {sel.quantity}x {sel.menuItem.name} — {formatCurrency(sel.menuItem.price * sel.quantity)}
+                      {sel.quantity}x {sel.menuItem.name} — {formatCurrency(sel.menuItem.price * sel.quantity)} per person
                     </p>
                   ))}
                   <Separator className="my-2" />
                   <p className="text-xs font-semibold">
-                    Day total: {formatCurrency(daySelections[activeDay].items.reduce((sum, s) => sum + s.menuItem.price * s.quantity, 0))} × {numAdults} guest(s) = {formatCurrency(daySelections[activeDay].items.reduce((sum, s) => sum + s.menuItem.price * s.quantity, 0) * parseInt(numAdults || '1'))}
+                    Per person: {formatCurrency(daySelections[activeDay].items.reduce((sum, s) => sum + s.menuItem.price * s.quantity, 0))}
+                  </p>
+                  <p className="text-xs font-bold">
+                    × {numAdults} guest(s) = {formatCurrency(daySelections[activeDay].items.reduce((sum, s) => sum + s.menuItem.price * s.quantity, 0) * parseInt(numAdults || '1'))}
                   </p>
                 </div>
               )}
