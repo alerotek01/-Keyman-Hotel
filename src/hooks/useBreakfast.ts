@@ -17,6 +17,9 @@ export interface VerifyResult {
   valid: boolean;
   guest_name: string | null;
   room_number: string | null;
+  item_name: string | null;
+  item_price: number | null;
+  quantity: number | null;
   pax: number | null;
   meal_date: string | null;
   status: string | null;
@@ -35,6 +38,32 @@ export function useTodayBreakfasts() {
   });
 }
 
+export interface BreakfastItem {
+  id: string;
+  verification_code: string;
+  guest_name: string;
+  room_number: string;
+  item_name: string;
+  item_price: number;
+  quantity: number;
+  status: string;
+  verified_at: string | null;
+  meal_date: string;
+  breakfast_order_id: string;
+}
+
+export function useTodayBreakfastItems() {
+  return useQuery({
+    queryKey: ['today-breakfast-items'],
+    queryFn: async (): Promise<BreakfastItem[]> => {
+      const { data, error } = await supabase.rpc('get_today_breakfast_items');
+      if (error) throw error;
+      return (data ?? []) as BreakfastItem[];
+    },
+    refetchInterval: 30000,
+  });
+}
+
 export function useVerifyBreakfastCode() {
   return useMutation({
     mutationFn: async (code: string): Promise<VerifyResult> => {
@@ -45,6 +74,9 @@ export function useVerifyBreakfastCode() {
         valid: r?.valid ?? false,
         guest_name: r?.guest_name ?? null,
         room_number: r?.room_number ?? null,
+        item_name: r?.item_name ?? null,
+        item_price: r?.item_price ?? null,
+        quantity: r?.quantity ?? null,
         pax: r?.pax ?? null,
         meal_date: r?.meal_date ?? null,
         status: r?.status ?? null,
@@ -100,6 +132,85 @@ export function useScheduleBreakfasts() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['today-breakfasts'] });
+    },
+  });
+}
+
+// Breakfast selections (what guest picks at booking time)
+export interface BreakfastSelection {
+  id: string;
+  reservation_id: string;
+  menu_item_id: string;
+  item_name: string;
+  item_price: number;
+  quantity: number;
+  meal_date: string;
+  pax: number;
+}
+
+export function useBreakfastSelections(reservationId?: string) {
+  return useQuery({
+    queryKey: ['breakfast-selections', reservationId],
+    queryFn: async () => {
+      if (!reservationId) return [];
+      const { data, error } = await supabase
+        .from('breakfast_selections')
+        .select('*')
+        .eq('reservation_id', reservationId)
+        .order('meal_date');
+      if (error) throw error;
+      return (data ?? []) as BreakfastSelection[];
+    },
+    enabled: !!reservationId,
+  });
+}
+
+export function useSaveBreakfastSelections() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      reservationId,
+      selections,
+    }: {
+      reservationId: string;
+      selections: Omit<BreakfastSelection, 'id' | 'reservation_id'>[];
+    }) => {
+      // Delete existing selections
+      await supabase.from('breakfast_selections').delete().eq('reservation_id', reservationId);
+      // Insert new ones
+      if (selections.length > 0) {
+        const { error } = await supabase.from('breakfast_selections').insert(
+          selections.map(s => ({ ...s, reservation_id: reservationId }))
+        );
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['breakfast-selections'] });
+    },
+  });
+}
+
+export function useBreakfastMenuItems() {
+  return useQuery({
+    queryKey: ['breakfast-menu-items'],
+    queryFn: async () => {
+      // Get breakfast category
+      const { data: cat } = await supabase
+        .from('menu_categories')
+        .select('id')
+        .eq('name', 'Breakfast')
+        .single();
+      if (!cat) return [];
+      // Get breakfast items
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('id, name, price, description, image_url')
+        .eq('category_id', cat.id)
+        .eq('is_available', true)
+        .order('price');
+      if (error) throw error;
+      return data ?? [];
     },
   });
 }

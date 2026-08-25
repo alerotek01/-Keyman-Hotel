@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useTodayBreakfasts, useVerifyBreakfastCode, useMarkBreakfastServed, useMarkBreakfastSkipped, VerifyResult } from '@/hooks/useBreakfast';
+import { useTodayBreakfastItems, useVerifyBreakfastCode, useMarkBreakfastServed, useMarkBreakfastSkipped, VerifyResult, BreakfastItem } from '@/hooks/useBreakfast';
+import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Search, CheckCircle2, XCircle, AlertTriangle, Utensils, Clock } from 'lucide-react';
 
 export default function BreakfastVerification() {
-  const { data: todayOrders, isLoading } = useTodayBreakfasts();
+  const { data: todayItems, isLoading } = useTodayBreakfastItems();
   const verifyCode = useVerifyBreakfastCode();
   const markServed = useMarkBreakfastServed();
   const markSkipped = useMarkBreakfastSkipped();
@@ -59,9 +60,17 @@ export default function BreakfastVerification() {
     }
   };
 
-  const scheduled = todayOrders?.filter(o => o.status === 'scheduled') ?? [];
-  const served = todayOrders?.filter(o => o.status === 'served') ?? [];
-  const skipped = todayOrders?.filter(o => o.status === 'skipped') ?? [];
+  const scheduled = todayItems?.filter(o => o.status === 'scheduled') ?? [];
+  const served = todayItems?.filter(o => o.status === 'served') ?? [];
+  const skipped = todayItems?.filter(o => o.status === 'skipped') ?? [];
+  
+  // Group by room
+  const byRoom = scheduled.reduce((acc, item) => {
+    const key = item.room_number;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {} as Record<string, BreakfastItem[]>);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -123,7 +132,15 @@ export default function BreakfastVerification() {
                     <div className="mt-3 space-y-1 text-sm">
                       <p><span className="font-medium">Guest:</span> {result.guest_name}</p>
                       <p><span className="font-medium">Room:</span> {result.room_number}</p>
-                      <p><span className="font-medium">Pax:</span> {result.pax} breakfast(s)</p>
+                      {result.item_name && (
+                        <>
+                          <p><span className="font-medium">Item:</span> {result.quantity}x {result.item_name}</p>
+                          <p><span className="font-medium">Price:</span> {formatCurrency(result.item_price ?? 0)}</p>
+                        </>
+                      )}
+                      {!result.item_name && (
+                        <p><span className="font-medium">Pax:</span> {result.pax} breakfast(s)</p>
+                      )}
                       <p><span className="font-medium">Date:</span> {result.meal_date}</p>
                     </div>
                   )}
@@ -176,7 +193,7 @@ export default function BreakfastVerification() {
         <CardContent>
           {isLoading ? (
             <Loader2 className="h-6 w-6 animate-spin" />
-          ) : todayOrders?.length === 0 ? (
+          ) : !todayItems || todayItems.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">No B&B breakfasts scheduled for today</p>
           ) : (
             <>
@@ -196,53 +213,62 @@ export default function BreakfastVerification() {
                 </Badge>
               </div>
 
-              {/* Order list */}
-              <div className="space-y-2">
-                {scheduled.map(order => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200">
-                    <div className="flex items-center gap-4">
-                      <div className="font-mono text-sm font-bold bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">
-                        {order.verification_code}
-                      </div>
-                      <div>
-                        <p className="font-medium">{order.guest_name}</p>
-                        <p className="text-sm text-muted-foreground">Room {order.room_number} · {order.pax} pax</p>
-                      </div>
+              {/* Grouped by room */}
+              <div className="space-y-4">
+                {Object.entries(byRoom).map(([room, items]) => (
+                  <div key={room} className="border rounded-lg overflow-hidden">
+                    <div className="bg-blue-50 dark:bg-blue-950 px-4 py-2 border-b">
+                      <p className="font-semibold">🛏️ Room {room} — {items[0].guest_name}</p>
                     </div>
-                    <Badge variant="outline" className="text-blue-600">Pending</Badge>
+                    <div className="divide-y">
+                      {items.map(item => (
+                        <div key={item.id} className="flex items-center justify-between px-4 py-2">
+                          <div className="flex items-center gap-3">
+                            <div className="font-mono text-xs font-bold bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">
+                              {item.verification_code}
+                            </div>
+                            <div>
+                              <p className="font-medium">{item.quantity}x {item.item_name}</p>
+                              <p className="text-xs text-muted-foreground">{formatCurrency(item.item_price)}</p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-blue-600 text-xs">Pending</Badge>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
-                {served.map(order => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg opacity-70">
-                    <div className="flex items-center gap-4">
-                      <div className="font-mono text-sm bg-green-100 dark:bg-green-900 px-2 py-1 rounded">
-                        {order.verification_code}
+                
+                {/* Served items */}
+                {served.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-green-600">✅ Served ({served.length})</p>
+                    {served.map(item => (
+                      <div key={item.id} className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950 rounded opacity-70">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs bg-green-100 px-1 rounded">{item.verification_code}</span>
+                          <span className="text-sm">{item.quantity}x {item.item_name} — Room {item.room_number}</span>
+                        </div>
+                        <span className="text-xs text-green-600">
+                          {item.verified_at ? new Date(item.verified_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
                       </div>
-                      <div>
-                        <p className="font-medium">{order.guest_name}</p>
-                        <p className="text-sm text-muted-foreground">Room {order.room_number} · {order.pax} pax</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Served {order.verified_at ? new Date(order.verified_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                    </Badge>
+                    ))}
                   </div>
-                ))}
-                {skipped.map(order => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950 rounded-lg opacity-70">
-                    <div className="flex items-center gap-4">
-                      <div className="font-mono text-sm bg-orange-100 dark:bg-orange-900 px-2 py-1 rounded">
-                        {order.verification_code}
+                )}
+                
+                {/* Skipped items */}
+                {skipped.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-orange-600">⏭️ No-Show ({skipped.length})</p>
+                    {skipped.map(item => (
+                      <div key={item.id} className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-950 rounded opacity-70">
+                        <span className="text-sm">{item.quantity}x {item.item_name} — Room {item.room_number}</span>
+                        <Badge className="bg-orange-100 text-orange-800 text-xs">No-Show</Badge>
                       </div>
-                      <div>
-                        <p className="font-medium">{order.guest_name}</p>
-                        <p className="text-sm text-muted-foreground">Room {order.room_number} · {order.pax} pax</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-orange-100 text-orange-800">No-Show</Badge>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             </>
           )}
