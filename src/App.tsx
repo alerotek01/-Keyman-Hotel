@@ -37,6 +37,8 @@ import PaymentVerification from "./pages/admin/PaymentVerification";
 import ConferenceManagement from "./pages/admin/ConferenceManagement";
 import AdminUsers from "./pages/admin/Users";
 import AdminDiscounts from "./pages/admin/Discounts";
+import LoyaltySettings from "./pages/admin/LoyaltySettings";
+import CampaignManager from "./pages/admin/CampaignManager";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerReports from "./pages/admin/Reports";
 import ManagerBookings from "./pages/admin/Bookings";
@@ -106,6 +108,8 @@ const App = () => (
             <Route path="folios" element={<AdminFolios />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="discounts" element={<AdminDiscounts />} />
+            <Route path="loyalty" element={<LoyaltySettings />} />
+            <Route path="campaigns" element={<CampaignManager />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="audit" element={<AdminAudit />} />
             <Route path="operations" element={<AdminOperations />} />

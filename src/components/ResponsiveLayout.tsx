@@ -11,7 +11,7 @@ import {
   Loader2, LogOut, Home, LayoutDashboard, BedDouble, CalendarCheck, UtensilsCrossed,
   ChefHat, Sparkles, ClipboardCheck, ClipboardList, Receipt, CreditCard, Clock,
   MessageSquare, Bell, BarChart3, DollarSign, Users, Activity, Settings, Package,
-  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet, Coffee, Award, Tag
+  Shield, Wrench, ScrollText, Globe, UserCog, Building2, Moon, Wallet, Coffee, Award, Tag, Trophy, Mail
 } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +37,8 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/admin/menu', label: 'Menu', icon: UtensilsCrossed },
     { path: '/admin/content', label: 'Site Content', icon: Globe },
     { path: '/admin/discounts', label: 'Discounts', icon: Tag },
+    { path: '/admin/loyalty', label: 'Loyalty', icon: Trophy },
+    { path: '/admin/campaigns', label: 'Campaigns', icon: Mail },
     { path: '/manager/bookings', label: 'Bookings', icon: CalendarCheck },
     { path: '/manager/reconciliation', label: 'Reconciliation', icon: DollarSign },
     { path: '/manager/kpi', label: 'Staff KPIs', icon: Award },
@@ -53,6 +55,8 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/admin/rooms', label: 'Rooms', icon: BedDouble },
     { path: '/admin/menu', label: 'Menu', icon: UtensilsCrossed },
     { path: '/admin/discounts', label: 'Discounts', icon: Tag },
+    { path: '/admin/loyalty', label: 'Loyalty', icon: Trophy },
+    { path: '/admin/campaigns', label: 'Campaigns', icon: Mail },
     { path: '/admin/content', label: 'Site Content', icon: Globe },
     { path: '/admin/bookings', label: 'Bookings', icon: CalendarCheck },
     { path: '/admin/folios', label: 'Folios', icon: Receipt },
@@ -229,6 +233,8 @@ const MANAGER_MORE_ITEMS = [
   { icon: '🍽️', label: 'Menu', path: '/admin/menu' },
   { icon: '🌐', label: 'Site Content', path: '/admin/content' },
   { icon: '🏷️', label: 'Discounts', path: '/admin/discounts' },
+  { icon: '⭐', label: 'Loyalty', path: '/admin/loyalty' },
+  { icon: '📣', label: 'Campaigns', path: '/admin/campaigns' },
   { icon: '📅', label: 'Bookings', path: '/manager/bookings' },
   { icon: '💰', label: 'Reconciliation', path: '/manager/reconciliation' },
   { icon: '🏆', label: 'Staff KPIs', path: '/manager/kpi' },
@@ -247,6 +253,8 @@ const ADMIN_MORE_ITEMS = [
   { icon: '🛏️', label: 'Rooms', path: '/admin/rooms' },
   { icon: '🍽️', label: 'Menu', path: '/admin/menu' },
   { icon: '🏷️', label: 'Discounts', path: '/admin/discounts' },
+  { icon: '⭐', label: 'Loyalty', path: '/admin/loyalty' },
+  { icon: '📣', label: 'Campaigns', path: '/admin/campaigns' },
   { icon: '🌐', label: 'Site Content', path: '/admin/content' },
   { icon: '📅', label: 'Bookings', path: '/admin/bookings' },
   { icon: '🧾', label: 'Folios', path: '/admin/folios' },
