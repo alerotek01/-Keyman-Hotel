@@ -185,6 +185,14 @@ const ROLE_TABS: Record<string, TabConfig[]> = {
     { path: '/staff/messages', label: 'Chat', icon: '💬' },
     { path: '/staff/shift', label: 'Shift', icon: '⏰' },
   ],
+  admin: [
+    { path: '/admin', label: 'Home', icon: '🏠', centerAction: false },
+    { path: '/admin/bookings', label: 'Bookings', icon: '📅' },
+    { path: '/admin', label: 'More', icon: '📊', centerAction: true },
+    { path: '/admin/users', label: 'Users', icon: '👥' },
+    { path: '/admin/messages', label: 'Chat', icon: '💬' },
+    { path: '/admin/reports', label: 'Reports', icon: '📈' },
+  ],
   external_customer: [
     { path: '/external', label: 'Home', icon: '🏠', centerAction: false },
     { path: '/external/order', label: 'Menu', icon: '🍽️' },
@@ -206,6 +214,25 @@ const MANAGER_MORE_ITEMS = [
   { icon: '🛡️', label: 'Operations', path: '/manager/operations' },
   { icon: '💬', label: 'Messages', path: '/manager/messages' },
   { icon: '🔔', label: 'Alerts', path: '/manager/notification-settings' },
+];
+
+// Admin "More" overlay items
+const ADMIN_MORE_ITEMS = [
+  { icon: '🏠', label: 'Dashboard', path: '/admin' },
+  { icon: '🛏️', label: 'Rooms', path: '/admin/rooms' },
+  { icon: '🍽️', label: 'Menu', path: '/admin/menu' },
+  { icon: '🌐', label: 'Site Content', path: '/admin/content' },
+  { icon: '📅', label: 'Bookings', path: '/admin/bookings' },
+  { icon: '🧾', label: 'Folios', path: '/admin/folios' },
+  { icon: '👥', label: 'Users', path: '/admin/users' },
+  { icon: '📜', label: 'Reports', path: '/admin/reports' },
+  { icon: '🛡️', label: 'Audit Logs', path: '/admin/audit' },
+  { icon: '⚡', label: 'Operations', path: '/admin/operations' },
+  { icon: '🏢', label: 'Conference', path: '/admin/conference' },
+  { icon: '⚙️', label: 'Booking Rules', path: '/admin/booking-settings' },
+  { icon: '💳', label: 'Verify Payments', path: '/admin/payments-verify' },
+  { icon: '💬', label: 'Messages', path: '/admin/messages' },
+  { icon: '🔔', label: 'Notifications', path: '/admin/notification-settings' },
 ];
 
 // Staff "More" overlay items (shared across staff roles)
@@ -651,7 +678,7 @@ export default function ResponsiveLayout({ basePath, allowedRoles }: ResponsiveL
       onSignOut={signOut}
       showMore={showMore}
       setShowMore={setShowMore}
-      moreItems={basePath === '/manager' ? MANAGER_MORE_ITEMS : basePath === '/guest' ? GUEST_MORE_ITEMS : basePath === '/staff' ? (STAFF_MORE_ITEMS[role || ''] || undefined) : undefined}
+      moreItems={basePath === '/admin' ? ADMIN_MORE_ITEMS : basePath === '/manager' ? MANAGER_MORE_ITEMS : basePath === '/guest' ? GUEST_MORE_ITEMS : basePath === '/staff' ? (STAFF_MORE_ITEMS[role || ''] || undefined) : undefined}
     />
   );
 }
