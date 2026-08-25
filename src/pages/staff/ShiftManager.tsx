@@ -216,7 +216,7 @@ export default function ShiftManager() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-6">
         <h1 className="font-display text-3xl font-bold">My Shift</h1>
         <p className="text-muted-foreground">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
@@ -262,7 +262,7 @@ export default function ShiftManager() {
             <CardTitle>Start a Shift</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
               {['morning', 'afternoon', 'night'].map(name => (
                 <button
                   key={name}
@@ -289,7 +289,7 @@ export default function ShiftManager() {
             <CardTitle>Start a Shift</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
               {['morning', 'afternoon', 'night'].map(name => (
                 <button
                   key={name}
@@ -389,7 +389,7 @@ export default function ShiftManager() {
 
             {/* Summary Stats */}
             {filteredHistory.length > 0 && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
                 <Card><CardContent className="pt-3 pb-2"><p className="text-xs text-muted-foreground">Total Shifts</p><p className="text-xl font-bold">{filteredHistory.length}</p></CardContent></Card>
                 <Card><CardContent className="pt-3 pb-2"><p className="text-xs text-muted-foreground">Reconciled</p><p className="text-xl font-bold text-emerald-600">{filteredHistory.filter((s: any) => s.status === 'reconciled' || s.status === 'closed').length}</p></CardContent></Card>
                 <Card><CardContent className="pt-3 pb-2"><p className="text-xs text-muted-foreground">With Variance</p><p className="text-xl font-bold text-amber-600">{filteredHistory.filter((s: any) => s.shift_reconciliations?.[0]?.variance !== 0).length}</p></CardContent></Card>

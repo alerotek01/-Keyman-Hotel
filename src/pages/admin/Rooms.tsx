@@ -188,7 +188,7 @@ export default function AdminRooms() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold">Rooms Management</h1>
         <p className="text-muted-foreground">Manage room types, rooms, pricing, and photos</p>
@@ -329,7 +329,7 @@ export default function AdminRooms() {
                     <Label>Description</Label>
                     <Textarea value={typeForm.description} onChange={(e) => setTypeForm({ ...typeForm, description: e.target.value })} rows={2} />
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
                     <div className="space-y-2">
                       <Label>Base Rate (KES)</Label>
                       <Input type="number" step="0.01" value={typeForm.base_rate} onChange={(e) => setTypeForm({ ...typeForm, base_rate: e.target.value })} required />
@@ -370,7 +370,7 @@ export default function AdminRooms() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-3">{rt.description || 'No description'}</p>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Base Rate</span>
                         <p className="font-semibold text-lg">{formatCurrency(rt.base_rate)}/night</p>

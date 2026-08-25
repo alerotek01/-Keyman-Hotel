@@ -98,7 +98,7 @@ export default function GuestDashboard() {
   return (
     <div className="p-4 md:p-6 space-y-4">
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
           <Link to="/guest/booking">
             <Card className="hover:shadow-md transition-shadow cursor-pointer"><CardContent className="p-3 text-center"><BedDouble className="h-5 w-5 mx-auto text-brass mb-1" /><p className="text-[10px] font-medium">Room</p></CardContent></Card>
           </Link>

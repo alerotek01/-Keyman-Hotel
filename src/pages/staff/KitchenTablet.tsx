@@ -185,7 +185,7 @@ export default function KitchenTablet() {
       </div>
 
       {/* Three-Column Layout */}
-      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-140px)]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 h-[calc(100vh-140px)]">
         {/* NEW ORDERS */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-3">

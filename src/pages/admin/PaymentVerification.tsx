@@ -144,7 +144,7 @@ export default function PaymentVerification() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         <Card className={pendingCount > 0 ? 'border-amber-300 bg-amber-50' : ''}>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>

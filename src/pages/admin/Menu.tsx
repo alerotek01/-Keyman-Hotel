@@ -157,7 +157,7 @@ export default function AdminMenu() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold">Menu Management</h1>
         <p className="text-muted-foreground">Manage cafeteria menu categories and items</p>

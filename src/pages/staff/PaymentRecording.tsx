@@ -98,7 +98,7 @@ export default function PaymentRecording() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="font-display text-3xl font-bold">Payments</h1>
@@ -207,7 +207,7 @@ export default function PaymentRecording() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-6">
         <Card>
           <CardContent className="pt-4 pb-3">
             <p className="text-xs text-muted-foreground">Pending Verification</p>

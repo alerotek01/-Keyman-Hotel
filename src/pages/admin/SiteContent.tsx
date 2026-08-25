@@ -386,7 +386,7 @@ export default function AdminSiteContent() {
   }, {} as Record<string, any[]>);
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="font-display text-3xl font-bold">Site Content</h1>

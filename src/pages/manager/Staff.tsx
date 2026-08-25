@@ -175,7 +175,7 @@ export default function StaffManagement() {
   const suspendedUsers = users?.filter((u: any) => !u.is_active && STAFF_ROLES.includes(u.role)) || [];
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-display text-3xl font-bold">Staff Management</h1>
@@ -227,7 +227,7 @@ export default function StaffManagement() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
         <Card>
           <CardContent className="pt-4 pb-3">
             <p className="text-2xl font-bold">{activeUsers.length + suspendedUsers.length}</p>

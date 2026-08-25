@@ -288,7 +288,7 @@ export default function AdminUsers() {
   const customers = users?.filter((u: any) => u.role === 'external_customer') || [];
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-display text-3xl font-bold">User Management</h1>

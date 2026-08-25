@@ -168,7 +168,7 @@ export default function ReceptionistPda() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-6">
         <h1 className="font-display text-3xl font-bold">Reception</h1>
         <p className="text-muted-foreground">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>

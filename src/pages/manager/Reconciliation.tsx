@@ -726,7 +726,7 @@ export default function Reconciliation() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-6">
         <h1 className="font-display text-3xl font-bold">Reconciliation</h1>
         <p className="text-muted-foreground">Review transactions, verify M-Pesa codes & receipts, approve shift closings</p>
@@ -768,7 +768,7 @@ export default function Reconciliation() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
         <Card className={pendingRecons.length > 0 ? 'bg-amber-50 border-amber-200' : ''}>
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-2">

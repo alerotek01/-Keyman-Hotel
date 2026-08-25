@@ -31,7 +31,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Overview of your hotel performance</p>

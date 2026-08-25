@@ -304,7 +304,7 @@ export default function FolioManagement() {
               </Card>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                 <Card>
                   <CardContent className="p-4 text-center">
                     <DollarSign className="h-5 w-5 mx-auto mb-1 text-blue-500" />

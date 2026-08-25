@@ -255,7 +255,7 @@ export default function BookingFlow() {
 
         {step === 'confirm' && (
           <Card className="text-center">
-            <CardContent className="p-8">
+            <CardContent className="p-4 md:p-8">
               <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
               <h2 className="font-display text-2xl font-bold mb-2">Booking Confirmed!</h2>
               <p className="text-muted-foreground mb-6">

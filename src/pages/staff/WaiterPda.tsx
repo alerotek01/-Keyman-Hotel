@@ -117,7 +117,7 @@ export default function WaiterPda() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="font-display text-3xl font-bold">My Orders</h1>

@@ -44,7 +44,7 @@ export default function AdminBookings() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold">Bookings</h1>
         <p className="text-muted-foreground">View and manage all reservations</p>

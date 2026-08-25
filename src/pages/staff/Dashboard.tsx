@@ -346,7 +346,7 @@ function AdminDashboard({ todayCheckIns, todayCheckOuts, pendingBookings, pendin
       </StatsRow>
 
       <SectionHeader title="Quick Actions" />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
         {[
           { icon: '📅', label: 'Bookings', path: '/admin/bookings', bg: 'bg-blue-50' },
           { icon: '💰', label: 'Folios', path: '/admin/folios', bg: 'bg-emerald-50' },

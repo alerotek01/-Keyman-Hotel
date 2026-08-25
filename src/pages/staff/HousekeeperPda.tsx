@@ -107,7 +107,7 @@ export default function HousekeeperPda() {
       </div>
 
       {/* Quick Stats */}
-      <div className="p-4 grid grid-cols-3 gap-3">
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
         <button
           onClick={() => setFilter('pending')}
           className={cn(

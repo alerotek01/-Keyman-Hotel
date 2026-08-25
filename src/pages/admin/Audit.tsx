@@ -31,7 +31,7 @@ export default function AdminAudit() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold">Audit Logs</h1>
         <p className="text-muted-foreground">Track all system activities and changes</p>
