@@ -69,6 +69,7 @@ const NAV_CONFIGS: Record<string, NavItem[]> = {
     { path: '/admin/revenue', label: 'Revenue Mgmt', icon: BarChart3 },
     { path: '/admin/channels', label: 'Channels', icon: Globe },
     { path: '/admin/competitors', label: 'Competitors', icon: Target },
+    { path: '/admin/payment-providers', label: 'Payments', icon: CreditCard },
     { path: '/admin/payments-verify', label: 'Verify Payments', icon: CreditCard },
     { path: '/admin/messages', label: 'Messages', icon: MessageSquare },
     { path: '/admin/notification-settings', label: 'Notifications', icon: Bell },
@@ -274,7 +275,8 @@ const ADMIN_MORE_ITEMS = [
   { icon: '📊', label: 'Revenue Mgmt', path: '/admin/revenue' },
   { icon: '🌐', label: 'Channels', path: '/admin/channels' },
   { icon: '🎯', label: 'Competitors', path: '/admin/competitors' },
-  { icon: '💳', label: 'Verify Payments', path: '/admin/payments-verify' },
+  { icon: '💳', label: 'Payments', path: '/admin/payment-providers' },
+  { icon: '✅', label: 'Verify Payments', path: '/admin/payments-verify' },
   { icon: '💬', label: 'Messages', path: '/admin/messages' },
   { icon: '🔔', label: 'Notifications', path: '/admin/notification-settings' },
 ];
