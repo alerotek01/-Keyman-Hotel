@@ -162,16 +162,14 @@ export function useWalkIn() {
       guest_phone: string;
       guest_email?: string;
       room_type_id: string;
-      room_id: string;
       num_adults: number;
       num_children: number;
       check_out: string;
-      rate: number;
       special_requests?: string;
       plate_number?: string;
     }) => {
-      // Call atomic DB function — does everything in one transaction:
-      // guest lookup/create + reservation + room status + folio + audit log
+      // Call atomic DB function — rate is ALWAYS calculated server-side from room_types.base_rate
+      // Client does NOT send rate — prevents price manipulation
       const { data: result, error } = await sb.rpc('walk_in_guest', {
         p_guest_name: data.guest_name,
         p_room_type_id: data.room_type_id,
@@ -182,7 +180,6 @@ export function useWalkIn() {
         p_num_adults: data.num_adults,
         p_num_children: data.num_children,
         p_plate_number: data.plate_number || null,
-        p_rate_override: data.rate || null,
       });
       if (error) throw error;
       return result;

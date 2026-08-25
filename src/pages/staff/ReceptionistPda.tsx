@@ -124,23 +124,16 @@ export default function ReceptionistPda() {
   // ===== Walk-In Flow =====
   const handleWalkIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    const rt = roomTypes?.find(r => r.id === walkInForm.room_type_id);
-    const room = availableRooms?.find((r: any) => r.id === walkInForm.room_id);
-    if (!rt || !room) { toast.error('Select a room type and room'); return; }
-
-    const nights = walkInForm.check_out
-      ? Math.ceil((new Date(walkInForm.check_out).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-      : 1;
-    const rate = Number(rt.base_rate) * Math.max(nights, 1);
+    if (!walkInForm.room_type_id) { toast.error('Select a room type'); return; }
 
     try {
       await walkIn.mutateAsync({
         guest_name: walkInForm.guest_name, guest_phone: walkInForm.guest_phone,
         guest_email: walkInForm.guest_email || undefined,
-        room_type_id: walkInForm.room_type_id, room_id: walkInForm.room_id,
+        room_type_id: walkInForm.room_type_id,
         num_adults: parseInt(walkInForm.num_adults) || 2,
         num_children: parseInt(walkInForm.num_children) || 0,
-        check_out: walkInForm.check_out, rate,
+        check_out: walkInForm.check_out,
         special_requests: walkInForm.special_requests || undefined,
         plate_number: walkInForm.plate_number || undefined,
       });
