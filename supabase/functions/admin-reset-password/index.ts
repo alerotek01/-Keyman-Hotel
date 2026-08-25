@@ -97,6 +97,15 @@ serve(async (req) => {
       .update({ is_active: true })
       .eq("id", targetUserId);
 
+    // Audit log: password reset
+    await adminClient.from("audit_logs").insert({
+      user_id: targetUserId,
+      action: "password_reset",
+      table_name: "auth.users",
+      record_id: targetUserId,
+      new_data: { email, method: "otp_verified", reset_by: email },
+    });
+
     return new Response(
       JSON.stringify({ success: true, user_id: targetUserId }),
       {

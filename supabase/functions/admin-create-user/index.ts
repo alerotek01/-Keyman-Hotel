@@ -152,6 +152,15 @@ serve(async (req) => {
       { onConflict: "id" }
     );
 
+    // Audit log: user created
+    await adminClient.from("audit_logs").insert({
+      user_id: caller.id,
+      action: "user_created",
+      table_name: "users",
+      record_id: newUser.user.id,
+      new_data: { email, full_name, role, has_password: !!password, created_by: caller.email },
+    });
+
     return new Response(
       JSON.stringify({ success: true, user_id: newUser.user.id, has_password: true, temp_password: password ? null : tempPassword }),
       { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
