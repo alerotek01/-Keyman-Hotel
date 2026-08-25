@@ -21,11 +21,22 @@ export default function AdminBookings() {
 
   const handleStatusChange = async (bookingId: string, status: BookingStatus) => {
     try {
-      await updateStatus.mutateAsync({ id: bookingId, status });
-      toast({
-        title: 'Status Updated',
-        description: `Booking has been marked as ${status}.`
-      });
+      if (status === 'no_show') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data, error } = await (supabase as any).rpc('mark_reservation_no_show', { p_reservation_id: bookingId });
+        if (error) throw error;
+        toast({
+          title: '⚠️ No-Show Marked',
+          description: `Room released, breakfast cancelled${data?.deposit_forfeited ? ', deposit forfeited' : ''}.`
+        });
+      } else {
+        await updateStatus.mutateAsync({ id: bookingId, status });
+        toast({
+          title: 'Status Updated',
+          description: `Booking has been marked as ${status}.`
+        });
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -199,6 +210,9 @@ export default function AdminBookings() {
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="confirmed">Confirmed</SelectItem>
                           <SelectItem value="cancelled">Cancelled</SelectItem>
+                          {booking.status === 'confirmed' && (
+                            <SelectItem value="no_show">⚠️ No-Show</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </TableCell>
