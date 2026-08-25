@@ -8,11 +8,11 @@
 -- Drop the overly permissive policy
 DROP POLICY IF EXISTS "Authenticated create folio_payments" ON folio_payments;
 
--- Create restricted policy: only reception + management roles
-CREATE POLICY "Reception/manager/admin create folio_payments"
+-- Create restricted policy: reception + management + chef (kitchen counter payments)
+CREATE POLICY "Reception/manager/admin/chef create folio_payments"
   ON folio_payments FOR INSERT
-  WITH CHECK (is_receptionist() OR is_manager() OR is_admin());
+  WITH CHECK (is_receptionist() OR is_manager() OR is_admin() OR get_user_role(auth.uid()) = 'chef');
 
 -- Verify
-COMMENT ON POLICY "Reception/manager/admin create folio_payments" ON folio_payments
-  IS 'Only receptionists, managers, and admins can record folio payments. Chefs/waiters/housekeepers blocked.';
+COMMENT ON POLICY "Reception/manager/admin/chef create folio_payments" ON folio_payments
+  IS 'Receptionists, managers, admins, and chefs can record folio payments. Chefs need this for kitchen counter payments. Waiters/housekeepers blocked.';
