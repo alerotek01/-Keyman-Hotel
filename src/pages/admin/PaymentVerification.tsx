@@ -133,7 +133,7 @@ export default function PaymentVerification() {
   const totalPending = payments?.filter((p: any) => p.status === 'pending').reduce((s: number, p: any) => s + Number(p.amount), 0) || 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="font-display text-3xl font-bold flex items-center gap-2">

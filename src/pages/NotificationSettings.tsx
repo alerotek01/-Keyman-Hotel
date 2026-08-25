@@ -75,7 +75,7 @@ export default function NotificationSettings() {
   const enabledCount = NOTIFICATION_EVENTS.filter((ev) => localPrefs[ev.key]).length;
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
       {/* Header */}
       <div>
         <h1 className="font-display text-3xl font-bold">Notification Settings</h1>

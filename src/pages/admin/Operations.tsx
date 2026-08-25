@@ -150,7 +150,7 @@ export default function Operations() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Impersonation Banner */}
       {isImpersonating && (
         <div className="bg-amber-500 text-white px-4 py-3 rounded-lg flex items-center justify-between">

@@ -201,10 +201,10 @@ export default function MessageCenter() {
   const selectedChannelData = channels?.find((c: any) => c.id === selectedChannel);
 
   return (
-    <div className="p-6 h-[calc(100vh-4rem)]">
+    <div className="p-4 md:p-6 h-[calc(100vh-4rem)]">
       <div className="flex h-full gap-0 rounded-lg border overflow-hidden">
         {/* Sidebar — Channels */}
-        <div className="w-64 bg-white border-r flex flex-col shrink-0">
+        <div className={cn("bg-white border-r flex flex-col shrink-0", selectedChannel ? "hidden md:flex md:w-64" : "w-full md:w-64")}>
           <div className="p-4 border-b">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display text-lg font-bold">Messages</h2>
@@ -319,6 +319,12 @@ export default function MessageCenter() {
               {/* Channel header */}
               <div className="h-14 border-b flex items-center justify-between px-4 shrink-0">
                 <div className="flex items-center gap-2">
+                  <button
+                    className="md:hidden text-muted-foreground hover:text-foreground"
+                    onClick={() => setSelectedChannel(null)}
+                  >
+                    ←
+                  </button>
                   <span className="text-muted-foreground">
                     {getChannelIcon(selectedChannelData?.type || 'group', selectedChannelData?.name || '')}
                   </span>

@@ -190,7 +190,7 @@ export default function ConferenceManagement() {
     return b.status === filter;
   });
 
-  if (loading) return <div className="p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
+  if (loading) return <div className="p-4 md:p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-brass" /></div>;
 
   return (
     <div className="space-y-6">

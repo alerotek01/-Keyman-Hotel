@@ -55,7 +55,7 @@ export default function ManagerDashboard() {
 
   if (!report) {
     return (
-      <div className="p-8 text-center text-muted-foreground">
+      <div className="p-4 md:p-8 text-center text-muted-foreground">
         <AlertCircle className="h-8 w-8 mx-auto mb-2" />
         <p>Failed to load daily report</p>
       </div>
@@ -71,7 +71,7 @@ export default function ManagerDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>

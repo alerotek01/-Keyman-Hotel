@@ -3,7 +3,7 @@ import { Package, Construction } from 'lucide-react';
 
 export default function InventoryComingSoon() {
   return (
-    <div className="p-6 flex items-center justify-center min-h-[60vh]">
+    <div className="p-4 md:p-6 flex items-center justify-center min-h-[60vh]">
       <Card className="max-w-md w-full">
         <CardContent className="p-8 text-center">
           <div className="relative inline-block mb-4">
