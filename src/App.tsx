@@ -64,6 +64,7 @@ import Reconciliation from "./pages/manager/Reconciliation";
 import KpiDashboard from "./pages/manager/KpiDashboard";
 import RevenueManagement from "./pages/admin/RevenueManagement";
 import ChannelManagerPage from "./pages/admin/ChannelManager";
+import CompetitorRatesPage from "./pages/admin/CompetitorRates";
 
 import NotFound from "./pages/NotFound";
 
@@ -123,6 +124,7 @@ const App = () => (
             <Route path="booking-settings" element={<AdminBookingSettings />} />
             <Route path="revenue" element={<RevenueManagement />} />
             <Route path="channels" element={<ChannelManagerPage />} />
+            <Route path="competitors" element={<CompetitorRatesPage />} />
             <Route path="payments-verify" element={<PaymentVerification />} />
             <Route path="conference" element={<ConferenceManagement />} />
             <Route path="messages" element={<MessagePage />} />
